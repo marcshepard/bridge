@@ -2,36 +2,52 @@
 // Local dev (`npm run dev`) uses a local SQLite copy of D1 and a local Durable Object; nothing on
 // Cloudflare is touched until you run `npm run deploy` (see docs/DESIGN.md, "Deploying").
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "bridge-replay",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-10-15",
-  "observability": { "enabled": true },
-
-  // The built frontend (frontend/dist, made by `npm run build` there) is served from the same
-  // address as the API. /api/* goes to the Worker; everything else is a file from dist, and any
-  // other path gets index.html (it's a single-page app).
-  "assets": {
-    "directory": "../frontend/dist",
-    "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
-  },
-
-  // The API's database. For deploying, replace database_id with the id printed by
-  // `npx wrangler d1 create bridge` (see docs/DESIGN.md, "Deploying"). Local dev ignores it.
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "bridge",
-      "database_id": "00000000-0000-0000-0000-000000000000",
-      "migrations_dir": "migrations"
-    }
-  ],
-
-  // One EventHub Durable Object per game: holds the players' WebSockets and pushes changes.
-  "durable_objects": { "bindings": [{ "name": "HUB", "class_name": "EventHub" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["EventHub"] }],
-
-  // Dev-only test players are off unless turned on (npm run dev turns them on).
-  "vars": { "ALLOW_TEST_PLAYERS": "false" }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "bridge-replay",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-10-15",
+	"observability": {
+		"enabled": true
+	},
+	// The built frontend (frontend/dist, made by `npm run build` there) is served from the same
+	// address as the API. /api/* goes to the Worker; everything else is a file from dist, and any
+	// other path gets index.html (it's a single-page app).
+	"assets": {
+		"directory": "../frontend/dist",
+		"not_found_handling": "single-page-application",
+		"run_worker_first": [
+			"/api/*"
+		]
+	},
+	// The API's database: the live D1 database "bridge", created with `npx wrangler d1 create bridge`
+	// (see docs/DESIGN.md, "Deploying"). Local dev ignores the id and uses a local copy.
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "bridge",
+			"database_id": "ef7798a5-44ef-4892-993f-c3c90f815ec4",
+			"migrations_dir": "migrations"
+		}
+	],
+	// One EventHub Durable Object per game: holds the players' WebSockets and pushes changes.
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "HUB",
+				"class_name": "EventHub"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": [
+				"EventHub"
+			]
+		}
+	],
+	// Dev-only test players are off unless turned on (npm run dev turns them on).
+	"vars": {
+		"ALLOW_TEST_PLAYERS": "false"
+	}
 }

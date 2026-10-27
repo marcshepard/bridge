@@ -555,7 +555,13 @@ the old `DuplicateBoard` drawing went. A reload starts at the first board withou
 - Next board per device. All displayed percentages and margins as whole numbers.
 - *Review:* play a whole sample game with test players.
 
-### Stage 4: deploy for early feedback (in progress)
+### Stage 4: deploy for early feedback (done)
+
+Live at https://bridge-replay.navia-apps.workers.dev (Cloudflare account subdomain `navia-apps`;
+D1 database `bridge`, id in `backend/wrangler.jsonc`). Tested with three players on Edge, Edge
+incognito and a phone. Notes: all incognito windows share one storage area, so testing several
+players on one computer needs different browsers or profiles (`?as=` is dev only).
+
 
 Get it in front of Marc's bridge group as soon as it works, and let real use decide what comes
 next. Nothing from the old resilience list blocks a first evening: the app already refetches the
@@ -569,10 +575,10 @@ game after a dropped connection, and test players are off in the live app.
 - **Green theme:** the header and primary colour match the icon (light and dark).
 - **Deploy:** the Worker serves the built frontend (static assets, single-page app); deploy steps
   under "Deploying". Marc runs `wrangler login` and the first deploy himself.
-- **Feedback:** a "Send feedback" link in Help (address to be decided).
+- **Feedback:** a "Send feedback" link in Help (navia.apps@gmail.com).
 - *Review:* Marc deploys, installs it on his phone, and plays a game on the live app.
 
-### Stage 5: feedback, then resilience and finish
+### Stage 5: feedback, then resilience and finish (next)
 
 - Fixes and changes from the bridge group's first evenings.
 - Presence in the UI (disconnected players greyed out), reconnect and catch up via
