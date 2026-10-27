@@ -9,14 +9,44 @@
 //   stands out at a glance.
 // - Tabular digits for any element with class "num", so score columns line up.
 //
-// Light and dark schemes both use MUI's default palettes. Light unless you turn on Dark mode in the
-// avatar menu (MUI's useColorScheme; MUI remembers the choice in the browser).
+// - Colours (light and dark), the only custom ones in the app:
+//   - Primary: table green, a mid green with a touch of blue, so it stays clearly green (not
+//     red or brown) for red-green colour-blind eyes. Same as the app icon (public/icon.svg) and
+//     the browser bar tint (index.html, manifest). White text on it passes WCAG AA (about 5:1).
+//     Dark mode uses a lighter version so it reads on a dark page.
+//   - Secondary: card-back gold, a warm accent for highlights.
+//   - Background and paper: a faint green-grey page with near-white cards (dark mode: deep
+//     green-black page, slightly lighter cards), rather than plain white or black.
+//   - The header stays table green in both modes (MUI would otherwise make it near-black in dark
+//     mode, the same as the page). Your avatar on it is a white circle with a green letter.
+//   Everything else (error red for hearts and diamonds, text colours) is MUI's default.
+//
+// Light unless you turn on Dark mode in the avatar menu (MUI's useColorScheme; MUI remembers the
+// choice in the browser).
 
 import { createTheme } from "@mui/material/styles";
 
+/** Card-table green: the app icon, the header and the browser bar. */
+export const TABLE_GREEN = "#1b7f5e";
+
 export const theme = createTheme({
   cssVariables: { colorSchemeSelector: "class" },
-  colorSchemes: { light: true, dark: true },
+  colorSchemes: {
+    light: {
+      palette: {
+        primary: { main: TABLE_GREEN },
+        secondary: { main: "#c99a1e", contrastText: "#1f1a0b" },
+        background: { default: "#eef3f0", paper: "#fafcfb" },
+      },
+    },
+    dark: {
+      palette: {
+        primary: { main: "#6fd1aa" },
+        secondary: { main: "#e2bd57" },
+        background: { default: "#0e1714", paper: "#16221d" },
+      },
+    },
+  },
   typography: {
     fontFamily: '"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif',
     button: { textTransform: "none" },
@@ -24,6 +54,18 @@ export const theme = createTheme({
   components: {
     MuiCssBaseline: {
       styleOverrides: { ".num": { fontVariantNumeric: "tabular-nums" } },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        // Repeated for dark mode, where MUI's own dark-mode rule would otherwise win.
+        root: ({ theme }) => {
+          const green = { backgroundColor: TABLE_GREEN, color: "#ffffff", backgroundImage: "none" };
+          return { ...green, ...theme.applyStyles("dark", green) };
+        },
+      },
+    },
+    MuiAvatar: {
+      styleOverrides: { colorDefault: { backgroundColor: "#ffffff", color: TABLE_GREEN, fontWeight: 700 } },
     },
     MuiButton: {
       defaultProps: { disableElevation: true },

@@ -412,12 +412,12 @@ state.**
 ### Security
 
 - Join codes are 8 characters from a 31-symbol alphabet (~40 bits), so they can't be found by
-  guessing. (Rate-limiting failed lookups is planned for stage 4.)
+  guessing. (Rate-limiting failed lookups is planned for stage 5.)
 - A player's `playerId` is a random UUID, never shown to other players; it's the only way to act as
   that player.
 - Only the creator can choose partnerships or delete the game. During play all players are equal.
 - Events and their results expire after 30 days (expired games are treated as not found; the
-  scheduled clean-up is stage 4).
+  scheduled clean-up is stage 5).
 - Data stored: display names chosen by players, and bridge results. No emails, no accounts.
 - The dev-only test-players endpoint is off unless `ALLOW_TEST_PLAYERS` is `true` (only
   `npm run dev` turns it on).
@@ -464,24 +464,38 @@ Backend tests: `cd backend && npm test`.
 
 ### Deploying
 
-Not set up yet (stage 4 adds serving the built frontend from the Worker). The plan:
+One Worker serves everything: the API under `/api`, and the built frontend (`frontend/dist`) for
+every other path (`assets` in `backend/wrangler.jsonc`). Free Cloudflare plan: Workers, D1 and
+SQLite-backed Durable Objects are all included.
+
+**First time** (in `backend/`, after `npm install` in both folders):
 
 ```bash
-cd backend
-npx wrangler login                                  # once
-npx wrangler d1 create bridge                       # once; paste the id into wrangler.jsonc
-npx wrangler d1 migrations apply bridge --remote    # after each new migration
-cd ../frontend && npm run build && cd ../backend
-npx wrangler deploy                                 # uploads the Worker and the built frontend
+npx wrangler login               # opens the browser to connect wrangler to your Cloudflare account
+npx wrangler d1 create bridge    # creates the database; copy the database_id it prints into wrangler.jsonc
+npm run deploy                   # builds the frontend, sets up the database, uploads the Worker
 ```
 
-It's served at `bridge-replay.<account>.workers.dev`. A custom domain (for example a subdomain of
-`navia-apps.com` or a new domain) can be attached later in the Cloudflare dashboard without code
-changes.
+`npm run deploy` builds the frontend, applies any new database migrations to the live database
+(it asks you to confirm), then uploads the Worker and the frontend. The first deploy may ask you
+to choose a `workers.dev` subdomain for the account. It prints the address, e.g.
+`https://bridge-replay.<subdomain>.workers.dev`.
+
+**Updates:** `npm run deploy` again. Games in progress carry on: the database isn't touched except
+by new migrations.
+
+**Logs:** `npx wrangler tail` streams live logs, or see the Worker's Observability tab in the
+Cloudflare dashboard.
+
+In the live app, dev mode is off: no "Fill with test players" button, `?as=` is ignored, and the
+backend refuses the test-players endpoint (`ALLOW_TEST_PLAYERS` is "false").
+
+A custom domain (for example a subdomain of `navia-apps.com`, or a new domain) can be attached later
+in the Cloudflare dashboard without code changes.
 
 ## Build plan and status
 
-The shared-game version is built in five stages, each reviewed by Marc before the next starts.
+The shared-game version is built in stages, each reviewed by Marc before the next starts.
 **Read this first when picking the work up in a new session.**
 
 ### Stage 1: backend running locally (done)
@@ -541,18 +555,54 @@ the old `DuplicateBoard` drawing went. A reload starts at the first board withou
 - Next board per device. All displayed percentages and margins as whole numbers.
 - *Review:* play a whole sample game with test players.
 
-### Stage 4: resilience and finish (next)
+### Stage 4: deploy for early feedback (in progress)
 
+Get it in front of Marc's bridge group as soon as it works, and let real use decide what comes
+next. Nothing from the old resilience list blocks a first evening: the app already refetches the
+game after a dropped connection, and test players are off in the live app.
+
+- **App icon:** a white ♠ on card-table green, one design everywhere: browser tab, home screen,
+  install prompt (SVG, 192 and 512 px PNGs, maskable, Apple touch icon).
+- **Install to home screen (PWA):** web app manifest (standalone, green), a minimal service worker
+  so Chrome offers "Install app"; iPhone install is manual (Share → Add to Home Screen), explained
+  in Help. No offline play: the game needs the server.
+- **Green theme:** the header and primary colour match the icon (light and dark).
+- **Deploy:** the Worker serves the built frontend (static assets, single-page app); deploy steps
+  under "Deploying". Marc runs `wrangler login` and the first deploy himself.
+- **Feedback:** a "Send feedback" link in Help (address to be decided).
+- *Review:* Marc deploys, installs it on his phone, and plays a game on the live app.
+
+### Stage 5: feedback, then resilience and finish
+
+- Fixes and changes from the bridge group's first evenings.
 - Presence in the UI (disconnected players greyed out), reconnect and catch up via
   `results?since=`, reclaiming a seat from a different device (a connected player approves).
 - End game with the post-mortem (celebration or commiseration, then the tally grid with each
   board's final state in a dialog).
 - Backend: rate-limit failed code lookups; scheduled clean-up of games past `expires_at` (cron).
-- Serve the built app from the Worker (static assets) and the deploy steps under "Deploying";
-  Marc runs `wrangler login` and the first deploy himself.
-- README and AGENTS.md updates.
 
-### Stage 5: PBN from other sources
+### Stage 6: starting a game from a phone
+
+Players mostly use phones, but saving a Common Game page is a computer job. In order of preference:
+
+- **Prepare on a computer, play on a phone:** a "Continue on your phone" QR code in the lobby moves
+  the creator's seat to their phone.
+- **Email or cloud:** save the page on a computer, open it from the phone's file picker (works
+  today; needs a line in Help).
+- **Saving on a phone:** Chrome on Android saves pages as `.mhtml`, which the importer could read;
+  iPhone Safari saves PDF or `.webarchive` (to investigate with real samples).
+- Not: fetching pages from the Common Game site on the server (bot protection, permission), or
+  copy and paste (loses the structure).
+- The real fix is the Common Game agreeing to archived downloads (asked; no reply yet).
+
+### Stage 7: online play (no self-dealing)
+
+In-app bidding and card play for players who aren't at one table: dealing, turns, dummy shown
+after the opening lead, following suit, claims, undo, and the score worked out from the play.
+The biggest piece of work; it needs stage 5's reconnect handling, since a phone asleep mid-hand
+would stall play.
+
+### Stage 8: PBN from other sources
 
 PBN files vary a lot by the program that wrote them. Collect real samples and add a fixture-based
 test for each (cut down to a few boards), fixing the importer where needed:

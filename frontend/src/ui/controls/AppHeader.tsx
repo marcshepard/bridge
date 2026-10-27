@@ -60,7 +60,7 @@ export function AppHeader({ name, onHelp, onLeaveGame }: Props) {
           size="large"
           sx={{ p: 0.5 }}
         >
-          <Avatar sx={{ bgcolor: "secondary.main", color: "secondary.contrastText" }}>{initial}</Avatar>
+          <Avatar>{initial}</Avatar>
         </IconButton>
       </Toolbar>
 

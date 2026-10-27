@@ -5,13 +5,14 @@
   "description": "Bridge Replay API: a Cloudflare Worker with D1 and a Durable Object for live updates.",
   "type": "module",
   "scripts": {
-    "dev": "wrangler d1 migrations apply bridge --local && wrangler dev --port 8787 --var ALLOW_TEST_PLAYERS:true",
+    "dev": "npm run ensure-dist && wrangler d1 migrations apply bridge --local && wrangler dev --port 8787 --var ALLOW_TEST_PLAYERS:true",
     "db:migrate:local": "wrangler d1 migrations apply bridge --local",
     "db:migrate:remote": "wrangler d1 migrations apply bridge --remote",
-    "test": "vitest run",
+    "test": "npm run ensure-dist && vitest run",
     "typecheck": "tsc --noEmit",
-    "deploy": "wrangler deploy",
-    "smoke": "node scripts/smoke.mjs"
+    "deploy": "npm --prefix ../frontend run build && wrangler d1 migrations apply bridge --remote && wrangler deploy",
+    "smoke": "node scripts/smoke.mjs",
+    "ensure-dist": "node -e \"require('fs').mkdirSync('../frontend/dist',{recursive:true})\""
   },
   "dependencies": {
     "hono": "4.13.14"

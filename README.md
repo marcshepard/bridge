@@ -123,3 +123,8 @@ python3 scripts/make_sample_game.py           # --seed 123 --boards 16 to vary i
 ```
 
 VS Code tasks: **Install sample-data tools (Python)**, then **Generate sample game**.
+
+## Deploying
+
+The app runs on Cloudflare (free plan): one Worker serves the frontend and the API. The steps,
+first time and for updates, are under "Deploying" in [docs/DESIGN.md](docs/DESIGN.md).

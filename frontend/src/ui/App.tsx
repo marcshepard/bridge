@@ -14,6 +14,7 @@ import { AppHeader } from "./controls/AppHeader";
 import { Screen } from "./controls/Layout";
 import { SheetDialog } from "./controls/SheetDialog";
 import { HelpDialog } from "./components/HelpDialog";
+import { InstallBanner } from "./components/InstallBanner";
 import { formatJoinCode } from "./labels";
 import { Home } from "./screens/Home";
 import { JoinGame } from "./screens/JoinGame";
@@ -180,6 +181,7 @@ export function App() {
         onHelp={() => setDialog("help")}
         onLeaveGame={code && snapshot ? () => setDialog("leave") : undefined}
       />
+      <InstallBanner />
       {page}
 
       <StartGame open={dialog === "start"} name={name} onClose={() => setDialog(null)} onCreated={enter} />

@@ -1,12 +1,21 @@
 // Cloudflare Worker configuration for Bridge Replay.
 // Local dev (`npm run dev`) uses a local SQLite copy of D1 and a local Durable Object; nothing on
-// Cloudflare is touched until you run `npm run deploy`.
+// Cloudflare is touched until you run `npm run deploy` (see docs/DESIGN.md, "Deploying").
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "bridge-replay",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-15",
   "observability": { "enabled": true },
+
+  // The built frontend (frontend/dist, made by `npm run build` there) is served from the same
+  // address as the API. /api/* goes to the Worker; everything else is a file from dist, and any
+  // other path gets index.html (it's a single-page app).
+  "assets": {
+    "directory": "../frontend/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
 
   // The API's database. For deploying, replace database_id with the id printed by
   // `npx wrangler d1 create bridge` (see docs/DESIGN.md, "Deploying"). Local dev ignores it.

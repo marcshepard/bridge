@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Bridge Replay: a white spade on card-table green. Same green as the theme (ui/theme.ts). -->
+  <rect width="512" height="512" rx="104" fill="#1b7f5e"/>
+  <path fill="#ffffff" d="M256 92C222 146 116 206 116 292C116 348 162 384 210 384C229 384 244 377 252 364C248 394 234 414 200 430H312C278 414 264 394 260 364C268 377 283 384 302 384C350 384 396 348 396 292C396 206 290 146 256 92Z"/>
+</svg>

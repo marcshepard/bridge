@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { SheetDialog } from "../controls/SheetDialog";
 
 const LEARN_MORE = "https://en.wikipedia.org/wiki/Duplicate_bridge#Scoring";
+const FEEDBACK_EMAIL = "navia.apps@gmail.com";
 
 function Heading({ children }: { children: ReactNode }) {
   return (
@@ -102,6 +103,29 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           Learn more about how it works
         </Link>
         .
+      </Typography>
+
+      <Heading>Put it on your home screen</Heading>
+      <Typography sx={{ mb: 1 }}>
+        Install the app and it opens like any other app, full screen, from its own icon.
+      </Typography>
+      <Box component="ul" sx={{ m: 0, pl: 2.5, display: "grid", gap: 0.5 }}>
+        <li>
+          <strong>Android (Chrome):</strong> tap the ⋮ menu, then <strong>Install app</strong> (or{" "}
+          <strong>Add to Home screen</strong>).
+        </li>
+        <li>
+          <strong>iPhone or iPad (Safari):</strong> tap the Share button, then <strong>Add to Home Screen</strong>.
+        </li>
+        <li>
+          <strong>Computer (Chrome or Edge):</strong> click the install icon at the right of the address bar.
+        </li>
+      </Box>
+
+      <Heading>Questions or ideas?</Heading>
+      <Typography>
+        <Link href={`mailto:${FEEDBACK_EMAIL}?subject=Bridge%20Replay%20feedback`}>Send feedback</Link> to{" "}
+        {FEEDBACK_EMAIL}. Problems, suggestions and "this confused me" are all welcome.
       </Typography>
     </SheetDialog>
   );

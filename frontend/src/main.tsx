@@ -14,3 +14,12 @@ createRoot(document.getElementById("root")!).render(
     </ThemeProvider>
   </StrictMode>,
 );
+
+// Lets phones install the app to the home screen (public/sw.js). It caches nothing, so it's safe in
+// dev too, where it lets the install banner be tried on localhost. A failure here is harmless: the
+// app works the same without it.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}

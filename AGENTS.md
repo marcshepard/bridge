@@ -76,8 +76,9 @@ docs/DESIGN.md            Design and rationale
 - `npm run typecheck`: `tsc --noEmit`
 - `npm run build`: typecheck and production build
 
-In `backend/`: `npm test` (API tests), `npm run typecheck`, and `npm run smoke` (end-to-end check
-against a running `npm run dev`).
+In `backend/`: `npm test` (API tests), `npm run typecheck`, `npm run smoke` (end-to-end check
+against a running `npm run dev`), and `npm run deploy` (build and publish to Cloudflare; Marc runs
+it, see "Deploying" in docs/DESIGN.md).
 
 From the repo root: `python scripts/make_sample_game.py` regenerates the sample game, after
 `pip install -r scripts/requirements.txt`.
@@ -165,6 +166,8 @@ tests covered. Always say which tests you did and didn't run.
       a form ("Cancel", "Stay"), and in an alert's action slot.
     - **Items in a list or table that open something** (a board number in the tally): the item
       itself as a text button in the primary colour, so the whole row of numbers stays readable.
+    - **A banner that opens something** (the install banner): the whole banner is the button, with
+      no separate button or chevron inside it.
     - **Links** (underlined) only to go to another website. Icon-only buttons only for universal
       icons (help, close, avatar), always with an `aria-label`.
 
