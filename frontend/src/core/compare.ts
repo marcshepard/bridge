@@ -12,9 +12,13 @@ import { datum, imps } from "./imps";
 import { scoreFor, scoreResult, type ScoreBreakdown } from "./scoring";
 import type { Direction, TableResult, Vulnerability } from "./types";
 
-/** A field result, already scored. `count` is the number of tables that got exactly this. */
+/**
+ * A field result, already scored. `count` is the number of tables that got exactly this.
+ * `breakdown` is null for a score-only result (the source gave the score but not the contract).
+ */
 export interface ScoredFieldResult {
-  breakdown: ScoreBreakdown;
+  nsScore: number;
+  breakdown: ScoreBreakdown | null;
   count: number;
 }
 
@@ -25,7 +29,10 @@ export interface ScoreGroup {
   count: number;
   /** The matchpoint % we would have earned with this score. */
   mpPct: number;
-  /** Distinct results that produced this score, most common first. */
+  /**
+   * Distinct results that produced this score, most common first. Can be empty: score-only field
+   * results (no contract known) count towards `count` but add nothing here.
+   */
   results: Array<{ result: TableResult; description: string; kind: ResultKind; count: number }>;
   /** True if this is the score we got. */
   isOurs: boolean;
@@ -52,12 +59,25 @@ export interface BoardComparison {
   mostCommon: ScoreGroup | null;
 }
 
-/** Score raw field results and merge identical ones. */
+/**
+ * Score raw field results. A result with a contract is scored by the rules; a score-only result
+ * (`result: null`) keeps the N/S score the source gave.
+ */
 export function scoreField(
-  field: Array<{ result: TableResult; count?: number }>,
+  field: Array<{ result: TableResult | null; nsScore?: number; count?: number }>,
   vul: Vulnerability,
 ): ScoredFieldResult[] {
-  return field.map((f) => ({ breakdown: scoreResult(f.result, vul), count: f.count ?? 1 }));
+  const out: ScoredFieldResult[] = [];
+  for (const f of field) {
+    const count = f.count ?? 1;
+    if (f.result) {
+      const breakdown = scoreResult(f.result, vul);
+      out.push({ nsScore: breakdown.nsScore, breakdown, count });
+    } else if (f.nsScore !== undefined) {
+      out.push({ nsScore: f.nsScore, breakdown: null, count });
+    }
+  }
+  return out;
 }
 
 function sameResult(a: TableResult, b: TableResult): boolean {
@@ -95,7 +115,7 @@ export function compareBoard(
   const ourScore = scoreFor(direction, ourBreakdown.nsScore);
 
   const fieldScores = field.map((f) => ({
-    score: scoreFor(direction, f.breakdown.nsScore),
+    score: scoreFor(direction, f.nsScore),
     count: f.count,
     breakdown: f.breakdown,
   }));
@@ -111,13 +131,15 @@ export function compareBoard(
       byScore.set(f.score, g);
     }
     g.count += f.count;
-    const existing = g.results.find((r) => sameResult(r.result, f.breakdown.result));
+    const b = f.breakdown;
+    if (!b) continue; // score-only: counted above, no contract to list
+    const existing = g.results.find((r) => sameResult(r.result, b.result));
     if (existing) existing.count += f.count;
     else
       g.results.push({
-        result: f.breakdown.result,
-        description: describeResult(f.breakdown),
-        kind: resultKind(f.breakdown),
+        result: b.result,
+        description: describeResult(b),
+        kind: resultKind(b),
         count: f.count,
       });
   }

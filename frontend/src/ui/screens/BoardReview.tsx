@@ -80,15 +80,22 @@ export function BoardReview({ board, seat, c, onBack, onChange, onNext }: Props)
           <Stack component="ul" spacing={0.75} sx={{ pl: 2.5, mt: 0, mb: 2 }}>
             {common && (
               <li>
-                Most common: {common.results[0]!.description.toLowerCase()} (
-                <ResultText result={common.results[0]!.result} />), <ScoreText score={common.score} /> for your side
-                at {common.count} of {c.fieldSize} tables
+                Most common: <ScoreText score={common.score} /> for your side at {common.count} of {c.fieldSize} tables
+                {common.results[0] && (
+                  <>
+                    , {common.results[0].description.toLowerCase()} (<ResultText result={common.results[0].result} />)
+                  </>
+                )}
               </li>
             )}
             {best && best !== common && (
               <li>
-                Top for your side: <ScoreText score={best.score} />, {best.results[0]!.description.toLowerCase()} (
-                <ResultText result={best.results[0]!.result} />)
+                Top for your side: <ScoreText score={best.score} />
+                {best.results[0] && (
+                  <>
+                    , {best.results[0].description.toLowerCase()} (<ResultText result={best.results[0].result} />)
+                  </>
+                )}
               </li>
             )}
           </Stack>

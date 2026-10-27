@@ -1,8 +1,7 @@
 // A session: one sitting at the table, playing some boards of one game from one seat.
 //
-// Sessions are saved through a SessionStore (see store.ts); today that's this device's localStorage.
-// Each player can run their own session on their own phone; partners entering the same results get
-// the same scores, so no syncing is needed.
+// Stage 3 builds playing the boards on this model, with results coming from the shared game.
+// Every player's device works out the same scores from the same results, using core/.
 
 import { compareBoard, scoreField, type BoardComparison } from "../core/compare";
 import { contractCode, tableResult } from "../core/contract";

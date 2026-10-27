@@ -99,3 +99,33 @@ describe("result descriptions", () => {
     ["3NTX", "W", 9, "Doubled game made"],
   ])("%s by %s taking %i → %s", (c, decl, t, expected) => expect(d(c, decl, t)).toBe(expected));
 });
+
+describe("score-only field results", () => {
+  // The Common Game's pages give each N/S score and how many tables got it, but not the contract.
+  const field = scoreField(
+    [
+      { result: null, nsScore: 110, count: 3 },
+      { result: null, nsScore: -50, count: 2 },
+      { result: r("2S", "N", 8) }, // NS +110, with a contract
+    ],
+    "None",
+  );
+
+  it("matchpoints from the scores alone", () => {
+    const c = compareBoard(r("3D", "N", 9), "NS", "None", field); // NS +110
+    expect([c.beat, c.tied, c.lost]).toEqual([2, 4, 0]);
+    expect(c.mpPct).toBeCloseTo(66.67, 1);
+  });
+
+  it("groups by score, listing only the results whose contract is known", () => {
+    const c = compareBoard(r("3D", "N", 9), "NS", "None", field);
+    const plus110 = c.groups.find((g) => g.score === 110)!;
+    expect(plus110.count).toBe(4);
+    expect(plus110.results.map((x) => x.count)).toEqual([1]);
+    expect(c.groups.find((g) => g.score === -50)!.results).toEqual([]);
+  });
+
+  it("skips a line with neither a contract nor a score", () => {
+    expect(scoreField([{ result: null }], "None")).toEqual([]);
+  });
+});

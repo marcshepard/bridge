@@ -79,15 +79,21 @@ The VS Code **start bridge app** task runs the other two side by side, each in i
 network. The terminal prints a `Network:` address such as `http://192.168.1.20:5185`. Open that on
 each phone, tablet or laptop while it's on the same Wi-Fi. If a device can't connect, allow Node.js through Windows
 Defender Firewall for private networks when Windows asks, or add the rule under **Windows
-Security → Firewall → Allow an app**. Each device keeps its own sessions.
+Security → Firewall → Allow an app**.
 
 ### 4. Play
 
-1. **Start a session**, choose **Sample game (synthetic)**, pick your seat and a starting board.
-2. Deal your own 13 cards from what the screen shows. Use **one deck per player** so nobody
-   sees the other hands while pulling cards.
-3. Bid and play, then tap **Enter the result**.
-4. Read the score breakdown and your place in the field, then go to the next board.
+1. Enter your name, then **Start a game** and upload a game file: a PBN file, a Common Game
+   results page saved from your browser, or the synthetic sample
+   (`frontend/public/games/sample-synthetic-01.json`). Share the join code.
+2. The other three open the app and **Join a game** with the code (or the shared link).
+3. Once all four are in, whoever started the game picks partnerships, and each screen shows
+   where to sit.
+4. Playing the boards (dealing from your screen, entering results, comparing with the field)
+   comes in stage 3; see the build plan in [docs/DESIGN.md](docs/DESIGN.md).
+
+To try it alone in development, use **Fill with test players** in the lobby, or open more tabs
+with `?as=2`, `?as=3`… so each tab is a separate player.
 
 ### Other commands
 

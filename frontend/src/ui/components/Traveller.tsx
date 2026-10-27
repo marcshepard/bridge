@@ -46,7 +46,7 @@ export function Traveller({ c }: { c: BoardComparison }) {
             }}
           >
             <ButtonBase
-              disabled={!g}
+              disabled={!g || g.results.length === 0}
               aria-expanded={g ? open : undefined}
               onClick={() => setExpanded(open ? null : row.score)}
               sx={{
@@ -67,7 +67,7 @@ export function Traveller({ c }: { c: BoardComparison }) {
               </Typography>
               <Typography variant="body2" sx={{ gridArea: "what", minWidth: 0 }}>
                 {ours && <strong>You: </strong>}
-                {ours ? describeResult(c.ours) : g!.results[0]!.description}
+                {ours ? describeResult(c.ours) : (g!.results[0]?.description ?? "Contract not known")}
                 {others > 0 && !open && (
                   <Box component="span" sx={{ color: "text.secondary" }}>
                     {" "}

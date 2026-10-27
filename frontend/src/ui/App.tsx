@@ -1,252 +1,212 @@
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { Alert, AppBar, Box, Button, Container, Toolbar, Typography } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
-import { type Seat, type TableResult, directionOf } from "../core/types";
-import type { Game } from "../providers/types";
-import { providerById, sessionStore } from "../services";
-import { type Session, compareSessionBoard, newSession, nextUnplayed, tally, toStored } from "../session/session";
-import { Screen } from "./controls/Layout";
-import { ScoreChip, toneOf } from "./controls/ScoreChip";
-import { formatMargin, formatPct } from "./labels";
-import { BoardReview } from "./screens/BoardReview";
-import { Home } from "./screens/Home";
-import { NewSession } from "./screens/NewSession";
-import { PlayBoard } from "./screens/PlayBoard";
-import { TallyView } from "./screens/TallyView";
+// The app's top level: who you are, which game you're in, and which screen or dialog is showing.
+//
+// Pages: Home, and the game (lobby, then seats). Start a game, Join a game, Help and Leave game are
+// dialogs over them, so there are no back buttons. A shared link (`?join=CODE`) opens the join
+// dialog with the code filled in. A reload goes straight back to the game you're in.
 
-type View =
-  | { name: "home" }
-  | { name: "new" }
-  | { name: "board"; board: number; entering?: boolean }
-  | { name: "review"; board: number }
-  | { name: "tally" };
+import { Alert, Button, Typography } from "@mui/material";
+import { useCallback, useEffect, useState } from "react";
+import { games, profile } from "../services";
+import { ApiError } from "../session/apiGameStore";
+import type { EventSnapshot } from "../session/store";
+import { AppHeader } from "./controls/AppHeader";
+import { Screen } from "./controls/Layout";
+import { SheetDialog } from "./controls/SheetDialog";
+import { HelpDialog } from "./components/HelpDialog";
+import { formatJoinCode } from "./labels";
+import { Home } from "./screens/Home";
+import { JoinGame } from "./screens/JoinGame";
+import { Lobby } from "./screens/Lobby";
+import { StartGame } from "./screens/StartGame";
+
+type Dialog = "start" | "join" | "help" | "leave" | null;
+
+/** A code from a shared link, removed from the address bar once read (other options, like dev mode's `?as=`, stay). */
+function takeJoinCodeFromUrl(): string | null {
+  const url = new URL(window.location.href);
+  const code = url.searchParams.get("join");
+  if (code === null) return null;
+  url.searchParams.delete("join");
+  window.history.replaceState(null, "", url);
+  return code;
+}
+
+/** The game you're in: its snapshot, kept current by live updates. */
+function useGame(code: string | null, onGone: (why: string) => void) {
+  const [snapshot, setSnapshot] = useState<EventSnapshot | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!code) return;
+    try {
+      const snap = await games.snapshot(code);
+      if (!snap.you) {
+        onGone("You're no longer in that game.");
+        return;
+      }
+      setSnapshot(snap);
+      setError(null);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) onGone("That game no longer exists.");
+      else setError((e as Error).message);
+    }
+  }, [code, onGone]);
+
+  useEffect(() => {
+    setSnapshot(null);
+    setError(null);
+    if (!code) return;
+    void refresh();
+    return games.subscribe(code, (m) => {
+      if (m.type === "deleted") onGone("The person who started the game cancelled it.");
+      else if (m.type === "presence") {
+        setSnapshot((s) => s && { ...s, players: s.players.map((p) => ({ ...p, connected: m.connected.includes(p.slot) })) });
+      } else if (m.type === "result") {
+        // Results are used from stage 3 (playing the boards).
+        setSnapshot((s) => s && { ...s, results: [...s.results.filter((r) => r.board !== m.result.board), m.result] });
+      } else void refresh(); // players, status, reconnected: fetch the whole picture again
+    });
+  }, [code, refresh, onGone]);
+
+  return { snapshot, error, refresh };
+}
 
 export function App() {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [storeError, setStoreError] = useState<string | null>(null);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [game, setGame] = useState<Game | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [view, setView] = useState<View>({ name: "home" });
+  const [name, setName] = useState(profile.name());
+  const [linkCode] = useState(takeJoinCodeFromUrl);
+  const [code, setCode] = useState<string | null>(() => profile.currentGame());
+  const [dialog, setDialog] = useState<Dialog>(() => (linkCode !== null && profile.name() ? "join" : null));
+  const [notice, setNotice] = useState<string | null>(null);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
 
-  const session = sessions.find((s) => s.id === activeId) ?? null;
-
-  useEffect(() => {
-    sessionStore
-      .list()
-      .then(setSessions)
-      .catch((e: Error) => setStoreError(`Couldn't load your sessions: ${e.message}`));
-  }, []);
-
-  // New screen → start at the top (but not when only the result dialog opens or closes).
-  const screenKey = view.name === "board" || view.name === "review" ? `${view.name}-${view.board}` : view.name;
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [screenKey]);
-
-  // Load the game behind the active session.
-  useEffect(() => {
-    if (!session) return;
-    if (game?.summary.id === session.gameId) return;
-    let live = true;
-    setLoadError(null);
-    providerById(session.providerId)
-      .getGame(session.gameId)
-      .then((g) => live && setGame(g))
-      .catch((e: Error) => live && setLoadError(e.message));
-    return () => {
-      live = false;
-    };
-  }, [session, game]);
-
-  const currentTally = useMemo(
-    () => (session && game && game.summary.id === session.gameId ? tally(session, game) : null),
-    [session, game],
+  /** Back to Home, still holding your seat (you can rejoin with the code). */
+  function goHome(why: string | null) {
+    profile.setCurrentGame(null);
+    setCode(null);
+    setNotice(why);
+  }
+  /** The game is over or gone for you: forget it on this device. */
+  const onGone = useCallback(
+    (why: string) => {
+      if (code) profile.forget(code);
+      setCode(null);
+      setNotice(why || null);
+    },
+    [code],
   );
 
-  /** Save through the store; the screen updates immediately and a failed save is reported. */
-  function persist(s: Session) {
-    sessionStore.save(s).catch((e: Error) => setStoreError(`Couldn't save your result: ${e.message}`));
+  const { snapshot, error } = useGame(code, onGone);
+
+  function enter(c: string) {
+    setDialog(null);
+    setNotice(null);
+    setCode(c);
   }
 
-  function start(providerId: string, g: Game, seat: Seat, startBoard: number) {
-    const s = newSession(providerId, g, seat, startBoard);
-    setSessions((all) => [...all, s]);
-    persist(s);
-    setActiveId(s.id);
-    setGame(g);
-    setView({ name: "board", board: s.boardOrder[0]! });
-  }
-
-  function resume(id: string) {
-    const s = sessions.find((x) => x.id === id);
-    if (!s) return;
-    setActiveId(id);
-    const next = nextUnplayed(s);
-    setView(next === null ? { name: "tally" } : { name: "board", board: next });
-  }
-
-  function saveResult(boardNumber: number, r: TableResult) {
-    if (!session) return;
-    const updated: Session = {
-      ...session,
-      results: { ...session.results, [boardNumber]: toStored(r) },
-      updatedAt: new Date().toISOString(),
-    };
-    setSessions((all) => all.map((s) => (s.id === updated.id ? updated : s)));
-    persist(updated);
-    setView({ name: "board", board: boardNumber }); // close the dialog, stay on the board
-  }
-
-  const storeNotice = storeError && (
-    <Container maxWidth="sm" sx={{ pt: 2 }}>
-      <Alert severity="error">{storeError}</Alert>
-    </Container>
-  );
-
-  if (view.name === "new") {
-    return (
-      <>
-        {storeNotice}
-        <NewSession onStart={start} onCancel={() => setView({ name: "home" })} />
-      </>
-    );
-  }
-  if (view.name === "home" || !session) {
-    return (
-      <>
-        {storeNotice}
-        <Home
-          sessions={sessions}
-          onResume={resume}
-          onNew={() => setView({ name: "new" })}
-          onDelete={(id) => {
-            setSessions((all) => all.filter((s) => s.id !== id));
-            sessionStore.remove(id).catch((e: Error) => setStoreError(e.message));
-          }}
-        />
-      </>
-    );
-  }
-
-  const dir = directionOf(session.seat);
-  const t = currentTally;
-  const tallyLabel =
-    !t || t.played === 0
-      ? `${dir}: no boards yet`
-      : `${dir} ${formatMargin(t.margin)}${t.averagePct !== null ? ` (${formatPct(t.averagePct)})` : ""}`;
-
-  const header = (
-    <AppBar position="sticky">
-      <Toolbar sx={{ gap: 1 }}>
-        <Button
-          color="inherit"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => {
-            setActiveId(null);
-            setView({ name: "home" });
-          }}
-        >
-          Sessions
-        </Button>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography noWrap variant="subtitle1">
-            {session.gameTitle}
-          </Typography>
-          <Typography noWrap variant="caption" component="p">
-            Sitting {session.seat}
-          </Typography>
-        </Box>
-        <ScoreChip
-          label={tallyLabel}
-          tone={t && t.played > 0 ? toneOf(t.margin) : "neutral"}
-          onClick={() => setView({ name: "tally" })}
-          ariaLabel={`Running tally: ${tallyLabel}. Show board by board.`}
-        />
-      </Toolbar>
-    </AppBar>
-  );
-
-  let screen: React.ReactNode;
-  if (loadError) {
-    screen = (
-      <Screen>
-        <Alert severity="error">This session's game couldn't be loaded: {loadError}</Alert>
-      </Screen>
-    );
-  } else if (!game || game.summary.id !== session.gameId || !t) {
-    screen = (
-      <Screen>
-        <Typography color="text.secondary">Loading the game…</Typography>
-      </Screen>
-    );
-  } else {
-    const order = session.boardOrder;
-    const neighbour = (n: number, step: number) => {
-      const i = order.indexOf(n) + step;
-      return i >= 0 && i < order.length ? order[i]! : null;
-    };
-
-    if (view.name === "tally") {
-      const next = nextUnplayed(session);
-      screen = (
-        <TallyView
-          tally={t}
-          direction={dir}
-          total={order.length}
-          onOpen={(b) => setView({ name: "review", board: b })}
-          onContinue={next === null ? null : () => setView({ name: "board", board: next })}
-        />
-      );
-    } else {
-      const board = game.boards.find((b) => b.number === view.board);
-      const comparison = board ? compareSessionBoard(session, game, board.number) : null;
-      if (!board) {
-        screen = (
-          <Screen>
-            <Alert severity="error">Board {view.board} isn't in this game.</Alert>
-          </Screen>
-        );
-      } else if (view.name === "review" && comparison) {
-        const next = nextUnplayed(session);
-        screen = (
-          <BoardReview
-            board={board}
-            seat={session.seat}
-            c={comparison}
-            onBack={() => setView({ name: "board", board: board.number })}
-            onChange={() => setView({ name: "board", board: board.number, entering: true })}
-            onNext={next === null ? null : () => setView({ name: "board", board: next })}
-          />
-        );
+  async function leave() {
+    if (!code || !snapshot) return;
+    setLeaveError(null);
+    try {
+      if (snapshot.status === "lobby") {
+        await games.leave(code);
+        goHome(null);
       } else {
-        const prev = neighbour(board.number, -1);
-        const next = neighbour(board.number, 1);
-        screen = (
-          <PlayBoard
-            board={board}
-            seat={session.seat}
-            position={order.indexOf(board.number) + 1}
-            total={order.length}
-            comparison={comparison}
-            entering={view.name === "board" && !!view.entering}
-            onOpenEntry={() => setView({ name: "board", board: board.number, entering: true })}
-            onCloseEntry={() => setView({ name: "board", board: board.number })}
-            onSave={(r) => saveResult(board.number, r)}
-            onDetails={() => setView({ name: "review", board: board.number })}
-            onPrev={prev === null ? null : () => setView({ name: "board", board: prev })}
-            onNext={next === null ? null : () => setView({ name: "board", board: next })}
-          />
-        );
+        // During play your seat stays yours: rejoining with the code takes you back to it.
+        goHome(`You left ${snapshot.title}. To go back, join with code ${formatJoinCode(code)}.`);
       }
+      setDialog(null);
+    } catch (e) {
+      setLeaveError((e as Error).message);
     }
   }
 
+  let page: React.ReactNode;
+  if (!code) {
+    page = (
+      <Home
+        name={name}
+        notice={notice}
+        onName={(n) => {
+          profile.setName(n);
+          setName(n);
+          if (linkCode !== null && !code) setDialog("join");
+        }}
+        onStart={() => setDialog("start")}
+        onJoin={() => setDialog("join")}
+        onHelp={() => setDialog("help")}
+      />
+    );
+  } else if (snapshot) {
+    page = <Lobby snapshot={snapshot} onDone={() => onGone("")} />;
+  } else {
+    page = (
+      <Screen>
+        {error ? (
+          <Alert
+            severity="error"
+            action={
+              <Button color="inherit" onClick={() => goHome(null)}>
+                Home
+              </Button>
+            }
+          >
+            Couldn't load the game: {error}
+          </Alert>
+        ) : (
+          <Typography color="text.secondary">Loading the game…</Typography>
+        )}
+      </Screen>
+    );
+  }
+
+  const isCreatorInLobby = snapshot?.status === "lobby" && snapshot.you?.isCreator;
+
   return (
     <>
-      {header}
-      {storeNotice}
-      {screen}
+      <AppHeader
+        name={name}
+        onHelp={() => setDialog("help")}
+        onLeaveGame={code && snapshot ? () => setDialog("leave") : undefined}
+      />
+      {page}
+
+      <StartGame open={dialog === "start"} name={name} onClose={() => setDialog(null)} onCreated={enter} />
+      <JoinGame
+        open={dialog === "join"}
+        name={name}
+        initialCode={linkCode ?? ""}
+        onClose={() => setDialog(null)}
+        onJoined={enter}
+      />
+      <HelpDialog open={dialog === "help"} onClose={() => setDialog(null)} />
+      <SheetDialog
+        open={dialog === "leave"}
+        title="Leave this game?"
+        onClose={() => setDialog(null)}
+        actions={
+          <>
+            <Button color="inherit" onClick={() => setDialog(null)}>
+              Stay
+            </Button>
+            <Button variant="contained" color="error" onClick={() => void leave()}>
+              {isCreatorInLobby ? "Cancel the game" : "Leave"}
+            </Button>
+          </>
+        }
+      >
+        <Typography>
+          {isCreatorInLobby
+            ? "You started this game, so leaving cancels it for everyone who has joined."
+            : snapshot?.status === "lobby"
+              ? "Your place will be freed for someone else."
+              : "Your seat stays yours: join again with the code to come back."}
+        </Typography>
+        {leaveError && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {leaveError}
+          </Alert>
+        )}
+      </SheetDialog>
     </>
   );
 }

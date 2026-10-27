@@ -1,51 +1,107 @@
-import { Button, Typography } from "@mui/material";
-import type { Session } from "../../session/session";
-import { CardList } from "../controls/CardList";
-import { ConfirmButton } from "../controls/ConfirmButton";
-import { Screen, Section } from "../controls/Layout";
+// The first screen. On first use it asks for your display name; then it offers Start a game and
+// Join a game.
+
+import EditIcon from "@mui/icons-material/EditOutlined";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
+import { Alert, Button, IconButton, Stack, TextField, Typography } from "@mui/material";
+import { useState } from "react";
+import { Screen } from "../controls/Layout";
+
+/** The backend's limit (backend/src/index.ts). */
+export const MAX_NAME_LENGTH = 30;
 
 interface Props {
-  sessions: Session[];
-  onResume: (id: string) => void;
-  onNew: () => void;
-  onDelete: (id: string) => void;
+  name: string;
+  onName: (name: string) => void;
+  onStart: () => void;
+  onJoin: () => void;
+  onHelp: () => void;
+  /** Something to tell you on arrival, e.g. "That game was cancelled". */
+  notice?: string | null;
 }
 
-export function Home({ sessions, onResume, onNew, onDelete }: Props) {
-  const sorted = [...sessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+export function Home({ name, onName, onStart, onJoin, onHelp, notice }: Props) {
+  const [editing, setEditing] = useState(!name);
+  const [draft, setDraft] = useState(name);
+  const clean = draft.trim().replace(/\s+/g, " ");
+
   return (
     <Screen>
-      <Typography variant="h4" component="h1" color="primary" sx={{ mt: 3, mb: 1 }}>
-        Bridge Replay
-      </Typography>
-      <Typography variant="subtitle1" sx={{ mb: 3 }}>
-        Play hands from an old duplicate game at home, then see how your result stacks up against the
-        original field.
-      </Typography>
+      <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start", mt: 1, mb: 3 }}>
+        <Typography variant="subtitle1" sx={{ flex: 1, pt: 1 }}>
+          Four people replay the boards from an old duplicate game, scored by matchpoints (MP %) against the
+          pairs who played them originally.
+        </Typography>
+        <IconButton aria-label="How it works" onClick={onHelp}>
+          <HelpOutlineIcon />
+        </IconButton>
+      </Stack>
 
-      <Button variant="contained" size="large" fullWidth onClick={onNew}>
-        Start a session
-      </Button>
+      {notice && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          {notice}
+        </Alert>
+      )}
 
-      {sorted.length > 0 && (
-        <Section title="Your sessions" id="sessions">
-          <CardList
-            label="Your sessions"
-            items={sorted.map((s) => ({
-              key: s.id,
-              title: s.gameTitle,
-              detail: `Sitting ${s.seat}, ${Object.keys(s.results).length} of ${s.boardOrder.length} boards played`,
-              onClick: () => onResume(s.id),
-              trailing: (
-                <ConfirmButton
-                  label="Delete"
-                  ariaLabel={`Delete session for ${s.gameTitle}`}
-                  onConfirm={() => onDelete(s.id)}
-                />
-              ),
-            }))}
+      {editing ? (
+        <Stack
+          component="form"
+          spacing={2}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!clean) return;
+            onName(clean);
+            setEditing(false);
+          }}
+        >
+          <TextField
+            label="Your name"
+            helperText="What the others at the table will see"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            autoFocus
+            autoComplete="given-name"
+            slotProps={{ htmlInput: { maxLength: MAX_NAME_LENGTH } }}
           />
-        </Section>
+          <Stack direction="row" spacing={1}>
+            <Button type="submit" variant="contained" disabled={!clean}>
+              {name ? "Save" : "Continue"}
+            </Button>
+            {name && (
+              <Button
+                color="inherit"
+                onClick={() => {
+                  setDraft(name);
+                  setEditing(false);
+                }}
+              >
+                Cancel
+              </Button>
+            )}
+          </Stack>
+        </Stack>
+      ) : (
+        <>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 3 }}>
+            <Typography>Playing as</Typography>
+            <Button
+              variant="outlined"
+              endIcon={<EditIcon />}
+              aria-label={`Playing as ${name}. Change your name`}
+              onClick={() => setEditing(true)}
+            >
+              {name}
+            </Button>
+          </Stack>
+          <Stack spacing={1.5}>
+            <Button variant="contained" size="large" fullWidth onClick={onStart}>
+              Start a game
+            </Button>
+            <Button variant="outlined" size="large" fullWidth onClick={onJoin}>
+              Join a game
+            </Button>
+          </Stack>
+        </>
       )}
     </Screen>
   );

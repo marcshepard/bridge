@@ -38,20 +38,22 @@ frontend/                 Vite + React 19 + MUI 9 + TypeScript (strict). All fro
     describe.ts           plain-English result ("Small slam made with 1 overtrick")
     compare.ts            matchpoints vs field, score groups (the traveller)
     imps.ts               IMP table and field datum
-  src/providers/          WHERE GAMES COME FROM. The provider boundary.
-    types.ts              GameProvider interface + Game/Board/FieldResult model
+  src/providers/          WHERE GAMES COME FROM. One importer per source, each producing GameFileV1.
+    types.ts              Game/Board/FieldResult model (+ GameProvider, for a future feed)
     gameFile.ts           our JSON game format (schemaVersion 1) → Game, with validation
+    importFile.ts         picks the importer for an uploaded file
     pbn.ts                PBN → our game format (deals, ScoreTable travellers, DD, commentary)
-    staticProvider.ts     games in frontend/public/games (index.json + files)
-    importedProvider.ts   games imported from files, kept in localStorage
-  src/session/            Sessions and the running tally
+    tcgPage.ts            saved Common Game results page (HTML) → our game format (score-only field)
+  src/session/            Shared games, identity, sessions and the running tally
     session.ts            Session model, play order, tally (pure)
-    store.ts              SessionStore interface + LocalSessionStore
-  src/services.ts         THE wiring point: which providers and which session store are used
+    store.ts              GameStore and ProfileStore interfaces
+    apiGameStore.ts       GameStore on the backend: HTTP API plus a WebSocket for live updates
+    localProfile.ts       ProfileStore in localStorage: display name, player IDs, current game
+  src/services.ts         THE wiring point: which stores are used; dev mode and `?as=`
   src/ui/                 React screens/components (MUI). No data access except via services.ts.
     theme.ts              MUI theme: palette (light + dark), typography, component defaults
     controls/             Shared UI controls built on MUI. Reuse these before writing new UI.
-  public/games/           Bundled game files (index.json lists them)
+  public/games/           The synthetic sample game (used by tests and `npm run smoke`)
 backend/                  Cloudflare Worker (Hono + D1 + a Durable Object). The API for shared games.
   src/index.ts            routes; validation reuses frontend/src/core and providers/gameFile.ts
   src/api-types.ts        request/response/push types: THE API contract, imported by the frontend
@@ -100,9 +102,9 @@ From the repo root: `python scripts/make_sample_game.py` regenerates the sample 
    - `ui/` never calls `fetch` or `localStorage`; it goes through `services.ts`.
    - Providers return **raw data only** (deals and field results). They never score or rank. All
      scoring happens in `core/`, so every source is scored the same way.
-2. **Keep the backend door open.** `GameProvider` and `SessionStore` are async on purpose. A
-   future backend is a new implementation of those interfaces, swapped in in `services.ts`.
-   Don't add synchronous storage calls elsewhere.
+2. **Data access goes through interfaces.** `GameStore` (async) and `ProfileStore` are wired in
+   `services.ts`; screens never know whether data comes from the backend or the browser. Don't
+   add storage or network calls elsewhere.
 3. **Scores are North–South by default.** `nsScore` is always from NS's point of view. Convert
    with `scoreFor(direction, nsScore)` at the edge, when showing "your" score.
 4. **Show your working.** Every score shown to a user should be explainable by `ScoreLine[]`.
@@ -133,6 +135,11 @@ From the repo root: `python scripts/make_sample_game.py` regenerates the sample 
     in your summary.
 12. **The sample data is synthetic.** Never present it as real results. Don't add real
     third-party game data (The Common Game, ACBL) to the repo without permission from its owner.
+13. **Keep the in-app help in sync with the code.** Help lives in `ui/components/HelpDialog.tsx`
+    (plus inline help such as the Common Game steps in `StartGame.tsx`). Whenever a change alters
+    what players see or do (screens, steps, scoring), update the help in the same change. Write it
+    for a complete newcomer: someone who has never used the app and may never have played
+    duplicate. Plain words, short steps, a worked example where a number needs explaining.
 
 ## Style
 

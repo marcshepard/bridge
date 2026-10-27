@@ -52,3 +52,8 @@ export function formatMargin(n: number): string {
   const text = Number.isInteger(r) ? Math.abs(r).toString() : Math.abs(r).toFixed(1);
   return r > 0 ? `+${text}` : `−${text}`;
 }
+
+/** "K7PM3QXT" → "K7PM-3QXT": easier to read out and type. */
+export function formatJoinCode(code: string): string {
+  return code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
+}

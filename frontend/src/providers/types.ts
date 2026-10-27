@@ -28,17 +28,27 @@ export interface GameSummary {
   boardCount: number;
 }
 
-/** One line of a board's traveller: a result some table got, and how many tables got it. */
+/**
+ * One line of a board's traveller: a result some table got, and how many tables got it.
+ *
+ * Some sources (The Common Game's results pages) give only the N/S score, not the contract. Those
+ * are "score-only" results: `result` is null and `nsScore` holds the score. Otherwise `nsScore` is
+ * absent and the score is worked out from `result` by the rules in core/.
+ */
 export interface FieldResult {
-  result: TableResult;
+  result: TableResult | null;
+  nsScore?: number;
   count: number;
   /** Optional sub-field label, e.g. "Open" or "299er", for sources that split the field. */
   stratum?: string;
 }
 
 export interface DoubleDummy {
-  /** Tricks each seat takes as declarer in each strain, with perfect play by everyone. */
-  tricks: Record<Seat, Record<Strain, number>>;
+  /**
+   * Tricks each seat takes as declarer in each strain, with perfect play by everyone. Absent when
+   * the source gives only the par score.
+   */
+  tricks?: Record<Seat, Record<Strain, number>>;
   par?: {
     /** Par score from North–South's point of view. */
     nsScore: number;

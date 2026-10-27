@@ -2,11 +2,18 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { compareBoard, scoreField } from "../core/compare";
+import { handToString, parsePbnDeal } from "../core/deal";
 import { scoreResult } from "../core/scoring";
 import { parseGameFile } from "./gameFile";
 import { pbnToGameFile } from "./pbn";
 
 const DEAL = "N:AQ84.QT98.J.KQ43 K.KJ632.AT962.75 T76.54.753.AJT82 J9532.A7.KQ84.96";
+
+/** A PBN deal as the game file's hands ("S.H.D.C" by seat). */
+function handsOf(deal: string): Record<string, string> {
+  const d = parsePbnDeal(deal);
+  return { N: handToString(d.N), E: handToString(d.E), S: handToString(d.S), W: handToString(d.W) };
+}
 
 describe("bundled sample game", () => {
   const file = JSON.parse(
@@ -37,7 +44,7 @@ describe("bundled sample game", () => {
 
   it("can be compared end to end", () => {
     const b = game.boards[0]!;
-    const c = compareBoard(b.field[0]!.result, "NS", b.vul, scoreField(b.field, b.vul));
+    const c = compareBoard(b.field[0]!.result!, "NS", b.vul, scoreField(b.field, b.vul));
     expect(c.mpPct).not.toBeNull();
     expect(c.fieldSize).toBe(b.field.reduce((n, f) => n + f.count, 0));
   });
@@ -116,7 +123,7 @@ open 1H. }
     expect(game.warnings).toEqual([]);
 
     const [b1, b2] = game.boards;
-    expect(b1!.field.map((f) => [f.result.contract?.level, f.result.declarer, f.result.tricks, f.count])).toEqual([
+    expect(b1!.field.map((f) => [f.result!.contract?.level, f.result!.declarer, f.result!.tricks, f.count])).toEqual([
       [4, "E", 10, 1],
       [4, "W", 10, 1],
       [3, "N", 7, 1],
@@ -126,8 +133,8 @@ open 1H. }
 
     // Board 2 came as one game per table: merged into one field.
     expect(b2!.field).toHaveLength(2);
-    expect(b2!.field[0]!.result.tricks).toBe(9);
-    expect(b2!.field[1]!.result.contract).toBeNull();
+    expect(b2!.field[0]!.result!.tricks).toBe(9);
+    expect(b2!.field[1]!.result!.contract).toBeNull();
   });
 
   it("imports a hand-record-only file with an empty field", () => {
@@ -135,5 +142,36 @@ open 1H. }
       pbnToGameFile(`[Board "3"]\n[Dealer "S"]\n[Vulnerable "EW"]\n[Deal "${DEAL}"]\n`, "hr.pbn"),
     );
     expect(game.boards[0]!.field).toEqual([]);
+  });
+});
+
+describe("score-only field results in the game file", () => {
+  const file = (field: unknown[]) => ({
+    schemaVersion: 1,
+    id: "t",
+    boards: [{ number: 1, dealer: "N", vul: "None", hands: handsOf(DEAL), field }],
+  });
+
+  it("keeps the N/S score and count when there is no contract", () => {
+    const game = parseGameFile(file([{ nsScore: 110, count: 45 }, { contract: "2S", declarer: "N", tricks: 8 }]));
+    expect(game.boards[0]!.field).toEqual([
+      { result: null, nsScore: 110, count: 45 },
+      expect.objectContaining({ count: 1 }),
+    ]);
+    expect(game.warnings).toEqual([]);
+  });
+
+  it("skips a score-only line whose score is missing or not a whole ten, with a warning", () => {
+    const game = parseGameFile(file([{ count: 2 }, { nsScore: 115 }, { nsScore: -50 }]));
+    expect(game.boards[0]!.field).toHaveLength(1);
+    expect(game.warnings).toHaveLength(2);
+  });
+
+  it("accepts a par score without the double-dummy tricks", () => {
+    const f = file([]);
+    (f.boards[0] as Record<string, unknown>).doubleDummy = { par: { nsScore: 110 } };
+    const dd = parseGameFile(f).boards[0]!.doubleDummy!;
+    expect(dd.tricks).toBeUndefined();
+    expect(dd.par?.nsScore).toBe(110);
   });
 });

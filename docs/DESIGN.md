@@ -481,7 +481,7 @@ changes.
 
 ## Build plan and status
 
-The shared-game version is built in four stages, each reviewed by Marc before the next starts.
+The shared-game version is built in five stages, each reviewed by Marc before the next starts.
 **Read this first when picking the work up in a new session.**
 
 ### Stage 1: backend running locally (done)
@@ -491,19 +491,28 @@ The shared-game version is built in four stages, each reviewed by Marc before th
 together (each needs its own `npm install`), and the frontend proxies `/api` (including WebSockets)
 to the backend on :8787. The frontend's screens don't use the backend yet.
 
-### Stage 2: getting into a game (next)
+### Stage 2: getting into a game (done)
+
+Built as planned below. Notes for stage 3: after partnerships, each device shows the seating
+(`Lobby.tsx`, with the shared `Compass` control) and a placeholder for playing the boards.
+"Leave game" during play only leaves on that device; the seat stays reserved, and joining again
+with the code goes straight back to it (the backend doesn't free seats during play yet).
+Unused solo-mode controls (`CardList`, `ConfirmButton`, `SeatPicker`) are still in `ui/controls/`.
+
 
 - **App shell:** header with app icon, help, and the avatar menu (light/dark/system theme switch,
   Leave game). Home asks for a display name on first use (kept on the device), then offers
   Start a game / Join a game.
 - **Start a game:** upload a game file and choose the starting board; creates the game via the API
   and shows the join code with a share button.
-  - Accept **PBN** (existing importer) and a **saved Common Game results page** (HTML), which is
-    converted to PBN first (see "Common Game results page" below), so PBN stays the one import
-    format and the converted PBN can be shared.
-  - The PBN importer must accept traveller rows that have a score but no contract (TCG pages give
-    scores only), and the game file format needs a matching "score-only" field result. Results
-    views then show scores and counts, without contracts, for such games.
+  - Accept **PBN** (existing importer) and a **saved Common Game results page** (HTML). Each source
+    has its own importer that produces our game format (`GameFileV1`) directly; nothing after that
+    knows where a game came from. (Converting TCG pages to PBN first was considered and dropped:
+    PBN has no standard way to write score-only results, and round-tripping through our own PBN
+    would prove nothing about other sources' files.)
+  - The game file format gains a **score-only field result** (an N/S score and a table count, no
+    contract), because TCG pages give scores only. Results views show scores and counts, without
+    contracts, for such lines.
 - **Join a game:** enter the code or open a shared link.
 - **Lobby:** live list of players (push), partnerships chosen by the creator (pick a partner or
   Random), then each device shows its seat and where to sit physically.
@@ -516,7 +525,7 @@ to the backend on :8787. The frontend's screens don't use the backend yet.
   and `npm run smoke`, or update `backend/scripts/smoke.mjs` if it moves.
 - *Review:* create a game in one tab, join from three others, pick partners, see the seats.
 
-### Stage 3: playing
+### Stage 3: playing (in progress)
 
 - Board screen: title, "Board 7, 3 of 24", running tally ("NS +140") opening the tally dialog;
   dealer, vulnerability, contract once entered; compass with names and you at the bottom; your hand.
@@ -538,6 +547,25 @@ to the backend on :8787. The frontend's screens don't use the backend yet.
 - Serve the built app from the Worker (static assets) and the deploy steps under "Deploying";
   Marc runs `wrangler login` and the first deploy himself.
 - README and AGENTS.md updates.
+
+### Stage 5: PBN from other sources
+
+PBN files vary a lot by the program that wrote them. Collect real samples and add a fixture-based
+test for each (cut down to a few boards), fixing the importer where needed:
+
+| Written by | Typical contents | Watch for |
+|---|---|---|
+| BridgeComposer (TCG hand records) | hands, double dummy, par | already supported |
+| ACBL Live for Clubs downloads | hands, plus results from the club's scorer | `ScoreTable` layout, partial club fields |
+| Bridgemate / BCScorer / ACBLscore exports | per-table results or a `ScoreTable` | a board repeated per table; `=`, `+1`, `-2` results |
+| EBU / Scorebridge / Pairs Scorer (UK) | `ScoreTable` with extra columns | column names, MP/percentage columns |
+| Hand generators (Dealer, BigDeal, Goldsmith) | deals only | no `Event`/`Date`; `#` repeats |
+| PBN 2.1 standard examples | edge cases | escaped quotes, multi-line commentary |
+
+Also accept `ScoreTable` rows with a score but no contract, if real files have them (the game
+format already supports score-only results from stage 2).
+
+- *Review:* each sample imports with the expected boards, field and warnings.
 
 ### Working notes for a new session
 

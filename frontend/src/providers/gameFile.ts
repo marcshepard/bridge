@@ -35,17 +35,22 @@ export interface BoardFileV1 {
   hands: Record<string, string>;
   field?: FieldResultFileV1[];
   doubleDummy?: {
-    tricks: Record<string, Record<string, number>>;
+    /** Optional when the source gives only the par score. */
+    tricks?: Record<string, Record<string, number>>;
     par?: { nsScore: number; contracts?: Array<{ contract: string; declarer: string; tricks: number }> };
   };
   commentary?: string;
 }
 
 export interface FieldResultFileV1 {
-  contract: string; // "4S", "3NTX", "PASS"
+  /**
+   * "4S", "3NTX", "PASS". Leave it out for a score-only result (the source gave the N/S score but
+   * not the contract); `nsScore` is then required.
+   */
+  contract?: string;
   declarer?: string | null;
   tricks?: number | null;
-  /** Optional. If present it is checked against the score computed from the contract. */
+  /** With a contract: optional, and checked against the rules. Without one: the table's N/S score. */
   nsScore?: number;
   count?: number;
   stratum?: string;
@@ -80,9 +85,17 @@ function parseBoard(b: BoardFileV1, warnings: string[]): Board {
   const field: FieldResult[] = [];
   for (const [i, f] of (b.field ?? []).entries()) {
     try {
-      const result = tableResult(f.contract, f.declarer, f.tricks);
       const count = f.count ?? 1;
       if (!Number.isInteger(count) || count < 1) throw new Error(`bad count "${f.count}"`);
+      if (f.contract == null || f.contract === "") {
+        // Score-only: duplicate scores are always whole tens.
+        if (typeof f.nsScore !== "number" || !Number.isInteger(f.nsScore / 10)) {
+          throw new Error(`no contract and no usable score ("${String(f.nsScore)}")`);
+        }
+        field.push({ result: null, nsScore: f.nsScore, count, ...(f.stratum ? { stratum: f.stratum } : {}) });
+        continue;
+      }
+      const result = tableResult(f.contract, f.declarer, f.tricks);
       if (f.nsScore != null) {
         const computed = scoreResult(result, vul).nsScore;
         if (computed !== f.nsScore) {
@@ -105,18 +118,21 @@ function parseBoard(b: BoardFileV1, warnings: string[]): Board {
 }
 
 function parseDoubleDummy(dd: NonNullable<BoardFileV1["doubleDummy"]>, where: string): DoubleDummy {
-  const tricks = {} as Record<Seat, Record<Strain, number>>;
-  for (const seat of SEATS) {
-    tricks[seat] = {} as Record<Strain, number>;
-    for (const strain of STRAINS) {
-      const n = dd.tricks?.[seat]?.[strain];
-      if (typeof n !== "number" || n < 0 || n > 13) {
-        throw new Error(`${where}: double-dummy tricks missing for ${seat} ${strain}`);
+  const out: DoubleDummy = {};
+  if (dd.tricks) {
+    const tricks = {} as Record<Seat, Record<Strain, number>>;
+    for (const seat of SEATS) {
+      tricks[seat] = {} as Record<Strain, number>;
+      for (const strain of STRAINS) {
+        const n = dd.tricks[seat]?.[strain];
+        if (typeof n !== "number" || n < 0 || n > 13) {
+          throw new Error(`${where}: double-dummy tricks missing for ${seat} ${strain}`);
+        }
+        tricks[seat][strain] = n;
       }
-      tricks[seat][strain] = n;
     }
+    out.tricks = tricks;
   }
-  const out: DoubleDummy = { tricks };
   if (dd.par) {
     out.par = {
       nsScore: dd.par.nsScore,

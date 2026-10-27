@@ -22,7 +22,7 @@ describe("sessions", () => {
     // Copy the field's most common result on two boards: our score must equal one in the field.
     for (const n of [23, 24]) {
       const board = game.boards.find((b) => b.number === n)!;
-      s.results[n] = toStored(board.field[0]!.result);
+      s.results[n] = toStored(board.field[0]!.result!);
     }
     expect(nextUnplayed(s)).toBe(1);
 

@@ -1,47 +1,47 @@
-// Where sessions (seat, boards played, results entered) are kept.
+// Where shared games and this device's identity are kept.
 //
-// The app only talks to the `SessionStore` interface, and every method is async, so a future
-// backend (shared tally, sign-in) can implement it with HTTP calls without touching the screens.
-// Today the only implementation keeps sessions in this browser's localStorage.
+// The screens only talk to these interfaces (through services.ts), and every game method is async,
+// so the implementations can change without touching the UI. Today games live on the backend
+// (`ApiGameStore`) and the identity lives in this browser (`LocalProfileStore`).
 
-import type { Session } from "./session";
+import type {
+  EventSnapshot,
+  PartnershipsRequest,
+  PushMessage,
+} from "../../../backend/src/api-types";
+import type { GameFileV1 } from "../providers/gameFile";
 
-export interface SessionStore {
-  list(): Promise<Session[]>;
-  /** Create or replace a session. */
-  save(session: Session): Promise<void>;
-  remove(id: string): Promise<void>;
+export type { EventSnapshot, PublicPlayer, ResultDto } from "../../../backend/src/api-types";
+
+/** What a live subscription hears: the backend's pushes, plus "reconnected" after a dropped link. */
+export type LiveMessage = PushMessage | { type: "reconnected" };
+
+export interface GameStore {
+  /** Create a game from a game file. You join it as the first player; returns its join code. */
+  create(name: string, game: GameFileV1, startBoard: number): Promise<string>;
+  /** Join a game that hasn't started; returns its normalised join code. */
+  join(code: string, name: string): Promise<string>;
+  /** Everything about a game, including `you` when this device is one of its players. */
+  snapshot(code: string): Promise<EventSnapshot>;
+  /** Leave a game before it starts. If you created it, this cancels it for everyone. */
+  leave(code: string): Promise<void>;
+  /** The creator picks a partner (or random partnerships); seats are assigned and play starts. */
+  choosePartnerships(code: string, choice: PartnershipsRequest): Promise<void>;
+  /** Dev only: fill the empty places with test players. */
+  fillWithTestPlayers(code: string): Promise<void>;
+  /** Live updates for a game. Returns a function that stops them. */
+  subscribe(code: string, onMessage: (message: LiveMessage) => void): () => void;
 }
 
-const STORAGE_KEY = "bridge.sessions.v1";
-
-export class LocalSessionStore implements SessionStore {
-  private read(): Session[] {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as Session[]) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  private write(sessions: Session[]): void {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
-    } catch {
-      // Storage unavailable (private window, blocked, full): sessions last for this visit only.
-    }
-  }
-
-  async list(): Promise<Session[]> {
-    return this.read();
-  }
-
-  async save(session: Session): Promise<void> {
-    this.write([...this.read().filter((s) => s.id !== session.id), session]);
-  }
-
-  async remove(id: string): Promise<void> {
-    this.write(this.read().filter((s) => s.id !== id));
-  }
+/** Who you are on this device: no accounts, just a display name and a key per game joined. */
+export interface ProfileStore {
+  name(): string;
+  setName(name: string): void;
+  /** Your secret player ID for a game, if this device is in it. */
+  playerId(code: string): string | null;
+  setPlayerId(code: string, playerId: string): void;
+  forget(code: string): void;
+  /** The game this device is in right now, so a reload goes straight back to it. */
+  currentGame(): string | null;
+  setCurrentGame(code: string | null): void;
 }
