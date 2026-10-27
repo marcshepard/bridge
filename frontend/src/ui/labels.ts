@@ -37,23 +37,51 @@ export function vulnerabilityPhrase(me: Seat, vul: Vulnerability): string {
   return isVulnerable(vul, directionOf(me)) ? "You are vulnerable, they are not" : "They are vulnerable, you are not";
 }
 
+/** Percentages are shown as whole numbers: "83%". (Calculations stay exact.) */
 export function formatPct(pct: number | null): string {
-  return pct === null ? "—" : `${pct.toFixed(1)}%`;
+  return pct === null ? "—" : `${Math.round(pct)}%`;
+}
+
+/**
+ * Matchpoints for both sides, "83 / 17": yours rounded, theirs 100 minus that, so the pair always
+ * adds up to 100 (50.5 / 49.5 shows as 51 / 49, never 51 / 50).
+ */
+export function formatMpPair(pct: number): string {
+  const ours = Math.round(pct);
+  return `${ours} / ${100 - ours}`;
 }
 
 export function formatImps(n: number): string {
   return n > 0 ? `+${n}` : n < 0 ? `−${-n}` : "0";
 }
 
-/** "+66.7", "−12", "0": a ± margin, one decimal only when needed. */
+/** "+67", "−12", "0": a ± margin as a whole number. */
 export function formatMargin(n: number): string {
-  const r = Math.round(n * 10) / 10;
+  const r = Math.round(n);
   if (r === 0) return "0";
-  const text = Number.isInteger(r) ? Math.abs(r).toString() : Math.abs(r).toFixed(1);
-  return r > 0 ? `+${text}` : `−${text}`;
+  return r > 0 ? `+${r}` : `−${-r}`;
 }
 
 /** "K7PM3QXT" → "K7PM-3QXT": easier to read out and type. */
 export function formatJoinCode(code: string): string {
   return code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
+}
+
+/**
+ * One board's net: your matchpoint % minus theirs ("+90"), with the percentages behind it ("95 − 5").
+ * Percentages are shown whole unless rounding them would make the sum look wrong: 95.4% nets +91,
+ * which "95 − 5" doesn't explain, so it shows "95.4 − 4.6" instead. `pct` is the same: "95%" or "95.4%".
+ */
+export function netParts(pct: number): { net: string; working: string; pct: string } {
+  const exact = Math.round(2 * pct - 100);
+  const whole = Math.round(pct);
+  if (2 * whole - 100 === exact) {
+    return { net: formatMargin(exact), working: `${whole} − ${100 - whole}`, pct: `${whole}%` };
+  }
+  const tenth = Math.round(pct * 10) / 10;
+  return {
+    net: formatMargin(exact),
+    working: `${tenth.toFixed(1)} − ${(100 - tenth).toFixed(1)}`,
+    pct: `${tenth.toFixed(1)}%`,
+  };
 }

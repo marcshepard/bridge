@@ -48,10 +48,13 @@ function numberOf(text: string): number {
   return Number(textOf(text).replace(/−/g, "-"));
 }
 
-/** "2026-10-22" → "22 Oct 2026". */
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** "2026-10-22" → "Thu 22 Oct 2026". */
 function formatDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
-  return `${d} ${MONTHS[m! - 1]} ${y}`;
+  const day = DAYS[new Date(Date.UTC(y!, m! - 1, d!)).getUTCDay()];
+  return `${day} ${d} ${MONTHS[m! - 1]} ${y}`;
 }
 
 function readHand(block: string, board: number, seat: Seat): string {
@@ -139,8 +142,10 @@ export function tcgPageToGameFile(html: string, fileName: string): GameFileV1 {
     boards.push(board);
   });
 
-  // "299ers Top 50 Ranking" says which field this copy of the page shows.
-  const fieldName = /<h2>\s*([^<]*?)\s*Top 50 Ranking\s*<\/h2>/.exec(html)?.[1]?.trim();
+  // Which field this copy of the page shows: "299ers Top 50 Ranking" on the 299er archive, plain
+  // "Top 50 Ranking" on the regular archive, which is the Open field (all players).
+  const heading = /<h2>\s*([^<]*?)\s*Top 50 Ranking\s*<\/h2>/.exec(html);
+  const fieldName = heading ? heading[1]!.trim() || "Open" : undefined;
   const when = date ? formatDate(date) : fileName.replace(/\.[^.]+$/, "");
 
   return {

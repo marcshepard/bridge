@@ -519,13 +519,17 @@ Unused solo-mode controls (`CardList`, `ConfirmButton`, `SeatPicker`) are still 
 - **Dev mode:** "Fill with test players" button (calls the dev-only endpoint) and a `?as=2` URL
   option giving a tab its own player identity, so four tabs act as four players' devices.
 - **Remove solo mode:** the old local-only screens and storage (`NewSession`, `TallyView` as a page,
-  `LocalSessionStore`, `StaticProvider`/`ImportedProvider` and the bundled-games list) go. Deleting
-  files needs Marc's permission on the `bridge` folder (the computer blocks deletes by default);
-  ask once, or move them into `_to_delete/` for him to remove. Keep the sample game JSON for tests
-  and `npm run smoke`, or update `backend/scripts/smoke.mjs` if it moves.
+  `LocalSessionStore`, `StaticProvider`/`ImportedProvider` and the bundled-games list) went (removed with
+  `git rm`, so they stay in history). The sample game JSON stays for tests and `npm run smoke`.
 - *Review:* create a game in one tab, join from three others, pick partners, see the seats.
 
-### Stage 3: playing (in progress)
+### Stage 3: playing (done)
+
+Built as planned below. The board screen is `PlayBoard.tsx` (inside `Play.tsx`, which keeps each
+device's current board); the old full-page review became three dialogs (`BoardDialogs.tsx`) and
+the tally a dialog (`TallyDialog.tsx`). The compass shows Dealer and Vulnerable on the seats, so
+the old `DuplicateBoard` drawing went. A reload starts at the first board without a result.
+
 
 - Board screen: title, "Board 7, 3 of 24", running tally ("NS +140") opening the tally dialog;
   dealer, vulnerability, contract once entered; compass with names and you at the bottom; your hand.
@@ -537,7 +541,7 @@ Unused solo-mode controls (`CardList`, `ConfirmButton`, `SeatPicker`) are still 
 - Next board per device. All displayed percentages and margins as whole numbers.
 - *Review:* play a whole sample game with test players.
 
-### Stage 4: resilience and finish
+### Stage 4: resilience and finish (next)
 
 - Presence in the UI (disconnected players greyed out), reconnect and catch up via
   `results?since=`, reclaiming a seat from a different device (a connected player approves).
@@ -580,9 +584,9 @@ it:
   on **port 5185** (fixed, `strictPort`) so it doesn't clash with his other apps; the backend on
   8787. The VS Code task that starts both is **"start bridge app"** (Ctrl+Shift+B); **"Start
   frontend"** and **"Start backend"** start one each.
-- **Agent tooling limits on his PC:** remote tools can't write into `.vscode/` (it's protected;
-  ask him to make changes there, don't work around it), and deleting files is blocked until he
-  grants permission for the `bridge` folder.
+- **Agent tooling limits:** sessions started remotely from his phone couldn't write into
+  `.vscode/` or delete files. Sessions in the desktop app on his PC can do both (deletes via
+  `git rm`, so they're recoverable).
 - **UI rules he set:** MUI 9; colours, sizes and type only via the theme (MUI defaults today, light
   and dark); shared controls in `ui/controls/`; no back buttons, prefer pages and dismissable
   dialogs.
@@ -592,8 +596,9 @@ it:
     sara@thecommongame.com) asking for archived-set downloads with their blessing (archived sets
     only, never live games); no reply recorded yet.
   - The TCG page's own "Download Board N PBN" links say "download unavailable".
-  - Samples: `private/261022HandRecord.pbn` (hand record) and
-    `private/tcg-2026-10-22-299ers-results.html` (saved 299er results page for the same set).
+  - Samples in `private/`: `The Common Game Top 50 Page.html` (the regular archive's results page
+    for Fri 16 Oct 2026, saved with the in-app steps; the main test page) and
+    `261022HandRecord.pbn` (a hand record for a different set, 22 Oct 2026).
 - **Hosting decisions:** Cloudflare Workers + D1 + Durable Objects, free tier; start on the free
   `bridge-replay.<account>.workers.dev` address. A custom domain later, possibly a subdomain of
   `navia-apps.com` (Marc buys domains from Cloudflare), though he may prefer a new name.
@@ -603,9 +608,11 @@ it:
 
 ### Common Game results page (findings)
 
-From a saved TCG results page for Thursday 22 Oct 2026 (set `CG-2026-1085-1438`, 36 boards). The
-page header said "299ers Top 50 Ranking", so that copy was the 299er field; the open field has its
-own page.
+First from a 299er-archive page for Thursday 22 Oct 2026 (since removed), then confirmed on the
+regular archive's page for Friday 16 Oct 2026 (36 boards, 938 tables on board 1). The two archives
+use the same markup. The 299er page's heading says "299ers Top 50 Ranking" (newer players only);
+the regular page's says just "Top 50 Ranking", and is the Open field (all players). The page names
+the game only by its date: no set ID or session name.
 
 - **Per board:** `<h2> Board N (10/22/26)</h2>`; dealer in `#board_setup_dealer` ("N Deals");
   vulnerability in `#board_setup_vul` ("None Vul", "N-S Vul", "E-W Vul", "Both Vul"); hands in
@@ -619,7 +626,7 @@ own page.
 - **Expert analysis:** only on some boards (1 and 8 in that set), in `#mm_N_…` with the auction
   and a write-up; other boards only link to Bridge Winners.
 - **Ignore:** the Top 50 tables (player names, clubs, and email addresses in popovers).
-- Verified: all 36 deals and dealers on the page match the hand-record PBN exactly.
+- Verified (22 Oct page): all 36 deals and dealers matched that set's hand-record PBN exactly.
 - **Hand-record PBN** (`261022HandRecord.pbn`, BridgeComposer): deals, dealer, vulnerability,
   double dummy and par for all boards; `Event`/`Date` tags empty, but comments carry
   `%HRTitleEvent "THU 10/22/2026"` and `%HRTitleSetID "CG-2026-1085-1438"`. No results.

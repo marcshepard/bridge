@@ -5,10 +5,11 @@
 // dialog with the code filled in. A reload goes straight back to the game you're in.
 
 import { Alert, Button, Typography } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { parseGameFile } from "../providers/gameFile";
 import { games, profile } from "../services";
 import { ApiError } from "../session/apiGameStore";
-import type { EventSnapshot } from "../session/store";
+import type { EventSnapshot, ResultDto } from "../session/store";
 import { AppHeader } from "./controls/AppHeader";
 import { Screen } from "./controls/Layout";
 import { SheetDialog } from "./controls/SheetDialog";
@@ -17,6 +18,7 @@ import { formatJoinCode } from "./labels";
 import { Home } from "./screens/Home";
 import { JoinGame } from "./screens/JoinGame";
 import { Lobby } from "./screens/Lobby";
+import { Play } from "./screens/Play";
 import { StartGame } from "./screens/StartGame";
 
 type Dialog = "start" | "join" | "help" | "leave" | null;
@@ -35,6 +37,11 @@ function takeJoinCodeFromUrl(): string | null {
 function useGame(code: string | null, onGone: (why: string) => void) {
   const [snapshot, setSnapshot] = useState<EventSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  /** A result saved here or pushed from another device: replace that board's result. */
+  const mergeResult = useCallback((result: ResultDto) => {
+    setSnapshot((s) => s && { ...s, results: [...s.results.filter((r) => r.board !== result.board), result] });
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!code) return;
@@ -62,13 +69,12 @@ function useGame(code: string | null, onGone: (why: string) => void) {
       else if (m.type === "presence") {
         setSnapshot((s) => s && { ...s, players: s.players.map((p) => ({ ...p, connected: m.connected.includes(p.slot) })) });
       } else if (m.type === "result") {
-        // Results are used from stage 3 (playing the boards).
-        setSnapshot((s) => s && { ...s, results: [...s.results.filter((r) => r.board !== m.result.board), m.result] });
+        mergeResult(m.result);
       } else void refresh(); // players, status, reconnected: fetch the whole picture again
     });
-  }, [code, refresh, onGone]);
+  }, [code, refresh, onGone, mergeResult]);
 
-  return { snapshot, error, refresh };
+  return { snapshot, error, refresh, mergeResult };
 }
 
 export function App() {
@@ -95,7 +101,11 @@ export function App() {
     [code],
   );
 
-  const { snapshot, error } = useGame(code, onGone);
+  const { snapshot, error, mergeResult } = useGame(code, onGone);
+  // The game file is parsed once per game, not on every live update.
+  const gameJson = snapshot?.game;
+  const game = useMemo(() => (gameJson ? parseGameFile(gameJson) : null), [snapshot?.code]);
+  const mySeat = snapshot?.you?.seat ?? null;
 
   function enter(c: string) {
     setDialog(null);
@@ -136,6 +146,8 @@ export function App() {
         onHelp={() => setDialog("help")}
       />
     );
+  } else if (snapshot && snapshot.status === "playing" && game && mySeat) {
+    page = <Play snapshot={snapshot} game={game} seat={mySeat} onSaved={mergeResult} />;
   } else if (snapshot) {
     page = <Lobby snapshot={snapshot} onDone={() => onGone("")} />;
   } else {

@@ -15,16 +15,12 @@ export interface StoredResult {
 }
 
 export interface Session {
-  id: string;
-  providerId: string;
   gameId: string;
   gameTitle: string;
   seat: Seat;
   /** Boards in the order they'll be played: from the starting board, wrapping around. */
   boardOrder: number[];
   results: Record<number, StoredResult>;
-  createdAt: string;
-  updatedAt: string;
 }
 
 /** Board numbers starting at `start`, wrapping round to cover every board once. */
@@ -34,16 +30,8 @@ export function boardOrderFrom(boardNumbers: number[], start: number): number[] 
   return [...sorted.slice(i), ...sorted.slice(0, i)];
 }
 
-export function newSession(
-  providerId: string,
-  game: Game,
-  seat: Seat,
-  startBoard: number,
-): Session {
-  const now = new Date().toISOString();
+export function newSession(game: Game, seat: Seat, startBoard: number): Session {
   return {
-    id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
-    providerId,
     gameId: game.summary.id,
     gameTitle: game.summary.title,
     seat,
@@ -52,9 +40,22 @@ export function newSession(
       startBoard,
     ),
     results: {},
-    createdAt: now,
-    updatedAt: now,
   };
+}
+
+/**
+ * Your view of a shared game: your seat, the table's play order, and the results the table has
+ * entered so far (one per board, whoever entered it).
+ */
+export function sessionFromShared(
+  game: Game,
+  seat: Seat,
+  startBoard: number,
+  results: Array<{ board: number } & StoredResult>,
+): Session {
+  const s = newSession(game, seat, startBoard);
+  for (const r of results) s.results[r.board] = { contract: r.contract, declarer: r.declarer, tricks: r.tricks };
+  return s;
 }
 
 export function toStored(r: TableResult): StoredResult {
@@ -80,7 +81,11 @@ export interface Tally {
   played: number;
   /** Average MP% over boards that had a field to compare with. */
   averagePct: number | null;
-  /** Sum over boards of (our MP% − their MP%): 83% on a board is 83 − 17 = +66. */
+  /**
+   * Sum over boards of each board's net (our MP% − their MP%, rounded to a whole number as shown):
+   * 83% on a board is 83 − 17 = +66. Rounding each board first means the total is exactly the sum
+   * of the nets on screen.
+   */
   margin: number;
   totalImps: number;
 }
@@ -119,7 +124,7 @@ export function tally(session: Session, game: Game): Tally {
     averagePct: scored.length
       ? scored.reduce((s, r) => s + r.comparison.mpPct!, 0) / scored.length
       : null,
-    margin: rows.reduce((s, r) => s + marginFor(r.comparison.mpPct), 0),
+    margin: rows.reduce((s, r) => s + Math.round(marginFor(r.comparison.mpPct)), 0),
     totalImps: rows.reduce((s, r) => s + r.comparison.impsVsDatum, 0),
   };
 }

@@ -8,6 +8,8 @@ import type {
   EventSnapshot,
   PartnershipsRequest,
   PushMessage,
+  ResultDto,
+  SaveResultRequest,
 } from "../../../backend/src/api-types";
 import type { GameFileV1 } from "../providers/gameFile";
 
@@ -27,6 +29,8 @@ export interface GameStore {
   leave(code: string): Promise<void>;
   /** The creator picks a partner (or random partnerships); seats are assigned and play starts. */
   choosePartnerships(code: string, choice: PartnershipsRequest): Promise<void>;
+  /** Save or correct the table's result on a board. Everyone at the table sees it straight away. */
+  saveResult(code: string, board: number, result: SaveResultRequest): Promise<ResultDto>;
   /** Dev only: fill the empty places with test players. */
   fillWithTestPlayers(code: string): Promise<void>;
   /** Live updates for a game. Returns a function that stops them. */

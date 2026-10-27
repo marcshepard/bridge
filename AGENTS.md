@@ -72,15 +72,28 @@ docs/DESIGN.md            Design and rationale
 - `npm install`: install the frontend's dependencies (`backend/` has its own; run `npm install` there too)
 - `npm run dev`: backend (:8787, local D1) and frontend (http://localhost:5185) together; `/api` is proxied
 - `npm run dev:frontend`: the frontend alone (`npm run dev` in `backend/` starts the backend alone)
-- `npm test`: unit tests (Vitest). **Run before finishing any change.**
+- `npm test`: unit tests (Vitest). See "When to run tests" below.
 - `npm run typecheck`: `tsc --noEmit`
 - `npm run build`: typecheck and production build
 
-In `backend/`: `npm test` (API tests; **run before finishing any backend change**),
-`npm run typecheck`, and `npm run smoke` (end-to-end check against a running `npm run dev`).
+In `backend/`: `npm test` (API tests), `npm run typecheck`, and `npm run smoke` (end-to-end check
+against a running `npm run dev`).
 
 From the repo root: `python scripts/make_sample_game.py` regenerates the sample game, after
 `pip install -r scripts/requirements.txt`.
+
+### When to run tests
+
+Marc tests each change by hand first. Until Marc says the manual tests have passed:
+
+- Run only a type check and **targeted** tests: the test files that cover what you changed
+  (e.g. `npx vitest run src/providers/tcgPage.test.ts`). Add or update tests for the change as usual.
+- Don't run the full suites (`npm test` in `frontend/` and `backend/`), `npm run smoke`, or browser
+  play-throughs.
+
+Run the full suites (and the smoke test, if the backend changed) only when Marc explicitly asks, or
+when checking in, and before a check-in only if the change could affect more than the targeted
+tests covered. Always say which tests you did and didn't run.
 
 ## Rules of the road
 
@@ -140,6 +153,20 @@ From the repo root: `python scripts/make_sample_game.py` regenerates the sample 
     what players see or do (screens, steps, scoring), update the help in the same change. Write it
     for a complete newcomer: someone who has never used the app and may never have played
     duplicate. Plain words, short steps, a worked example where a number needs explaining.
+14. **Actions look like actions, the same way everywhere.** Anything you can tap is a real button
+    that looks tappable; plain-looking text is never an action. Pick by role:
+    - **The main action** of a screen or dialog ("Start a game", "Enter the result", "Save result"):
+      a contained (filled) button. At most one per screen or dialog.
+    - **Other actions** ("Join a game", "Score breakdown", "Copy link"): outlined buttons.
+    - **Changing something shown on screen** (your name, a board's result): `EditButton` from
+      `ui/controls/`, an outlined button with a pencil, placed right beside the thing it changes and
+      labelled with the value itself ("Carol ✎") or a short verb ("Correct ✎").
+    - **Text-only buttons** only for dismissing, beside the main action in a dialog's action bar or
+      a form ("Cancel", "Stay"), and in an alert's action slot.
+    - **Items in a list or table that open something** (a board number in the tally): the item
+      itself as a text button in the primary colour, so the whole row of numbers stays readable.
+    - **Links** (underlined) only to go to another website. Icon-only buttons only for universal
+      icons (help, close, avatar), always with an `aria-label`.
 
 ## Style
 

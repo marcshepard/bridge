@@ -6,6 +6,8 @@ import type {
   EventSnapshot,
   JoinedResponse,
   PartnershipsRequest,
+  ResultDto,
+  SaveResultRequest,
 } from "../../../backend/src/api-types";
 import type { GameFileV1 } from "../providers/gameFile";
 import type { GameStore, LiveMessage, ProfileStore } from "./store";
@@ -92,6 +94,10 @@ export class ApiGameStore implements GameStore {
 
   async choosePartnerships(code: string, choice: PartnershipsRequest): Promise<void> {
     await this.request<unknown>("POST", `/events/${code}/partnerships`, code, choice);
+  }
+
+  saveResult(code: string, board: number, result: SaveResultRequest): Promise<ResultDto> {
+    return this.request<ResultDto>("PUT", `/events/${code}/boards/${board}`, code, result);
   }
 
   async fillWithTestPlayers(code: string): Promise<void> {

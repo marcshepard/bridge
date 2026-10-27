@@ -42,6 +42,30 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
       </Box>
 
+      <Heading>Playing a board</Heading>
+      <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
+        <li>
+          The board screen shows who sits where (you at the bottom), the dealer, who is vulnerable, and your 13
+          cards. Take those cards from your deck, then bid and play as normal.
+        </li>
+        <li>
+          When the board is finished, anyone taps <strong>Enter the result</strong>: the contract, who declared,
+          and how many tricks declarer took. It appears on everyone's screen at once, with who entered it. If it's
+          wrong, anyone can tap <strong>Correct it</strong>.
+        </li>
+        <li>
+          You then see all four hands, your side's score, and both sides' matchpoints, for example 83 / 17.{" "}
+          <strong>Score breakdown</strong> shows how the score adds up, <strong>The field</strong> shows what the
+          original pairs scored, and <strong>Analysis</strong> shows the best possible result and any expert
+          commentary.
+        </li>
+        <li>
+          Tap <strong>Next board</strong> when you're ready. Each screen moves on by itself, so nobody waits for
+          anyone else. The running tally at the top (for example NS +140) adds up how far ahead or behind the
+          field you are; tap it to see every board.
+        </li>
+      </Box>
+
       <Heading>How scoring works</Heading>
       <Typography sx={{ mb: 1 }}>
         Your score on a board comes from the normal bridge scoring for the contract and the tricks taken. What
@@ -62,8 +86,14 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </Typography>
         <Typography variant="body2" sx={{ mt: 1 }}>
           You beat 60 and tied with 20, which counts as 10 more: (60 + 10) ÷ 100 = <strong>70%</strong>. Your
-          opponents get the rest, 30%. Over a session, an average above 50% means you did better than the
-          field.
+          opponents get the rest, 30%, shown as 70 / 30. Over a session, an average above 50% means you did
+          better than the field.
+        </Typography>
+        <Typography variant="body2" sx={{ mt: 1 }}>
+          Each board also shows a <strong>net</strong>: your % minus theirs. 70 / 30 nets +40, and 45 / 55 nets
+          −10. The running tally at the top adds up the nets, so above zero means you're ahead of the field.
+          Percentages are shown as whole numbers, except when that would hide where a net comes from: 95.4%
+          nets +91, so it shows as 95.4 − 4.6 rather than 95 − 5.
         </Typography>
       </Box>
       <Typography>

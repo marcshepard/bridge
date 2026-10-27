@@ -13,9 +13,11 @@ interface Props {
   me: Seat;
   /** What to show under each seat's name, e.g. the player sitting there. */
   seats: Record<Seat, ReactNode>;
+  /** Shown in the middle of the table, e.g. the board number. */
+  center?: ReactNode;
 }
 
-export function Compass({ me, seats }: Props) {
+export function Compass({ me, seats, center }: Props) {
   return (
     <Box
       role="list"
@@ -52,7 +54,22 @@ export function Compass({ me, seats }: Props) {
           </Paper>
         );
       })}
-      <Box aria-hidden sx={{ gridArea: "table", bgcolor: "action.hover", borderRadius: 1, minHeight: (t) => t.spacing(8) }} />
+      {/* Decorative: anything shown here is also said elsewhere on the screen. */}
+      <Box
+        aria-hidden
+        sx={{
+          gridArea: "table",
+          bgcolor: "action.hover",
+          borderRadius: 1,
+          minHeight: (t) => t.spacing(8),
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+        }}
+      >
+        {center}
+      </Box>
     </Box>
   );
 }

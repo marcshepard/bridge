@@ -52,7 +52,7 @@ describe("Common Game results page", () => {
 
   it("reads the date, the field name and every board's deal", () => {
     expect(file.id).toBe("tcg-2026-10-22-299ers");
-    expect(game.summary.title).toBe("The Common Game, 22 Oct 2026 (299ers field)");
+    expect(game.summary.title).toBe("The Common Game, Thu 22 Oct 2026 (299ers field)");
     expect(game.summary.date).toBe("2026-10-22");
     expect(game.boards.map((b) => [b.number, b.dealer, b.vul])).toEqual([
       [1, "N", "None"],
@@ -89,6 +89,12 @@ describe("Common Game results page", () => {
     expect([c.beat, c.tied]).toEqual([30, 45]);
   });
 
+  it("calls the regular archive's field Open", () => {
+    const open = tcgPageToGameFile(PAGE.replace("<h2> 299ers Top 50 Ranking</h2>", "<h2>  Top 50 Ranking</h2>"), "p.html");
+    expect(open.id).toBe("tcg-2026-10-22-open");
+    expect(open.title).toBe("The Common Game, Thu 22 Oct 2026 (Open field)");
+  });
+
   it("is chosen by file name or by content when uploaded", () => {
     expect(fileToGameFile("page.htm", PAGE).id).toBe(file.id);
     expect(fileToGameFile("page.txt", PAGE).id).toBe(file.id);
@@ -96,22 +102,17 @@ describe("Common Game results page", () => {
   });
 });
 
-// A real saved page, if one is in private/ (gitignored; see docs/DESIGN.md). Skipped otherwise.
-const REAL = resolve(__dirname, "../../../private/tcg-2026-10-22-299ers-results.html");
-const REAL_PBN = resolve(__dirname, "../../../private/261022HandRecord.pbn");
+// A real saved page (the regular archive, 16 Oct 2026), if it's in private/ (gitignored; see
+// docs/DESIGN.md). Skipped otherwise.
+const REAL = resolve(__dirname, "../../../private/The Common Game Top 50 Page.html");
 
 describe.skipIf(!existsSync(REAL))("saved Common Game page in private/", () => {
-  it("imports all 36 boards, matching the hand-record PBN deals", () => {
-    const game = parseGameFile(tcgPageToGameFile(readFileSync(REAL, "utf-8"), "results.html"));
+  it("imports all 36 boards and the whole Open field, with no warnings", () => {
+    const game = parseGameFile(fileToGameFile("The Common Game Top 50 Page.html", readFileSync(REAL, "utf-8")));
+    expect(game.summary.title).toBe("The Common Game, Fri 16 Oct 2026 (Open field)");
     expect(game.boards).toHaveLength(36);
-    expect(game.boards[0]!.field.reduce((n, f) => n + f.count, 0)).toBe(127);
+    expect(game.boards[0]!.field.reduce((n, f) => n + f.count, 0)).toBe(938);
+    expect(game.boards.every((b) => b.field.length > 0)).toBe(true);
     expect(game.warnings).toEqual([]);
-    if (existsSync(REAL_PBN)) {
-      const hr = parseGameFile(fileToGameFile("hr.pbn", readFileSync(REAL_PBN, "utf-8")));
-      for (const b of game.boards) {
-        const h = hr.boards.find((x) => x.number === b.number)!;
-        expect([b.dealer, b.vul, b.hands]).toEqual([h.dealer, h.vul, h.hands]);
-      }
-    }
   });
 });

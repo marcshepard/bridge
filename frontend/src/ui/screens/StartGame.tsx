@@ -52,14 +52,16 @@ function TcgHelp() {
   );
 }
 
-/** What the field looks like, so you know what comparisons you'll get. */
+/**
+ * The size of the original field, short: "938 tables/board", or "~412 tables/board" (the average,
+ * rounded) when boards had different numbers of tables. Boards with no field results are left out.
+ */
 function fieldSummary(game: Game): string {
-  const lines = game.boards.flatMap((b) => b.field);
-  if (lines.length === 0) return "No field results: you'll see scores, but no comparison with the field.";
-  if (lines.every((f) => f.result === null)) {
-    return "Field results are scores only (no contracts), so you'll see matchpoints but not what each table bid.";
-  }
-  return "Includes the field's results for comparison.";
+  const counts = game.boards.map((b) => b.field.reduce((n, f) => n + f.count, 0)).filter((n) => n > 0);
+  if (counts.length === 0) return "no field results to compare with";
+  const average = Math.round(counts.reduce((a, b) => a + b, 0) / counts.length);
+  const varies = counts.some((n) => n !== counts[0]);
+  return `${varies ? "~" : ""}${average} tables/board`;
 }
 
 export function StartGame({ open, name, onClose, onCreated }: Props) {
@@ -97,6 +99,8 @@ export function StartGame({ open, name, onClose, onCreated }: Props) {
   }
 
   const warnings = loaded?.game.warnings ?? [];
+  // Without the original field's results there's nothing to score against: worth a warning.
+  const noField = !!loaded && loaded.game.boards.every((b) => b.field.length === 0);
 
   return (
     <SheetDialog
@@ -145,9 +149,9 @@ export function StartGame({ open, name, onClose, onCreated }: Props) {
 
         {loaded && (
           <>
-            <Alert severity={warnings.length ? "warning" : "success"}>
-              <strong>{loaded.game.summary.title}</strong>: {loaded.game.boards.length} boards.{" "}
-              {fieldSummary(loaded.game)}
+            <Alert severity={warnings.length || noField ? "warning" : "success"}>
+              <strong>{loaded.game.summary.title}</strong>: {loaded.game.boards.length} boards,{" "}
+              {fieldSummary(loaded.game)}.
               {warnings.length > 0 && (
                 <>
                   {" "}

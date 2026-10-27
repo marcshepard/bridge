@@ -89,8 +89,9 @@ Security → Firewall → Allow an app**.
 2. The other three open the app and **Join a game** with the code (or the shared link).
 3. Once all four are in, whoever started the game picks partnerships, and each screen shows
    where to sit.
-4. Playing the boards (dealing from your screen, entering results, comparing with the field)
-   comes in stage 3; see the build plan in [docs/DESIGN.md](docs/DESIGN.md).
+4. Each of you deals your own 13 cards from what your screen shows (one deck per player), then
+   bid and play. Anyone enters the result; everyone sees it, with the score, both sides'
+   matchpoints and the field. Tap **Next board** when you're ready.
 
 To try it alone in development, use **Fill with test players** in the lobby, or open more tabs
 with `?as=2`, `?as=3`… so each tab is a separate player.

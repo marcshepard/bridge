@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { tableResult } from "../core/contract";
 import { parseGameFile } from "../providers/gameFile";
-import { boardOrderFrom, marginFor, newSession, nextUnplayed, tally, toStored } from "./session";
+import { boardOrderFrom, marginFor, newSession, nextUnplayed, sessionFromShared, tally, toStored } from "./session";
 
 const game = parseGameFile(
   JSON.parse(readFileSync(resolve(__dirname, "../../public/games/sample-synthetic-01.json"), "utf-8")),
@@ -15,7 +15,7 @@ describe("sessions", () => {
   });
 
   it("tracks the next unplayed board and the running tally", () => {
-    const s = newSession("static", game, "E", 23);
+    const s = newSession(game, "E", 23);
     expect(s.boardOrder.slice(0, 3)).toEqual([23, 24, 1]);
     expect(nextUnplayed(s)).toBe(23);
 
@@ -31,8 +31,9 @@ describe("sessions", () => {
     expect(t.rows.map((r) => r.board)).toEqual([23, 24]);
     expect(t.averagePct).toBeGreaterThan(0);
     expect(t.averagePct).toBeLessThan(100);
-    // Margin is the sum of (ours − theirs), i.e. 2 × average − 100 per board.
-    expect(t.margin).toBeCloseTo(2 * (2 * t.averagePct! - 100), 9);
+    // Margin is the sum of each board's net (ours − theirs, i.e. 2 × MP% − 100), rounded per board.
+    expect(t.margin).toBe(t.rows.reduce((n, r) => n + Math.round(2 * r.comparison.mpPct! - 100), 0));
+    expect(Number.isInteger(t.margin)).toBe(true);
   });
 
   it("margin: 83% is 83 − 17 = +66, average is 0, no field counts as 0", () => {
@@ -40,6 +41,17 @@ describe("sessions", () => {
     expect(marginFor(50)).toBe(0);
     expect(marginFor(20)).toBe(-60);
     expect(marginFor(null)).toBe(0);
+  });
+
+  it("builds your view of a shared game from the table's results", () => {
+    const s = sessionFromShared(game, "S", 3, [
+      { board: 3, contract: "PASS", declarer: null, tricks: 0 },
+      { board: 4, contract: "4S", declarer: "N", tricks: 10 },
+    ]);
+    expect(s.boardOrder[0]).toBe(3);
+    expect(Object.keys(s.results)).toEqual(["3", "4"]);
+    expect(nextUnplayed(s)).toBe(5);
+    expect(tally(s, game).played).toBe(2);
   });
 
   it("round-trips a stored result", () => {

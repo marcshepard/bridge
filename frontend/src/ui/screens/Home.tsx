@@ -1,10 +1,10 @@
 // The first screen. On first use it asks for your display name; then it offers Start a game and
 // Join a game.
 
-import EditIcon from "@mui/icons-material/EditOutlined";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import { Alert, Button, IconButton, Stack, TextField, Typography } from "@mui/material";
 import { useState } from "react";
+import { EditButton } from "../controls/EditButton";
 import { Screen } from "../controls/Layout";
 
 /** The backend's limit (backend/src/index.ts). */
@@ -84,14 +84,9 @@ export function Home({ name, onName, onStart, onJoin, onHelp, notice }: Props) {
         <>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 3 }}>
             <Typography>Playing as</Typography>
-            <Button
-              variant="outlined"
-              endIcon={<EditIcon />}
-              aria-label={`Playing as ${name}. Change your name`}
-              onClick={() => setEditing(true)}
-            >
+            <EditButton ariaLabel={`Playing as ${name}. Change your name`} onClick={() => setEditing(true)}>
               {name}
-            </Button>
+            </EditButton>
           </Stack>
           <Stack spacing={1.5}>
             <Button variant="contained" size="large" fullWidth onClick={onStart}>

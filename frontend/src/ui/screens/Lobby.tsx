@@ -1,5 +1,5 @@
 // The lobby: the join code to share, who has joined (live), and, once all four are in, the
-// creator's choice of partnerships. When play starts, each device shows where to sit.
+// creator's choice of partnerships. When play starts, the board screen takes over (Play.tsx).
 
 import {
   Alert,
@@ -12,11 +12,9 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
-import { type Seat, SEATS } from "../../core/types";
 import { devMode, games } from "../../services";
 import type { EventSnapshot, PublicPlayer } from "../../session/store";
 import { ChoiceGroup } from "../controls/ChoiceGroup";
-import { Compass } from "../controls/Compass";
 import { Screen, Section } from "../controls/Layout";
 import { formatJoinCode } from "../labels";
 
@@ -152,24 +150,6 @@ function DevTools({ code }: { code: string }) {
   );
 }
 
-/** Play has started: where you sit, and who's where. */
-function Seating({ snapshot, me }: { snapshot: EventSnapshot; me: Seat }) {
-  const names = Object.fromEntries(SEATS.map((s) => [s, snapshot.players.find((p) => p.seat === s)?.name ?? "?"])) as Record<Seat, string>;
-  return (
-    <>
-      <Typography variant="h5" component="h1" sx={{ mt: 2 }}>
-        {snapshot.title}
-      </Typography>
-      <Box sx={{ mt: 3 }}>
-        <Compass me={me} seats={names} />
-      </Box>
-      <Typography color="text.secondary" sx={{ mt: 3 }}>
-        Take your seats. Playing the boards comes in the next stage of the app.
-      </Typography>
-    </>
-  );
-}
-
 interface Props {
   snapshot: EventSnapshot;
   onDone: () => void;
@@ -177,7 +157,6 @@ interface Props {
 
 export function Lobby({ snapshot, onDone }: Props) {
   const you = snapshot.you;
-  const mySeat = you?.seat ?? snapshot.players.find((p) => p.slot === you?.slot)?.seat ?? null;
 
   if (snapshot.status === "ended") {
     return (
@@ -188,14 +167,6 @@ export function Lobby({ snapshot, onDone }: Props) {
         <Button variant="contained" sx={{ mt: 2 }} onClick={onDone}>
           Done
         </Button>
-      </Screen>
-    );
-  }
-
-  if (snapshot.status === "playing" && mySeat) {
-    return (
-      <Screen>
-        <Seating snapshot={snapshot} me={mySeat} />
       </Screen>
     );
   }
