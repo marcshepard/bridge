@@ -1,0 +1,119 @@
+{
+  // VS Code tasks. Run with Ctrl+Shift+P → "Tasks: Run Task", or Ctrl+Shift+B for the default build task.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install dependencies",
+      "detail": "npm install in backend/ and frontend/ (run once after cloning, and after package.json changes)",
+      "dependsOn": ["Install backend dependencies", "Install frontend dependencies"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "Install backend dependencies",
+      "type": "shell",
+      "command": "npm install",
+      "options": { "cwd": "${workspaceFolder}/backend" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Install frontend dependencies",
+      "type": "shell",
+      "command": "npm install",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start backend",
+      "detail": "Worker API at http://localhost:8787 with a local database",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": { "cwd": "${workspaceFolder}/backend" },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "wrangler",
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": {
+          "activesBegin": ".",
+          "beginsPattern": "wrangler",
+          "endsPattern": "Ready on"
+        }
+      }
+    },
+    {
+      "label": "Start frontend",
+      "detail": "Vite dev server at http://localhost:5185 (also on your network, for other devices)",
+      "type": "shell",
+      "command": "npm run dev:frontend",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": {
+          "activesBegin": ".",
+          "beginsPattern": "VITE",
+          "endsPattern": "Local:"
+        }
+      }
+    },
+    {
+      "label": "start bridge app",
+      "detail": "Backend and frontend together, each in its own terminal",
+      "dependsOn": ["Start backend", "Start frontend"],
+      "dependsOrder": "parallel",
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "Run tests",
+      "detail": "Vitest, once",
+      "type": "shell",
+      "command": "npm test",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "problemMatcher": [],
+      "group": { "kind": "test", "isDefault": true }
+    },
+    {
+      "label": "Run tests (watch)",
+      "type": "shell",
+      "command": "npm run test:watch",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Build for production",
+      "detail": "Type-check and build into frontend/dist",
+      "type": "shell",
+      "command": "npm run build",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Preview production build",
+      "type": "shell",
+      "command": "npm run preview",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "dependsOn": "Build for production",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Install sample-data tools (Python)",
+      "detail": "pip install endplay (the double-dummy solver used by the sample-game script)",
+      "type": "shell",
+      "command": "python -m pip install -r scripts/requirements.txt",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Generate sample game",
+      "detail": "Rebuild frontend/public/games/sample-synthetic-01.json and index.json",
+      "type": "shell",
+      "command": "python scripts/make_sample_game.py",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    }
+  ]
+}

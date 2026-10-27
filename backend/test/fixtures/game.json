@@ -1,0 +1,423 @@
+{
+ "schemaVersion": 1,
+ "id": "fixture-3-boards",
+ "title": "Test fixture (3 boards)",
+ "date": "2021-12-03",
+ "session": "Afternoon",
+ "source": {
+  "name": "Synthetic sample",
+  "attribution": "Random deals with real double-dummy analysis; field results are simulated by scripts/make_sample_game.py. Not real results from any game."
+ },
+ "boards": [
+  {
+   "number": 1,
+   "dealer": "N",
+   "vul": "None",
+   "hands": {
+    "N": "K5.AJ76.T.AT9764",
+    "E": "86432.9853.A764.",
+    "S": "AQT97.QT.Q852.K3",
+    "W": "J.K42.KJ93.QJ852"
+   },
+   "field": [
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "3C",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "4C",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2DX",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 9,
+      "H": 8,
+      "D": 6,
+      "C": 10,
+      "NT": 9
+     },
+     "E": {
+      "S": 3,
+      "H": 3,
+      "D": 6,
+      "C": 3,
+      "NT": 3
+     },
+     "S": {
+      "S": 10,
+      "H": 8,
+      "D": 6,
+      "C": 10,
+      "NT": 10
+     },
+     "W": {
+      "S": 3,
+      "H": 4,
+      "D": 6,
+      "C": 3,
+      "NT": 3
+     }
+    },
+    "par": {
+     "nsScore": 430,
+     "contracts": [
+      {
+       "contract": "3NT",
+       "declarer": "S",
+       "tricks": 10
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 2,
+   "dealer": "E",
+   "vul": "NS",
+   "hands": {
+    "N": "7652.AJ2.AKT.KT7",
+    "E": "KQT983.97.642.92",
+    "S": "J.KQ654.Q9753.63",
+    "W": "A4.T83.J8.AQJ854"
+   },
+   "field": [
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "5H",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "5H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "5H",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "5D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "5D",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 5,
+      "H": 11,
+      "D": 11,
+      "C": 5,
+      "NT": 6
+     },
+     "E": {
+      "S": 8,
+      "H": 2,
+      "D": 2,
+      "C": 6,
+      "NT": 3
+     },
+     "S": {
+      "S": 5,
+      "H": 11,
+      "D": 11,
+      "C": 5,
+      "NT": 6
+     },
+     "W": {
+      "S": 8,
+      "H": 2,
+      "D": 2,
+      "C": 6,
+      "NT": 3
+     }
+    },
+    "par": {
+     "nsScore": 500,
+     "contracts": [
+      {
+       "contract": "5SX",
+       "declarer": "E",
+       "tricks": 8
+      },
+      {
+       "contract": "5SX",
+       "declarer": "W",
+       "tricks": 8
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 3,
+   "dealer": "S",
+   "vul": "EW",
+   "hands": {
+    "N": "T986.KQJ32.73.83",
+    "E": "KQJ742.A9.652.J5",
+    "S": "3.T64.KJT4.KT942",
+    "W": "A5.875.AQ98.AQ76"
+   },
+   "field": [
+    {
+     "contract": "6NT",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 7
+    },
+    {
+     "contract": "6NT",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 6
+    },
+    {
+     "contract": "6NT",
+     "declarer": "W",
+     "tricks": 12,
+     "count": 4
+    },
+    {
+     "contract": "2CX",
+     "declarer": "N",
+     "tricks": 4,
+     "count": 2
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 2
+    },
+    {
+     "contract": "5NT",
+     "declarer": "E",
+     "tricks": 13,
+     "count": 2
+    },
+    {
+     "contract": "6NT",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "5NT",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "6NT",
+     "declarer": "W",
+     "tricks": 13,
+     "count": 1
+    },
+    {
+     "contract": "7NT",
+     "declarer": "E",
+     "tricks": 13,
+     "count": 1
+    },
+    {
+     "contract": "6NT",
+     "declarer": "E",
+     "tricks": 13,
+     "count": 1
+    },
+    {
+     "contract": "5NT",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 1,
+      "H": 4,
+      "D": 1,
+      "C": 5,
+      "NT": 1
+     },
+     "E": {
+      "S": 12,
+      "H": 8,
+      "D": 10,
+      "C": 8,
+      "NT": 12
+     },
+     "S": {
+      "S": 1,
+      "H": 4,
+      "D": 2,
+      "C": 5,
+      "NT": 1
+     },
+     "W": {
+      "S": 12,
+      "H": 8,
+      "D": 10,
+      "C": 8,
+      "NT": 12
+     }
+    },
+    "par": {
+     "nsScore": -1440,
+     "contracts": [
+      {
+       "contract": "6NT",
+       "declarer": "E",
+       "tricks": 12
+      },
+      {
+       "contract": "6NT",
+       "declarer": "W",
+       "tricks": 12
+      }
+     ]
+    }
+   },
+   "commentary": "Sample note (auto-generated, not expert analysis): double dummy, this deal has a slam for the side with the high cards; par is -1440 for North–South."
+  }
+ ]
+}

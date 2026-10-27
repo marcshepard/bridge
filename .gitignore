@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+__pycache__/
+*.log
+.DS_Store
+.vscode/*
+!.vscode/tasks.json
+!.vscode/extensions.json
+
+# Cloudflare Wrangler: local database and state, local secrets
+.wrangler/
+.dev.vars*
+
+# Private sample data (e.g. saved Common Game pages and PBNs). Never commit.
+private/

@@ -1,0 +1,26 @@
+{
+  "name": "bridge-backend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Bridge Replay API: a Cloudflare Worker with D1 and a Durable Object for live updates.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler d1 migrations apply bridge --local && wrangler dev --port 8787 --var ALLOW_TEST_PLAYERS:true",
+    "db:migrate:local": "wrangler d1 migrations apply bridge --local",
+    "db:migrate:remote": "wrangler d1 migrations apply bridge --remote",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "deploy": "wrangler deploy",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "hono": "4.13.14"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.4.8",
+    "@cloudflare/workers-types": "5.20261027.1",
+    "typescript": "5.9.3",
+    "vitest": "5.0.5",
+    "wrangler": "4.153.0"
+  }
+}
