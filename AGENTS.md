@@ -14,9 +14,11 @@ Guidance for AI coding agents (Claude Code, Codex, Copilot and others) working i
 
 ## Starting a new session
 
-Read **"Build plan and status"** in [docs/DESIGN.md](docs/DESIGN.md) first: it says which stage is
-done, what the next stage contains, and has working notes (Marc's preferences, environment limits,
-data-source decisions) carried over from earlier sessions. Update its status when a stage is done.
+Read [docs/BACKLOG.md](docs/BACKLOG.md) first: what's left to build, what's next, and what was
+looked at and parked. Then read **"Working notes for a new session"** in
+[docs/DESIGN.md](docs/DESIGN.md): Marc's preferences, environment limits and data-source decisions
+carried over from earlier sessions. When a piece of work is done, take it out of the backlog (the
+git history records it) and update DESIGN.md if the design changed.
 
 ## What this is
 
@@ -63,7 +65,8 @@ backend/                  Cloudflare Worker (Hono + D1 + a Durable Object). The 
   migrations/             D1 schema; add a new numbered file for every schema change
   test/                   API tests, run in the Workers runtime (@cloudflare/vitest-plugin)
 scripts/                  Python data tools (sample-game generator; needs `endplay`)
-docs/DESIGN.md            Design and rationale
+docs/DESIGN.md            Design and rationale, plus working notes for a new session
+docs/BACKLOG.md           What's left to build, and what was parked
 .vscode/tasks.json        Install, start frontend/backend/both, tests, build, generate sample game
 ```
 

@@ -32,27 +32,24 @@ playing the cards inside the app, and accounts.
 │  services.ts ── picks implementations ──┐                                    │
 │     │                                   │                                    │
 │     ▼                                   ▼                                    │
-│  providers/  GameProvider          session/  SessionStore                    │
-│   ├ StaticProvider (public/games) ¹ └ LocalSessionStore (localStorage) ¹     │
-│   ├ ImportedProvider (files → localStorage) ¹                                │
-│   └ importers: gameFile.ts (our JSON), pbn.ts (PBN)                          │
+│  providers/  importers               session/                                │
+│   ├ gameFile.ts (our JSON)            ├ GameStore → ApiGameStore (/api)      │
+│   ├ pbn.ts (PBN)                      ├ ProfileStore → LocalProfileStore     │
+│   └ tcgPage.ts (Common Game page)     └ session.ts (play order, tally)       │
 │                                                                              │
 │  core/  pure bridge rules: scoring · describe · compare (MP%) · imps         │
 │         used by session/, ui/ and the backend; imports nothing from them     │
 └───────────────────────────────────────┬──────────────────────────────────────┘
-                                        │  /api: HTTP and WebSocket ²
+                                        │  /api: HTTP and WebSocket
                                         │
 ┌─────────────────────── backend/src (Cloudflare Worker) ──────────────────────┐
 │                                                                              │
 │  index.ts  routes (Hono); checks every write with core/ and gameFile.ts      │
-│  db.ts     all SQL ──► D1 (SQLite): events, players, results                 │
+│  db.ts     all SQL ──► D1 (SQLite): events, players, results, seat requests  │
 │  hub.ts    EventHub Durable Object: WebSockets, presence, push               │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
-
-¹ The local-only (solo) parts. Stage 2 removes them.
-² The screens don't call the backend yet. Stage 2 adds a `SessionStore` that does, through `/api`.
 
 Three decisions shape this:
 
@@ -61,13 +58,13 @@ Three decisions shape this:
   percentages. A source's own percentages are usually per club or per section, while ours are
   computed the same way for every source. It also keeps providers trivial to write.
 - **Every source converts into one normalised game format** (below). The PBN importer, the
-  bundled files and any future Common Game feed all produce it, and the rest of the app knows
+  Common Game page importer and the sample game all produce it, and the rest of the app knows
   nothing else.
-- **All data access is async and behind two interfaces** (`GameProvider`, `SessionStore`), wired
-  in one file (`services.ts`). Moving to a backend is a matter of adding implementations, not
-  rewriting screens (see [Backend](#backend-cloudflare-workers--d1)).
+- **All data access is async and behind two interfaces** (`GameStore`, `ProfileStore`), wired in
+  one file (`services.ts`). Screens never know whether data comes from the backend or the browser
+  (see [Backend](#backend-cloudflare-workers--d1)).
 
-The frontend is static files. In production the backend's Worker will serve them alongside the API
+The frontend is static files. In production the backend's Worker serves them alongside the API
 (see [Deploying](#deploying)).
 
 ## Game file format
@@ -209,10 +206,10 @@ credit and links on every board, and offered them the code. If they agree, the l
 **Your friend's parser** gets plugged in by having it emit our JSON format, or by writing a small
 importer next to `pbn.ts`.
 
-## Shared game UX (planned)
+## Shared game UX
 
-Status: **design only.** This is the flow for a shared game played by four people at one table,
-each on their own device (phone, tablet or computer), once the backend exists.
+The flow for a shared game played by four people at one table, each on their own device (phone,
+tablet or computer).
 
 ### Scope for the first version
 
@@ -233,8 +230,7 @@ name ("?" until you set one). The avatar menu has the light/dark/system theme sw
 **Home:** splash image. On first use it asks for your **display name**; after that it shows your
 name (editable) and two actions: **Start a game** and **Join a game**.
 
-**Start a game:** upload a PBN file or a saved Common Game results page (converted to PBN, see
-"Data sources"), and choose the starting board. The app creates the game and shows its **join code**
+**Start a game:** upload a PBN file or a saved Common Game results page (see "Data sources"), and choose the starting board. The app creates the game and shows its **join code**
 with a share button. It then goes to the lobby.
 
 **Join a game:** enter the code (or open a shared link). Goes to the lobby.
@@ -268,9 +264,8 @@ shows where to sit physically: "You're North, opposite Bob, with Ann on your lef
   expert commentary when the source has it.
 - **Next board.** Each device moves on by itself; nobody waits for one person to advance the table.
 
-**End game:** any player can end the game (with a confirmation). Everyone sees a short post-mortem:
-a celebration or commiseration depending on the side, then the final tally grid, where each board
-opens its final state (hands, result, analysis) in a dialog.
+**End game:** any player can end the game (with a confirmation). A post-mortem after it is in the
+backlog.
 
 ### Decisions made
 
@@ -285,9 +280,14 @@ opens its final state (hands, result, analysis) in a dialog.
    the game knows who is connected and shows a disconnected player's name greyed out.
    - **Same device:** reopening the app or link puts you back in your seat and catches up on missed
      results.
-   - **Different device:** join with the code, choose your own greyed-out seat ("I'm Marc, North"),
-     and one connected player confirms it, so nobody takes a seat by accident.
-   - **Leave game** is a deliberate act (frees your seat); it does not end the game.
+   - **Different device, or a new player:** join with the code; the game is full, so you pick
+     whose seat you're taking (your own, if you're changing devices) and tap **Join as
+     replacement**. Everyone connected gets Allow / Deny, the first answer wins, and everyone is
+     told the outcome ("Dana has replaced Joe", "Marc has moved to another device"). Allowed: the
+     new device's key and name take the seat and its results, the old key stops working, and the
+     old device is sent Home. Requests lapse after 10 minutes; at most 5 wait per game.
+   - **Leave game** during play only leaves on that device: the seat stays yours, and joining
+     again with the code goes straight back to it. It does not end the game.
 4. **Rounding.** The two sides' matchpoints always add to exactly 100 with our formula (every table
    you beat, they lost to, and ties count half for both). For display, round your side and show the
    other side as 100 minus that, so "50.5 / 49.5" never shows as "51 / 50".
@@ -300,19 +300,16 @@ opens its final state (hands, result, analysis) in a dialog.
 - **Several identities in one browser:** a dev-only URL option `?as=2` gives a tab its own player
   ID, so four tabs side by side behave like four players' devices for testing live sync.
 
-### Not now (future features)
+### Not now
 
-- Solo practice on one device (the original local-only app). **Removed:** the app is for exactly
-  4 people playing a shared game.
-- In-app bidding and card play ("the app deals").
-- Play analysis beyond what the source provides (e.g. computing double dummy in the browser).
-- More than one table, spectators.
+Solo practice on one device (the original local-only app) was **removed**: the app is for exactly
+4 people playing a shared game. In-app bidding and card play, and other ideas, are in
+[BACKLOG.md](BACKLOG.md).
 
 ## Backend: Cloudflare Workers + D1
 
-Status: **stage 1 built** (API, database, push hub, tests, local dev). The frontend doesn't use it
-yet; that's stage 2. The backend is required: every game is a shared game that one
-person sets up and the other three join with a code. There is no local-only mode.
+The backend is required: every game is a shared game that one person sets up and the other three
+join with a code. There is no local-only mode.
 
 ### Why Cloudflare
 
@@ -423,16 +420,16 @@ state.**
 ### Security
 
 - Join codes are 8 characters from a 31-symbol alphabet (~40 bits), so they can't be found by
-  guessing. (Rate-limiting failed lookups is planned for stage 9.)
+  guessing. (Rate-limiting failed lookups is in the backlog.)
 - A player's `playerId` is a random UUID, never shown to other players; it's the only way to act as
   that player.
 - Only the creator can choose partnerships or delete the game. During play all players are equal.
 - Events and their results expire 30 days after creation: expired games are treated as not found
-  at once, and the nightly clean-up deletes them (stage 5c).
+  at once, and a nightly clean-up deletes them (03:00 UTC, logged).
 - Data stored: display names chosen by players, and bridge results. No emails, no accounts.
 - The dev-only test-players endpoint is off unless `ALLOW_TEST_PLAYERS` is `true` (only
   `npm run dev` turns it on).
-- Same origin in production (the Worker will serve the frontend and the API), so no CORS.
+- Same origin in production (the Worker serves the frontend and the API), so no CORS.
 
 ### Repo layout
 
@@ -504,204 +501,14 @@ backend refuses the test-players endpoint (`ALLOW_TEST_PLAYERS` is "false").
 A custom domain (for example a subdomain of `navia-apps.com`, or a new domain) can be attached later
 in the Cloudflare dashboard without code changes.
 
-## Build plan and status
+## Status and what's next
 
-The shared-game version is built in stages, each reviewed by Marc before the next starts.
-**Read this first when picking the work up in a new session.**
+The self-deal app is built and deployed (stages 1–6, one commit each in the git history).
+What's left, and what was looked at and parked, is in [BACKLOG.md](BACKLOG.md).
 
-### Stage 1: backend running locally (done)
+## Working notes for a new session
 
-`backend/`: the Worker API, D1 schema, EventHub Durable Object (push), validation via `core/`,
-20 API tests, `npm run smoke`. `npm run dev` in `frontend/` starts the backend and frontend
-together (each needs its own `npm install`), and the frontend proxies `/api` (including WebSockets)
-to the backend on :8787. The frontend's screens don't use the backend yet.
-
-### Stage 2: getting into a game (done)
-
-Built as planned below. Notes for stage 3: after partnerships, each device shows the seating
-(`Lobby.tsx`, with the shared `Compass` control) and a placeholder for playing the boards.
-"Leave game" during play only leaves on that device; the seat stays reserved, and joining again
-with the code goes straight back to it (the backend doesn't free seats during play yet).
-Unused solo-mode controls (`CardList`, `ConfirmButton`, `SeatPicker`) are still in `ui/controls/`.
-
-
-- **App shell:** header with app icon, help, and the avatar menu (light/dark/system theme switch,
-  Leave game). Home asks for a display name on first use (kept on the device), then offers
-  Start a game / Join a game.
-- **Start a game:** upload a game file and choose the starting board; creates the game via the API
-  and shows the join code with a share button.
-  - Accept **PBN** (existing importer) and a **saved Common Game results page** (HTML). Each source
-    has its own importer that produces our game format (`GameFileV1`) directly; nothing after that
-    knows where a game came from. (Converting TCG pages to PBN first was considered and dropped:
-    PBN has no standard way to write score-only results, and round-tripping through our own PBN
-    would prove nothing about other sources' files.)
-  - The game file format gains a **score-only field result** (an N/S score and a table count, no
-    contract), because TCG pages give scores only. Results views show scores and counts, without
-    contracts, for such lines.
-- **Join a game:** enter the code or open a shared link.
-- **Lobby:** live list of players (push), partnerships chosen by the creator (pick a partner or
-  Random), then each device shows its seat and where to sit physically.
-- **Dev mode:** "Fill with test players" button (calls the dev-only endpoint) and a `?as=2` URL
-  option giving a tab its own player identity, so four tabs act as four players' devices.
-- **Remove solo mode:** the old local-only screens and storage (`NewSession`, `TallyView` as a page,
-  `LocalSessionStore`, `StaticProvider`/`ImportedProvider` and the bundled-games list) went (removed with
-  `git rm`, so they stay in history). The sample game JSON stays for tests and `npm run smoke`.
-- *Review:* create a game in one tab, join from three others, pick partners, see the seats.
-
-### Stage 3: playing (done)
-
-Built as planned below. The board screen is `PlayBoard.tsx` (inside `Play.tsx`, which keeps each
-device's current board); the old full-page review became three dialogs (`BoardDialogs.tsx`) and
-the tally a dialog (`TallyDialog.tsx`). The compass shows Dealer and Vulnerable on the seats, so
-the old `DuplicateBoard` drawing went. A reload starts at the first board without a result.
-
-
-- Board screen: title, "Board 7, 3 of 24", running tally ("NS +140") opening the tally dialog;
-  dealer, vulnerability, contract once entered; compass with names and you at the bottom; your hand.
-- Result entry dialog shared by all four players, pushed live, labelled "entered by Ann",
-  correctable by anyone.
-- After the result: all four hands, result, your side's score, matchpoints for both sides
-  ("83 / 17", rounded with the other side shown as 100 minus yours), and dialogs for the score
-  breakdown, the field (most common and double-dummy par called out) and analysis (commentary).
-- Next board per device. All displayed percentages and margins as whole numbers.
-- *Review:* play a whole sample game with test players.
-
-### Stage 4: deploy for early feedback (done)
-
-Live at https://bridge-replay.navia-apps.workers.dev (Cloudflare account subdomain `navia-apps`;
-D1 database `bridge`, id in `backend/wrangler.jsonc`). Tested with three players on Edge, Edge
-incognito and a phone. Notes: all incognito windows share one storage area, so testing several
-players on one computer needs different browsers or profiles (`?as=` is dev only).
-
-
-Get it in front of Marc's bridge group as soon as it works, and let real use decide what comes
-next. Nothing from the old resilience list blocks a first evening: the app already refetches the
-game after a dropped connection, and test players are off in the live app.
-
-- **App icon:** a white ♠ on card-table green, one design everywhere: browser tab, home screen,
-  install prompt (SVG, 192 and 512 px PNGs, maskable, Apple touch icon).
-- **Install to home screen (PWA):** web app manifest (standalone, green), a minimal service worker
-  so Chrome offers "Install app"; iPhone install is manual (Share → Add to Home Screen), explained
-  in Help. No offline play: the game needs the server.
-- **Green theme:** the header and primary colour match the icon (light and dark).
-- **Deploy:** the Worker serves the built frontend (static assets, single-page app); deploy steps
-  under "Deploying". Marc runs `wrangler login` and the first deploy himself.
-- **Feedback:** a "Send feedback" link in Help (navia.apps@gmail.com).
-- *Review:* Marc deploys, installs it on his phone, and plays a game on the live app.
-
-### Stage 5: presence, reconnecting and security (done)
-
-Work happens on the `dev` branch from here on; `main` is what's deployed. Feedback from the bridge
-group is slated as its own work when it arrives, not as a stage. Built in slices, each tested by
-hand and committed on its own:
-
-- **5a. Presence and connection status** (**done**; frontend, the backend already pushes presence):
-  disconnected players greyed out with "(away)" in the lobby and on the compass; a "Reconnecting…"
-  strip when your own connection drops, and the whole game is refetched when it comes back.
-  (Refetching the snapshot rather than `results?since=` is simpler and can't miss anything; the
-  snapshot is small and D1 is the store of record.)
-- **5b. Getting your seat back (the security model).** A seat is tied to a secret `playerId` in
-  the browser, so losing or switching device used to lock you out. One way back covers both:
-  - *Join as replacement* (**done**): joining a full or started game lists the players; pick whose
-    seat you're taking (your own, to carry on from another device) and tap "Join as replacement".
-    Everyone connected gets Allow / Deny; the first answer wins and everyone is told the outcome.
-    Allowed: the requester's new key and name take the seat and its results, the old key stops
-    working, and the old device is disconnected and sent Home ("Dana has replaced you"). The
-    requester's screen checks every 2 seconds while it waits; requests lapse after 10 minutes, and
-    at most 5 can wait per game. Migration 0003 (`seat_requests`).
-  - *Dropped:* a "Continue on another device" QR code (replacement already does it; the QR code
-    would only skip the approval), and freeing the seat on "Leave game" during play (leaving keeps
-    the seat yours, and anyone can take it over by replacement).
-  - The `playerId` no longer goes in the WebSocket address (addresses end up in Cloudflare's
-    logs): the device swaps it for a single-use pass first (`live-ticket`).
-- **Fit and finish, alongside 5b** (**done**):
-  - The contract is entered on its own once the bidding is over, then the tricks after the play
-    (migration 0002 lets `tricks` be empty).
-  - A notice when someone else corrects a finished board (shared `Notice` control, also used for
-    seat-request news).
-  - A simpler field dialog: "Most common: −100 EW", "Your result" on your row, and no "Contract not
-    known" on score-only rows (the Common Game page has no contracts; PBN travellers can).
-- **5c. Nightly clean-up** (**done**; backend): a cron trigger at 03:00 UTC
-  (`triggers` in `wrangler.jsonc`) runs `cleanUp` in `src/index.ts`, which deletes games past
-  `expires_at` (30 days after creation) with their players, results and seat requests. Each run
-  logs how many games it deleted, and their codes, to the Worker's logs. Rate limiting moved to
-  stage 9.
-
-Stages 7 and 9 are separate pieces of work; their order is still to be decided. (Stage 8, PBN
-from other sources, was folded into stage 6.)
-
-### Stage 6: where games come from, and starting from a phone (done; docs only)
-
-Two questions, settled without new code:
-
-**Starting a game from a phone.** Players mostly use phones, but saving a Common Game page is a
-computer job. Decided: *prepare on a computer, play on a phone*. Start the game on the computer,
-then join from the phone as a replacement for your own seat and allow it from the computer (5b).
-The Common Game steps in Start a game and the Help say how. Other routes, parked unless that proves
-not enough:
-
-- **Email or cloud:** save the page on a computer, open it from the phone's file picker (works
-  today; would need a line in Help).
-- **Saving on a phone:** Chrome on Android saves pages as `.mhtml`, which the importer could read;
-  iPhone Safari saves PDF or `.webarchive` (would need real samples).
-- Not: fetching pages from the Common Game site on the server (bot protection, permission), or
-  copy and paste (loses the structure).
-- The real fix is still the Common Game agreeing to archived downloads (asked; no reply yet).
-
-**Other sources of games (was stage 8).** Looked for sources with fields big enough to make the
-comparison interesting, the way the Common Game's are (hundreds of tables per board). None found:
-
-- *ContractBridge/pbn-files on GitHub* (mostly 1996–97 championships, the same files as Tis
-  Veugen's PBN homepage): its files import as they are, but they have 1–14 tables per board, and
-  no licence. Ruled out.
-- *ACBL Live for Clubs:* a club game's "hand record" PBN is deals only, and a club field is about
-  10 tables. *ACBL tournament results* turn away automated access, like the Common Game.
-- Parked until a large-field source turns up. PBN files any player brings still work (the
-  importer reads deals, `ScoreTable` travellers and one-result-per-table files). If one turns up,
-  the work is: collect real samples of what it writes, add a fixture-based test for each (made-up
-  data in the same layout, cut down to a few boards), and fix the importer where needed. Things
-  that vary by the program that wrote a file:
-
-| Written by | Typical contents | Watch for |
-|---|---|---|
-| BridgeComposer (TCG hand records) | hands, double dummy, par | already supported |
-| ACBL Live for Clubs downloads | hands, plus results from the club's scorer | `ScoreTable` layout, partial club fields |
-| Bridgemate / BCScorer / ACBLscore exports | per-table results or a `ScoreTable` | a board repeated per table; `=`, `+1`, `-2` results |
-| EBU / Scorebridge / Pairs Scorer (UK) | `ScoreTable` with extra columns | column names, MP/percentage columns |
-| Hand generators (Dealer, BigDeal, Goldsmith) | deals only | no `Event`/`Date`; `#` repeats |
-| PBN 2.1 standard examples | edge cases | escaped quotes, multi-line commentary |
-
-### Stage 7: online play (no self-dealing)
-
-In-app bidding and card play for players who aren't at one table: dealing, turns, dummy shown
-after the opening lead, following suit, claims, undo, and the score worked out from the play.
-The biggest piece of work (several days); it needs stage 5's reconnect handling, since a phone
-asleep mid-hand would stall play.
-
-### Stage 9: rate limiting
-
-Backend only. Limits per device address, to stop code guessing and runaway clients (the free plan
-caps the Worker at 100,000 requests a day):
-
-- Joining or asking for a seat with a code (wrong codes especially): about 20 a minute.
-- Creating games: about 5 a minute.
-- Use Workers' rate limiting binding (`ratelimits` in `wrangler.jsonc`; generally available since
-  September 2025, a loose limit rather than an exact count). It keeps its own counts, so no schema
-  change. Check first that it's on the free plan; if not, fall back to a counter table in D1 (that
-  needs a migration).
-- The dashboard's WAF rate limiting rules work per domain you own, so they don't cover the
-  `workers.dev` address; they'd be an option after moving to a custom domain.
-- Seat requests already have their own limit (5 waiting per game, stage 5b).
-
-### Later, depending on feedback
-
-- End of game with a post-mortem (celebration or commiseration, then the tally grid with each
-  board's final state in a dialog).
-
-### Working notes for a new session
-
-Context from the conversation where stages 1 and the design were done, so a new session starts with
-it:
+Context carried over from earlier sessions, so a new session starts with it:
 
 - **How Marc likes to work:** change only what he asks (see the top of AGENTS.md); propose and wait
   for a go-ahead otherwise. Build in stages with his review between them. Prefers practical,
@@ -729,11 +536,17 @@ it:
 - **Hosting decisions:** Cloudflare Workers + D1 + Durable Objects, free tier; start on the free
   `bridge-replay.<account>.workers.dev` address. A custom domain later, possibly a subdomain of
   `navia-apps.com` (Marc buys domains from Cloudflare), though he may prefer a new name.
+- **Branches:** work happens on `dev`; `main` is what's deployed. Marc merges, pushes and runs
+  `npm run deploy`.
+- **Testing several players on one computer:** all incognito windows share one storage area, so
+  use different browsers or profiles (Edge, Edge incognito and a phone work); `?as=` is dev only.
+- **Unused controls:** `CardList`, `ConfirmButton` and `SeatPicker` in `ui/controls/` are left over
+  from solo mode; not yet decided whether to remove them.
 - **Tooling notes:** npm 10 crashes resolving Vitest 4.1's optional peers, so both packages use
   Vitest 5. Workers tests use `@cloudflare/vitest-plugin` (the renamed
   `@cloudflare/vitest-pool-workers`). Dependency versions are pinned exactly.
 
-### Common Game results page (findings)
+## Common Game results page (findings)
 
 First from a 299er-archive page for Thursday 22 Oct 2026 (since removed), then confirmed on the
 regular archive's page for Friday 16 Oct 2026 (36 boards, 938 tables on board 1). The two archives
@@ -759,12 +572,3 @@ the game only by its date: no set ID or session name.
   `%HRTitleEvent "THU 10/22/2026"` and `%HRTitleSetID "CG-2026-1085-1438"`. No results.
 - Sample copies (if present) are in `private/` at the repo root, which is gitignored. Never commit
   TCG data.
-
-## Future work
-
-- Choose which field to compare against (Open or 299er) using `stratum`.
-- "Where would you have placed": rank the session total against the original pair standings
-  (needs pair-level results from the source).
-- Double dummy computed in the browser (DDS via WebAssembly) for sources that don't supply it.
-- PWA manifest and offline caching for use without Wi-Fi.
-- Export and import of a session (JSON or CSV) to share a tally without a backend.
