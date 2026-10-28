@@ -11,6 +11,8 @@ export interface PublicPlayer {
   slot: number;
   name: string;
   isCreator: boolean;
+  /** A bot (demo games, dev test players): when cards are played on the devices, the creator's device plays its cards. */
+  isBot: boolean;
   /** Assigned when play starts. */
   seat: Seat | null;
   /** Has a live connection right now. */

@@ -180,6 +180,8 @@ export function Play({ snapshot, game, seat, onSaved, onPlayed, onClaim, onNotic
         play={
           live && contract
             ? {
+                bots: snapshot.players.filter((pl) => pl.isBot && pl.seat).map((pl) => pl.seat!),
+                playsForBots: isCreator,
                 cards,
                 claim: snapshot.claims.find((k) => k.board === board.number) ?? null,
                 onPlay: async (seq, card) => onPlayed(await games.playCard(snapshot.code, board.number, seq, cardCode(card))),

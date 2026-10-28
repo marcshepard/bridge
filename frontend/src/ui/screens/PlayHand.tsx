@@ -6,6 +6,7 @@
 
 import { Alert, Box, Button, ButtonBase, Paper, Stack, Typography } from "@mui/material";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { chooseCard } from "../../core/bot";
 import { describeResult } from "../../core/describe";
 import {
   type Card,
@@ -37,6 +38,8 @@ import { relationTo } from "../labels";
 
 /** How long a finished trick stays face up before it's turned face down. */
 const TURN_DOWN_MS = 1500;
+/** How long a bot waits before playing, so everyone can follow the trick. */
+const BOT_DELAY_MS = 2000;
 
 interface Props {
   board: Board;
@@ -45,6 +48,10 @@ interface Props {
   names: Record<Seat, string>;
   /** Players with no live connection right now: play waits for them. */
   away: Record<Seat, boolean>;
+  /** Seats held by bots (demo games). They're never "away": the creator's device plays for them. */
+  bots: Seat[];
+  /** This device plays the bots' cards (it's the game creator's). */
+  playsForBots: boolean;
   /** The cards played so far, in order. */
   cards: Card[];
   /** The claim made on this board, if any. */
@@ -137,6 +144,16 @@ export function PlayHand(p: Props) {
 
   // Whoever has to play next: dummy's turn waits for declarer.
   const waitingFor = turn === dummy ? declarer : turn;
+
+  // The bots: on the creator's device, a bot's card (or a bot declarer's dummy card) goes after a
+  // pause, chosen by the simple robot rules. The backend takes the first card for each turn, so a
+  // repeat can't play twice.
+  const botTurn = !over && !claim && p.playsForBots && p.bots.includes(waitingFor);
+  useEffect(() => {
+    if (!botTurn) return;
+    const timer = setTimeout(() => void p.onPlay(cards.length + 1, chooseCard(state)).catch(() => {}), BOT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [botTurn, state]);
   const resultText =
     tricks === null
       ? ""
@@ -153,7 +170,7 @@ export function PlayHand(p: Props) {
             ? turn === dummy
               ? "Your turn: play from dummy"
               : "Your turn"
-            : `${SEAT_NAMES[waitingFor]} to play${turn === dummy ? " from dummy" : ""}${away[waitingFor] ? " (away)" : "…"}`;
+            : `${SEAT_NAMES[waitingFor]} to play${turn === dummy ? " from dummy" : ""}${away[waitingFor] && !p.bots.includes(waitingFor) ? " (away)" : "…"}`;
 
   /** A seat you can't see into: who's there, how many cards, and a highlight when it's their turn. */
   const closed = (s: Seat) => (

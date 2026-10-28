@@ -51,6 +51,9 @@ interface Props {
   onStartPlay?: () => void;
   /** While the cards are being played on the devices: the play table takes over the page. */
   play: {
+    /** Seats held by bots, and whether this device plays their cards. */
+    bots: Seat[];
+    playsForBots: boolean;
     cards: Card[];
     claim: Claim | null;
     onPlay: (seq: number, card: Card) => Promise<void>;
@@ -148,6 +151,8 @@ export function PlayBoard(p: Props) {
           contract={p.contract}
           names={p.names}
           away={p.away}
+          bots={p.play.bots}
+          playsForBots={p.play.playsForBots}
           cards={p.play.cards}
           claim={p.play.claim}
           onPlay={p.play.onPlay}

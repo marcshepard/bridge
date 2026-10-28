@@ -17,7 +17,6 @@ import {
   toPlay,
   tricksLeft,
 } from "../../frontend/src/core/play";
-import type { Seat } from "../../frontend/src/core/types";
 import { parseGameFile, type GameFileV1 } from "../../frontend/src/providers/gameFile";
 import type {
   AnswerClaimRequest,
@@ -163,7 +162,7 @@ async function createEvent(c: Ctx, name: string, file: GameFileV1, start: number
   const now = new Date();
   const expires = new Date(now.getTime() + EVENT_LIFETIME_DAYS * 86_400_000);
   const playerId = newPlayerId();
-  const creator: db.PlayerRow = { player_id: playerId, slot: 1, name, is_creator: 1, seat: null };
+  const creator: db.PlayerRow = { player_id: playerId, slot: 1, name, is_creator: 1, is_bot: 0, seat: null };
 
   // Codes are random; retry on the (astronomically unlikely) collision.
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -215,6 +214,7 @@ app.get("/events/:code", async (c) => {
       slot: p.slot,
       name: p.name,
       isCreator: p.is_creator === 1,
+      isBot: p.is_bot === 1,
       seat: p.seat,
       connected: connected.includes(p.slot),
     })),
@@ -239,7 +239,7 @@ app.post("/events/:code/players", async (c) => {
 
   const playerId = newPlayerId();
   try {
-    await db.insertPlayer(c.env.DB, event.code, { player_id: playerId, slot, name, is_creator: 0, seat: null }, nowIso());
+    await db.insertPlayer(c.env.DB, event.code, { player_id: playerId, slot, name, is_creator: 0, is_bot: 0, seat: null }, nowIso());
   } catch (e) {
     if (String(e).includes("UNIQUE")) throw new HttpError(409, "Someone else just took that place; try again");
     throw e;
@@ -411,7 +411,8 @@ async function liveBoard(c: Ctx, event: db.EventRow) {
  */
 app.post("/events/:code/boards/:board/cards", async (c) => {
   const event = await loadEvent(c);
-  const me = caller(c, await db.getPlayers(c.env.DB, event.code));
+  const players = await db.getPlayers(c.env.DB, event.code);
+  const me = caller(c, players);
   const { board, declarer, plays, claim, state } = await liveBoard(c, event);
   if (claim) throw new HttpError(409, "There's a claim to answer first");
   const req = await body<PlayCardRequest>(c);
@@ -420,11 +421,11 @@ app.post("/events/:code/boards/:board/cards", async (c) => {
   if (req.seq !== plays.length + 1) throw new HttpError(409, "That card has already been played, or play has moved on");
   if (isComplete(state)) throw new HttpError(409, "All the cards have been played");
 
+  // Whose turn it is, and who plays it: declarer plays dummy's cards, and the creator plays a bot's.
   const seat = toPlay(state);
-  const mine: Seat | null = me.seat === dummyOf(declarer) ? null : me.seat;
-  if (seat !== mine && !(seat === dummyOf(declarer) && me.seat === declarer)) {
-    throw new HttpError(409, "It isn't your turn");
-  }
+  const player = seat === dummyOf(declarer) ? declarer : seat;
+  const forBot = me.is_creator === 1 && players.some((p) => p.seat === player && p.is_bot === 1);
+  if (me.seat !== player && !forBot) throw new HttpError(409, "It isn't your turn");
   try {
     playCard(state, card);
   } catch (e) {
@@ -445,7 +446,8 @@ app.post("/events/:code/boards/:board/cards", async (c) => {
  */
 app.post("/events/:code/boards/:board/claim", async (c) => {
   const event = await loadEvent(c);
-  const me = caller(c, await db.getPlayers(c.env.DB, event.code));
+  const players = await db.getPlayers(c.env.DB, event.code);
+  const me = caller(c, players);
   const { board, declarer, claim, state } = await liveBoard(c, event);
   if (!me.seat || me.seat === dummyOf(declarer)) throw new HttpError(403, "Dummy can't claim");
   if (claim) throw new HttpError(409, "There's already a claim");
@@ -455,8 +457,11 @@ app.post("/events/:code/boards/:board/claim", async (c) => {
   if (!Number.isInteger(req.tricks) || req.tricks < 0 || req.tricks > left) {
     throw new HttpError(400, `Claim between 0 and ${left} tricks`);
   }
-  const made: ClaimDto = { board: board.number, seat: me.seat, tricks: req.tricks, acceptedBy: [] };
+  // Bots accept every claim straight away.
+  const bots = claimAnswerers(me.seat, declarer).filter((s) => players.some((p) => p.seat === s && p.is_bot === 1));
+  const made: ClaimDto = { board: board.number, seat: me.seat, tricks: req.tricks, acceptedBy: bots };
   await db.insertClaim(c.env.DB, event.code, made, nowIso());
+  if (bots.length) await db.setClaimAccepted(c.env.DB, event.code, board.number, bots);
   await push(c, event.code, { type: "claim", board: board.number, claim: made });
   return c.json(made);
 });
@@ -671,7 +676,7 @@ async function addBots(c: Ctx, code: string): Promise<number[]> {
   const players = await db.getPlayers(c.env.DB, code);
   const added: number[] = [];
   for (let slot = nextFreeSlot(players); slot !== null; slot = nextFreeSlot(players)) {
-    const row = { player_id: newPlayerId(), slot, name: `Bot ${slot}`, is_creator: 0, seat: null };
+    const row = { player_id: newPlayerId(), slot, name: `Bot ${slot}`, is_creator: 0, is_bot: 1, seat: null };
     await db.insertPlayer(c.env.DB, code, row, nowIso());
     players.push(row);
     added.push(slot);

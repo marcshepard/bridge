@@ -42,7 +42,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           are real, but the other results and the commentary are invented), with three bots at the table
           (Bot 2, Bot 3 and Bot 4). Pick a partner, then deal yourself each board and enter any contract and
           result you like. It starts at board 9 of 36, to show that a game can start part-way through and
-          wrap round.
+          wrap round. If you play a board's cards on your device (see below), the bots play theirs, with simple
+          rules, and they accept any claim.
         </li>
         <li>
           <strong>Deal:</strong> use one deck per player. Each of you takes your own 13 cards from your deck, as

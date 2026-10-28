@@ -18,6 +18,7 @@ export interface PlayerRow {
   slot: number;
   name: string;
   is_creator: number;
+  is_bot: number;
   seat: Seat | null;
 }
 
@@ -63,9 +64,9 @@ export async function insertEvent(db: D1Database, e: EventRow, creator: PlayerRo
 function insertPlayerStmt(db: D1Database, code: string, p: PlayerRow, joinedAt: string) {
   return db
     .prepare(
-      "INSERT INTO players (event_code, player_id, slot, name, is_creator, seat, joined_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO players (event_code, player_id, slot, name, is_creator, is_bot, seat, joined_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
-    .bind(code, p.player_id, p.slot, p.name, p.is_creator, p.seat, joinedAt);
+    .bind(code, p.player_id, p.slot, p.name, p.is_creator, p.is_bot, p.seat, joinedAt);
 }
 
 export async function insertPlayer(db: D1Database, code: string, p: PlayerRow, joinedAt: string) {
@@ -74,7 +75,7 @@ export async function insertPlayer(db: D1Database, code: string, p: PlayerRow, j
 
 export async function getPlayers(db: D1Database, code: string): Promise<PlayerRow[]> {
   const { results } = await db
-    .prepare("SELECT player_id, slot, name, is_creator, seat FROM players WHERE event_code = ? ORDER BY slot")
+    .prepare("SELECT player_id, slot, name, is_creator, is_bot, seat FROM players WHERE event_code = ? ORDER BY slot")
     .bind(code)
     .all<PlayerRow>();
   return results;
@@ -318,7 +319,7 @@ export async function closeSeatRequest(
 /** The seat changes hands: the requester's key and name replace the old player's. */
 export async function replacePlayer(db: D1Database, code: string, slot: number, playerId: string, name: string) {
   await db
-    .prepare("UPDATE players SET player_id = ?, name = ? WHERE event_code = ? AND slot = ?")
+    .prepare("UPDATE players SET player_id = ?, name = ?, is_bot = 0 WHERE event_code = ? AND slot = ?")
     .bind(playerId, name, code, slot)
     .run();
 }

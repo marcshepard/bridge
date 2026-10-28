@@ -17,9 +17,6 @@ DESIGN.md): the creator starts it board by board, with claims and no undo. Still
   X, XX), ending where play starts today (the contract entered).
 - **Choosing how cards are played:** per game rather than the creator tapping Play on each board,
   without putting it in settings (decided 28 Oct 2026: it's per game, and per board while trying it).
-- **Demo games:** the bots don't play cards, so play started in a demo game stops at a bot's turn.
-  Either the creator's device plays the bots' seats with the robot rules in `core/bot.ts`, or Play
-  is hidden in demo games.
 - **Confirm "Stop playing"** (it throws away every card played), with `ConfirmButton`.
 - **Telling you it's your turn** when your phone is face down or in another app: a vibration, or
   "Your turn" in the browser tab's title. Real notifications are a much bigger job.

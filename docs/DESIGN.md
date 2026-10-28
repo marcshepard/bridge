@@ -335,6 +335,13 @@ fills the other three places with Bot 2, Bot 3 and Bot 4. The player lands in th
 partners. Bots are allowed here even though test players are off in the live app, because the
 game file is ours. No Common Game data is used (see AGENTS.md); bots still show as away.
 
+Bots are marked (`players.is_bot`, `isBot` in the snapshot; migration 0006). When a board's cards
+are played on the devices, the creator's device plays the bots' cards after a two-second pause,
+using the robot rules in `core/bot.ts` (second hand low, third hand high, win cheaply fourth hand,
+ruff low, discard from the shortest suit, standard opening leads, else random); the backend lets
+the creator play a bot's turn, and a bot declarer's dummy. Bots accept every claim straight away.
+The same goes for dev test players. A person who takes over a bot's seat stops being a bot.
+
 ### Dev mode: simulated players
 
 - **Fill with test players** (dev builds only): a lobby button that adds Bot 2, Bot 3 and Bot 4 (the
@@ -390,7 +397,7 @@ The schema is `backend/migrations/0001_init.sql`. In short:
 - **events**: `code` (join code), `title`, `game_json` (the normalised game file), `start_board`,
   `status` (`lobby` → `playing` → `ended`), `created_at`, `expires_at` (30 days).
 - **players**: `player_id` (the device's secret key), `slot` (public handle 1–4, in join order),
-  `name`, `is_creator`, `seat` (assigned when play starts).
+  `name`, `is_creator`, `is_bot`, `seat` (assigned when play starts).
 - **results**: one row per board per table: `contract`, `declarer`, `tricks`, `entered_by` (slot),
   `updated_at`, `on_devices` (the cards are played on the devices; with `tricks` NULL the board is
   being played right now).
