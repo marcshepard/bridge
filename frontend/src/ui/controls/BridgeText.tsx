@@ -32,13 +32,16 @@ export function ContractText({ contract }: { contract: Contract | null }) {
   );
 }
 
-/** "4♠× by S, −1" or "Passed out". */
+/**
+ * "4♠× by S, −1" or "Passed out". One span, so it reads the same inside a button: a flex container
+ * (like a button) would drop the space after the contract.
+ */
 export function ResultText({ result }: { result: TableResult }) {
   if (!result.contract || !result.declarer) return <>Passed out</>;
   return (
-    <>
+    <span>
       <ContractText contract={result.contract} /> by {result.declarer}, {formatTrickResult(result)}
-    </>
+    </span>
   );
 }
 
