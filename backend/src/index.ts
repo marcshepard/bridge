@@ -210,8 +210,9 @@ app.post("/events/:code/players", async (c) => {
 
 /**
  * Leave the game. Before play starts this frees the place; if the creator leaves the lobby, the
- * game is cancelled (nobody else can set partnerships). Leaving during play is handled in stage 5
- * (seats stay reserved so the player can come back).
+ * game is cancelled (nobody else can set partnerships). Leaving during play isn't done here: the
+ * seat stays the player's (they can rejoin with the code), and anyone can take it over by asking
+ * for it (seat requests, below).
  */
 app.delete("/events/:code/players/me", async (c) => {
   const event = await loadEvent(c);

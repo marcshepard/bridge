@@ -1,7 +1,7 @@
 // A session: one sitting at the table, playing some boards of one game from one seat.
 //
-// Stage 3 builds playing the boards on this model, with results coming from the shared game.
-// Every player's device works out the same scores from the same results, using core/.
+// The results come from the shared game, and every player's device works out the same scores from
+// the same results, using core/.
 
 import { compareBoard, scoreField, type BoardComparison } from "../core/compare";
 import { contractCode, parseContract, tableResult } from "../core/contract";

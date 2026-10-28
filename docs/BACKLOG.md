@@ -1,15 +1,12 @@
 # Backlog
 
-What's left to build, and what was looked at and parked. How the app works is in
-[DESIGN.md](DESIGN.md); what's already built is in the git history (one commit per stage).
+Ideas for the app, and what was looked at and parked. None is promised or scheduled; some may never
+be built. How the existing app works is in [DESIGN.md](DESIGN.md), and how it got there is in the
+git history.
 
-**Where things stand:** the self-deal app is done and deployed. That covers stages 1–6: backend,
-getting into a game, playing, deploy, presence and seat replacement, nightly clean-up, and
-"prepare on a computer, play on a phone". Work happens on `dev`; `main` is what's deployed.
-Feedback from the bridge group is its own work when it arrives.
-
-Each item below is built as a stage: agree the UX with Marc, build it, Marc tests it by hand, then
-commit. The order is still to be decided.
+Work happens on `dev`; `main` is what's deployed. To take an idea on: agree the UX with Marc, build
+it, Marc tests it by hand, then commit, and take it out of this file. Feedback from the bridge
+group is handled the same way when it arrives.
 
 ## Online play (no self-dealing)
 

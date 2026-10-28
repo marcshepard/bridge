@@ -501,17 +501,18 @@ backend refuses the test-players endpoint (`ALLOW_TEST_PLAYERS` is "false").
 A custom domain (for example a subdomain of `navia-apps.com`, or a new domain) can be attached later
 in the Cloudflare dashboard without code changes.
 
-## Status and what's next
+## Ideas and parked work
 
-The self-deal app is built and deployed (stages 1–6, one commit each in the git history).
-What's left, and what was looked at and parked, is in [BACKLOG.md](BACKLOG.md).
+This file describes the existing app. Ideas that may or may not be built, and what was looked at
+and parked, are in [BACKLOG.md](BACKLOG.md).
 
 ## Working notes for a new session
 
 Context carried over from earlier sessions, so a new session starts with it:
 
 - **How Marc likes to work:** change only what he asks (see the top of AGENTS.md); propose and wait
-  for a go-ahead otherwise. Build in stages with his review between them. Prefers practical,
+  for a go-ahead otherwise. Agree the UX first, and Marc tests each change by hand before it's
+  committed. Prefers practical,
   concrete examples over abstract explanations. He'll often brainstorm on his phone and build at
   his PC.
 - **His environment:** Windows, VS Code, Git Bash (README commands are bash). The frontend runs
