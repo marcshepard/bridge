@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parseGameFile } from "../providers/gameFile";
 import { games, profile } from "../services";
 import { ApiError } from "../session/apiGameStore";
-import type { EventSnapshot, ResultDto } from "../session/store";
+import type { ClaimDto, EventSnapshot, PlayDto, ResultDto } from "../session/store";
 import { AppHeader } from "./controls/AppHeader";
 import { Screen } from "./controls/Layout";
 import { Notice, type NoticeMessage } from "./controls/Notice";
@@ -37,6 +37,9 @@ function takeJoinCodeFromUrl(): string | null {
   return code;
 }
 
+/** Is this board's play happening on the devices right now? */
+const isLive = (r: ResultDto) => r.onDevices && r.tricks === null;
+
 /** While the live connection is down, check this often whether you still have your seat. */
 const OFFLINE_CHECK_MS = 10_000;
 
@@ -53,9 +56,35 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
   const latest = useRef(snapshot);
   latest.current = snapshot;
 
-  /** A result saved here or pushed from another device: replace that board's result. */
+  /**
+   * A result saved here or pushed from another device: replace that board's result. A board's
+   * cards and claim are kept only while it's still being played on the devices (a fresh start has
+   * none).
+   */
   const mergeResult = useCallback((result: ResultDto) => {
-    setSnapshot((s) => s && { ...s, results: [...s.results.filter((r) => r.board !== result.board), result] });
+    setSnapshot((s) => {
+      if (!s) return s;
+      const before = s.results.find((r) => r.board === result.board);
+      const keepPlays = isLive(result) && !!before && isLive(before);
+      return {
+        ...s,
+        results: [...s.results.filter((r) => r.board !== result.board), result],
+        plays: keepPlays ? s.plays : s.plays.filter((p) => p.board !== result.board),
+        claims: keepPlays ? s.claims : s.claims.filter((k) => k.board !== result.board),
+      };
+    });
+  }, []);
+
+  /** A claim made, answered or ended (null) here or on another device. */
+  const mergeClaim = useCallback((board: number, claim: ClaimDto | null) => {
+    setSnapshot((s) => s && { ...s, claims: [...s.claims.filter((k) => k.board !== board), ...(claim ? [claim] : [])] });
+  }, []);
+
+  /** A card played here or on another device (once, however often it's heard). */
+  const mergePlay = useCallback((play: PlayDto) => {
+    setSnapshot(
+      (s) => s && (s.plays.some((p) => p.board === play.board && p.seq === play.seq) ? s : { ...s, plays: [...s.plays, play] }),
+    );
   }, []);
 
   const refresh = useCallback(async () => {
@@ -87,6 +116,10 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
         setSnapshot((s) => s && { ...s, players: s.players.map((p) => ({ ...p, connected: m.connected.includes(p.slot) })) });
       } else if (m.type === "result") {
         mergeResult(m.result);
+      } else if (m.type === "play") {
+        mergePlay(m.play);
+      } else if (m.type === "claim") {
+        mergeClaim(m.board, m.claim);
       } else if (m.type === "request") {
         setSnapshot((s) => s && { ...s, requests: [...s.requests.filter((r) => r.id !== m.request.id), m.request] });
       } else if (m.type === "requestClosed") {
@@ -107,7 +140,7 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
         void refresh();
       }
     });
-  }, [code, refresh, onGone, onNews, mergeResult]);
+  }, [code, refresh, onGone, onNews, mergeResult, mergePlay, mergeClaim]);
 
   // While disconnected, keep checking: if your seat was given to someone else meanwhile, the live
   // connection can't come back, and this is how you find out.
@@ -118,7 +151,7 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
     return () => clearInterval(timer);
   }, [online, code, refresh]);
 
-  return { snapshot, error, refresh, mergeResult, online };
+  return { snapshot, error, refresh, mergeResult, mergePlay, mergeClaim, online };
 }
 
 export function App() {
@@ -150,7 +183,7 @@ export function App() {
   const onNews = useCallback((text: string) => setNews({ key: Date.now(), text }), []);
   const [laterRequests, setLaterRequests] = useState<string[]>([]);
 
-  const { snapshot, error, mergeResult, online } = useGame(code, onGone, onNews);
+  const { snapshot, error, mergeResult, mergePlay, mergeClaim, online } = useGame(code, onGone, onNews);
   // Seat requests to answer: only once you're in the game, and not ones you've put off.
   const request = snapshot?.you ? snapshot.requests.find((r) => !laterRequests.includes(r.id)) : undefined;
   // The game file is parsed once per game, not on every live update.
@@ -199,7 +232,7 @@ export function App() {
       />
     );
   } else if (snapshot && snapshot.status === "playing" && game && mySeat) {
-    page = <Play snapshot={snapshot} game={game} seat={mySeat} onSaved={mergeResult} onNotice={setNews} />;
+    page = <Play snapshot={snapshot} game={game} seat={mySeat} onSaved={mergeResult} onPlayed={mergePlay} onClaim={mergeClaim} onNotice={setNews} />;
   } else if (snapshot) {
     page = <Lobby snapshot={snapshot} onDone={() => onGone("")} />;
   } else {

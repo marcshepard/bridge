@@ -96,6 +96,43 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
       </Box>
 
+      <Heading>Playing the cards on your devices (being tried out)</Heading>
+      <Typography sx={{ mb: 1 }}>
+        Instead of dealing real cards, you can play a board's cards on your phones, tablets or computers. For
+        now, the person who started the game turns it on, one board at a time.
+      </Typography>
+      <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
+        <li>
+          Once the contract is in, the person who started the game taps <strong>Play</strong> next to{" "}
+          <strong>Enter the result</strong>. Everyone's screen goes to that board and shows the table: your cards
+          at the bottom, the trick in the middle, and the line above it says whose turn it is.
+        </li>
+        <li>
+          To play a card, tap it once to pick it (it lifts up), then tap it again to play it. Cards you can't
+          play right now are greyed out: you have to follow suit when you can. When only one card can be played,
+          it's already picked for you, so one tap plays it. A card can't be taken back once it's played.
+        </li>
+        <li>
+          After the opening lead, dummy's cards are shown to everyone. Declarer plays dummy's cards as well as
+          their own; dummy just watches.
+        </li>
+        <li>
+          When a trick is complete, it stays face up for a moment, then turns face down in the middle. Anyone can
+          tap it to see that trick again, until the next card is led.
+        </li>
+        <li>
+          <strong>Claim:</strong> when you know how the rest will go, tap <strong>Claim</strong> and say how many
+          of the tricks left your side will take. Your cards are shown to everyone and play stops. Your
+          opponents accept or refuse (when a defender claims, declarer answers alone). If they accept, that's
+          the result. If either refuses, play goes on. You can take a claim back until it's accepted.
+        </li>
+        <li>
+          When the last card is played, or a claim is accepted, the line above the table says how it went, for
+          example <strong>Game down 1: 9 tricks</strong>. Anyone taps <strong>Enter the result</strong> to save it,
+          and everyone sees the result and the four hands as usual.
+        </li>
+      </Box>
+
       <Heading>Swapping a player, or changing devices</Heading>
       <Typography sx={{ mb: 1 }}>
         If someone has to drop out, someone else can take their seat. Or you can carry on from another device:

@@ -8,41 +8,39 @@ Work happens on `dev`; `main` is what's deployed. To take an idea on: agree the 
 it, Marc tests it by hand, then commit, and take it out of this file. Feedback from the bridge
 group is handled the same way when it arrives.
 
-## Online play (no self-dealing)
+## Online play: what's left
 
-In-app bidding and card play for players who aren't at one table: dealing, turns, dummy shown
-after the opening lead, following suit, claims, undo, and the score worked out from the play. The
-biggest piece of work (several days).
+Card play on the devices is in, being tried out (see "Playing the cards on devices" in
+DESIGN.md): the creator starts it board by board, with claims and no undo. Still to do:
 
-**UX direction (discussed 27 Oct 2026):** phone-first, in portrait, which BBO and Funbridge show is
-workable. Bigger screens use the same parts laid out round a table.
-
-- **Hands as overlapped cards** (updated 28 Oct 2026): the fan the board screen now uses for your
-  hand (`HandTiles`), rank over suit in each card's corner, sized from the row's width. Tap a card
-  to select it (it lifts), tap again to play it, so a strip about 24px wide on a phone is safe
-  against misplays. Cards you can't play (following suit) are greyed out. The same control serves
-  your hand and dummy.
-- **Dummy on top**, as a shorter fan: the corner index stays full size, less of each card shows
-  below it. Labelled with its seat ("Dummy (North, partner)"). When you're declarer, dummy's cards
-  lift and play like yours.
-- **Dummy on your left or right** (you're a defender, or declarer's dummy sits sideways): still
-  drawn upright, never rotated (rotated cards are hard to read). An idea to try: one small fan per
-  suit, stacked, in a column at that side.
-- **Opponents' hands:** just their name and how many cards they hold, so the width goes to the
-  fans.
-- **Height is the budget** on a phone held upright, roughly: dummy 20%, the trick 30%, your hand
-  25%, the rest for the status strip. The cards' sizes come from the width, so making them shorter
-  is cheap.
-- **The current trick in the middle**, as a small compass like the board screen's, with who led
-  and the trick number; tap for the last trick.
-- **One status strip:** contract, tricks won by each side, whose turn it is, board and code.
 - **Bidding:** the auction in a four-column table, with a bidding box below (1–7 by strain, Pass,
-  X, XX).
-- **The hard parts aren't the layout:** declarer playing dummy's cards ("Play from dummy"),
-  tap-to-pick then tap-to-play against misplays, claims (opponents agree or refuse), undo for a
-  misclick, a phone asleep mid-hand (play waits; "(away)" shows why), and all four hands at the end.
-- **First step:** a clickable prototype screen with sample data (no backend or rules), tried on a
-  phone and a tablet before the game logic is built.
+  X, XX), ending where play starts today (the contract entered).
+- **Choosing how cards are played:** per game rather than the creator tapping Play on each board,
+  without putting it in settings (decided 28 Oct 2026: it's per game, and per board while trying it).
+- **Demo games:** the bots don't play cards, so play started in a demo game stops at a bot's turn.
+  Either the creator's device plays the bots' seats with the robot rules in `core/bot.ts`, or Play
+  is hidden in demo games.
+- **Confirm "Stop playing"** (it throws away every card played), with `ConfirmButton`.
+- **Telling you it's your turn** when your phone is face down or in another app: a vibration, or
+  "Your turn" in the browser tab's title. Real notifications are a much bigger job.
+- **Height on a phone:** check the play table fits held upright with dummy on top; if not, a slimmer
+  header during play.
+- **Reviewing the play** on a finished board, trick by trick (the cards are stored; the snapshot
+  only sends them for the board being played).
+
+## Hide the other hands from each device
+
+Every device gets the whole game file in the snapshot (`GET /events/:code`): all boards, all four
+hands, double dummy, par and commentary. Anyone can read the other hands with the browser's
+developer tools. Fine among friends, but it needs fixing before play on devices goes beyond them.
+
+- **What a device needs:** its own hand; dummy after the opening lead; a claimer's hand during a
+  claim; all four hands (and double dummy, par, commentary) once the board has a result.
+- **The full fix:** the backend trims the snapshot per player and hands out cards as each board
+  goes on. Every screen that reads `board.hands` then copes with hands it doesn't have yet. Decide
+  whether games played with real cards keep today's "everything up front".
+- **A cheap middle step:** leave the hands out of the snapshot and fetch them on a separate request
+  when a board starts. That stops casual peeking, not a determined player.
 
 ## Rate limiting
 

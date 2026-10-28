@@ -1,7 +1,7 @@
 // All SQL lives here. Routes call these functions; nothing else touches D1 directly.
 
 import type { Seat } from "../../frontend/src/core/types";
-import type { EventStatus, ResultDto, SeatRequestDto } from "./api-types";
+import type { ClaimDto, EventStatus, PlayDto, ResultDto, SeatRequestDto } from "./api-types";
 
 export interface EventRow {
   code: string;
@@ -28,6 +28,7 @@ interface ResultRow {
   tricks: number | null;
   entered_by: number;
   updated_at: string;
+  on_devices: number;
 }
 
 const toResult = (r: ResultRow): ResultDto => ({
@@ -37,6 +38,7 @@ const toResult = (r: ResultRow): ResultDto => ({
   tricks: r.tricks,
   enteredBy: r.entered_by,
   updatedAt: r.updated_at,
+  onDevices: r.on_devices === 1,
 });
 
 /** Live (not expired) event, or null. */
@@ -95,7 +97,8 @@ export async function setStatus(db: D1Database, code: string, status: EventStatu
   await db.prepare("UPDATE events SET status = ? WHERE code = ?").bind(status, code).run();
 }
 
-export async function upsertResult(db: D1Database, code: string, r: ResultDto) {
+/** Saves a result. `onDevices` isn't changed here: see `setOnDevices`. */
+export async function upsertResult(db: D1Database, code: string, r: Omit<ResultDto, "onDevices">) {
   await db
     .prepare(
       `INSERT INTO results (event_code, table_no, board, contract, declarer, tricks, entered_by, updated_at)
@@ -106,6 +109,132 @@ export async function upsertResult(db: D1Database, code: string, r: ResultDto) {
     )
     .bind(code, r.board, r.contract, r.declarer, r.tricks, r.enteredBy, r.updatedAt)
     .run();
+}
+
+export async function getResult(db: D1Database, code: string, board: number): Promise<ResultDto | null> {
+  const row = await db
+    .prepare("SELECT * FROM results WHERE event_code = ? AND board = ?")
+    .bind(code, board)
+    .first<ResultRow>();
+  return row ? toResult(row) : null;
+}
+
+/**
+ * Starts (or stops) playing a board's cards on the devices. Either way it starts from no cards
+ * played and no claim, and `updated_at` moves on so a device catching up with `results?since=` hears of it.
+ */
+export async function setOnDevices(db: D1Database, code: string, board: number, on: boolean, updatedAt: string) {
+  await db.batch([
+    db.prepare("DELETE FROM plays WHERE event_code = ? AND board = ?").bind(code, board),
+    db.prepare("DELETE FROM claims WHERE event_code = ? AND board = ?").bind(code, board),
+    db
+      .prepare("UPDATE results SET on_devices = ?, updated_at = ? WHERE event_code = ? AND board = ?")
+      .bind(on ? 1 : 0, updatedAt, code, board),
+  ]);
+}
+
+// ---- Card play ----------------------------------------------------------------------------------
+
+interface PlayRow {
+  board: number;
+  seq: number;
+  seat: Seat;
+  card: string;
+}
+
+const toPlay = (r: PlayRow): PlayDto => ({ board: r.board, seq: r.seq, seat: r.seat, card: r.card });
+
+/** A board's cards so far, in order. */
+export async function getPlays(db: D1Database, code: string, board: number): Promise<PlayDto[]> {
+  const { results } = await db
+    .prepare("SELECT board, seq, seat, card FROM plays WHERE event_code = ? AND board = ? ORDER BY seq")
+    .bind(code, board)
+    .all<PlayRow>();
+  return results.map(toPlay);
+}
+
+/** The cards so far on every board being played on devices right now (not yet finished). */
+export async function getLivePlays(db: D1Database, code: string): Promise<PlayDto[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT p.board, p.seq, p.seat, p.card FROM plays p
+       JOIN results r ON r.event_code = p.event_code AND r.table_no = p.table_no AND r.board = p.board
+       WHERE p.event_code = ? AND r.on_devices = 1 AND r.tricks IS NULL
+       ORDER BY p.board, p.seq`,
+    )
+    .bind(code)
+    .all<PlayRow>();
+  return results.map(toPlay);
+}
+
+/** Records a card. False if that card number is already taken (someone else got there first). */
+export async function insertPlay(db: D1Database, code: string, p: PlayDto, playedAt: string): Promise<boolean> {
+  try {
+    await db
+      .prepare("INSERT INTO plays (event_code, table_no, board, seq, seat, card, played_at) VALUES (?, 1, ?, ?, ?, ?, ?)")
+      .bind(code, p.board, p.seq, p.seat, p.card, playedAt)
+      .run();
+    return true;
+  } catch (e) {
+    if (String(e).includes("UNIQUE") || String(e).includes("PRIMARY KEY")) return false;
+    throw e;
+  }
+}
+
+// ---- Claims -------------------------------------------------------------------------------------
+
+interface ClaimRow {
+  board: number;
+  seat: Seat;
+  tricks: number;
+  accepted_by: string;
+}
+
+const toClaim = (r: ClaimRow): ClaimDto => ({
+  board: r.board,
+  seat: r.seat,
+  tricks: r.tricks,
+  acceptedBy: [...r.accepted_by] as Seat[],
+});
+
+export async function getClaim(db: D1Database, code: string, board: number): Promise<ClaimDto | null> {
+  const row = await db
+    .prepare("SELECT board, seat, tricks, accepted_by FROM claims WHERE event_code = ? AND board = ?")
+    .bind(code, board)
+    .first<ClaimRow>();
+  return row ? toClaim(row) : null;
+}
+
+/** Claims on every board being played on devices right now (not yet finished). */
+export async function getLiveClaims(db: D1Database, code: string): Promise<ClaimDto[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT k.board, k.seat, k.tricks, k.accepted_by FROM claims k
+       JOIN results r ON r.event_code = k.event_code AND r.table_no = k.table_no AND r.board = k.board
+       WHERE k.event_code = ? AND r.on_devices = 1 AND r.tricks IS NULL
+       ORDER BY k.board`,
+    )
+    .bind(code)
+    .all<ClaimRow>();
+  return results.map(toClaim);
+}
+
+export async function insertClaim(db: D1Database, code: string, k: ClaimDto, createdAt: string) {
+  await db
+    .prepare("INSERT INTO claims (event_code, table_no, board, seat, tricks, accepted_by, created_at) VALUES (?, 1, ?, ?, ?, '', ?)")
+    .bind(code, k.board, k.seat, k.tricks, createdAt)
+    .run();
+}
+
+export async function setClaimAccepted(db: D1Database, code: string, board: number, acceptedBy: Seat[]) {
+  await db
+    .prepare("UPDATE claims SET accepted_by = ? WHERE event_code = ? AND board = ?")
+    .bind(acceptedBy.join(""), code, board)
+    .run();
+}
+
+export async function deleteClaim(db: D1Database, code: string, board: number) {
+  await db.prepare("DELETE FROM claims WHERE event_code = ? AND board = ?").bind(code, board).run();
 }
 
 /**
@@ -207,6 +336,8 @@ export async function deleteExpiredEvents(db: D1Database, now: string): Promise<
   const expired = "SELECT code FROM events WHERE expires_at <= ?";
   await db.batch([
     db.prepare(`DELETE FROM seat_requests WHERE event_code IN (${expired})`).bind(now),
+    db.prepare(`DELETE FROM claims WHERE event_code IN (${expired})`).bind(now),
+    db.prepare(`DELETE FROM plays WHERE event_code IN (${expired})`).bind(now),
     db.prepare(`DELETE FROM results WHERE event_code IN (${expired})`).bind(now),
     db.prepare(`DELETE FROM players WHERE event_code IN (${expired})`).bind(now),
     db.prepare("DELETE FROM events WHERE expires_at <= ?").bind(now),
@@ -217,6 +348,8 @@ export async function deleteExpiredEvents(db: D1Database, now: string): Promise<
 export async function deleteEvent(db: D1Database, code: string) {
   await db.batch([
     db.prepare("DELETE FROM seat_requests WHERE event_code = ?").bind(code),
+    db.prepare("DELETE FROM claims WHERE event_code = ?").bind(code),
+    db.prepare("DELETE FROM plays WHERE event_code = ?").bind(code),
     db.prepare("DELETE FROM results WHERE event_code = ?").bind(code),
     db.prepare("DELETE FROM players WHERE event_code = ?").bind(code),
     db.prepare("DELETE FROM events WHERE code = ?").bind(code),

@@ -1,14 +1,20 @@
 import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type {
+  ClaimDto,
   EventSnapshot,
   JoinedResponse,
   LiveTicketResponse,
   PushMessage,
+  PlayDto,
   ResultDto,
   SeatRequestCreated,
   SeatRequestState,
 } from "../src/api-types";
+import { chooseCard } from "../../frontend/src/core/bot";
+import { parseHand } from "../../frontend/src/core/deal";
+import { cardCode, dummyOf, isComplete, parseCard, playCard, replay, toPlay, tricksWon } from "../../frontend/src/core/play";
+import type { Seat } from "../../frontend/src/core/types";
 import { cleanUp } from "../src/index";
 import { assignSeats } from "../src/seats";
 import game from "./fixtures/game.json";
@@ -231,6 +237,176 @@ describe("results", () => {
     await api("PUT", `/events/${code}/boards/2`, { contract: "2H", declarer: "E", tricks: 8 }, creator.playerId);
     const since = await api<{ results: ResultDto[] }>("GET", `/events/${code}/results?since=${encodeURIComponent(now)}`, undefined, creator.playerId);
     expect(since.json.results.map((r) => r.board)).toEqual([2]);
+  });
+});
+
+// ---- Playing the cards on devices -----------------------------------------------------------------
+
+describe("playing the cards on devices", () => {
+  const b1 = game.boards[0]!;
+  const hands = Object.fromEntries(Object.entries(b1.hands).map(([s, h]) => [s, parseHand(h)])) as Record<Seat, ReturnType<typeof parseHand>>;
+
+  /** A game in play with 3NT by South entered on board 1, and each seat's player ID. */
+  async function contractIn() {
+    const g = await gameInPlay();
+    await api("PUT", `/events/${g.code}/boards/1`, { contract: "3NT", declarer: "S", tricks: null }, g.creator.playerId);
+    const snap = (await api<EventSnapshot>("GET", `/events/${g.code}`)).json;
+    const ids = [g.creator, ...g.others];
+    const idOf = Object.fromEntries(snap.players.map((p) => [p.seat, ids.find((j) => j.slot === p.slot)!.playerId])) as Record<Seat, string>;
+    return { ...g, idOf };
+  }
+  const start = (code: string, id: string) => api<ResultDto>("POST", `/events/${code}/boards/1/play`, {}, id);
+  const play = (code: string, seq: number, card: string, id: string) =>
+    api<PlayDto>("POST", `/events/${code}/boards/1/cards`, { seq, card }, id);
+
+  it("only the creator starts it, and only once the contract is in", async () => {
+    const g = await gameInPlay();
+    expect((await start(g.code, g.creator.playerId)).status).toBe(409);
+    await api("PUT", `/events/${g.code}/boards/1`, { contract: "3NT", declarer: "S", tricks: null }, g.creator.playerId);
+    expect((await start(g.code, g.others[0]!.playerId)).status).toBe(403);
+    const started = await start(g.code, g.creator.playerId);
+    expect(started.status).toBe(200);
+    expect(started.json).toMatchObject({ board: 1, contract: "3NT", tricks: null, onDevices: true });
+  });
+
+  it("takes cards in turn, following suit, with declarer playing dummy's", async () => {
+    const { code, creator, idOf } = await contractIn();
+    await start(code, creator.playerId);
+    // West leads. Nobody else can, and West must send the right card number.
+    expect((await play(code, 1, "HK", idOf.N)).status).toBe(409);
+    expect((await play(code, 2, "HK", idOf.W)).status).toBe(409);
+    expect((await play(code, 1, "ZZ", idOf.W)).status).toBe(400);
+    expect((await play(code, 1, "SA", idOf.W)).status).toBe(400); // not West's card
+    expect((await play(code, 1, "HK", idOf.W)).json).toEqual({ board: 1, seq: 1, seat: "W", card: "HK" });
+    expect((await play(code, 1, "HK", idOf.W)).status).toBe(409); // a second tap
+    // North is dummy: South plays its cards, North can't, and North must follow in hearts.
+    expect((await play(code, 2, "HA", idOf.N)).status).toBe(409);
+    expect((await play(code, 2, "CA", idOf.S)).status).toBe(400);
+    expect((await play(code, 2, "HA", idOf.S)).json).toMatchObject({ seat: "N", card: "HA" });
+
+    const snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
+    expect(snap.plays.map((p) => p.card)).toEqual(["HK", "HA"]);
+  });
+
+  it("waits for the result to be entered after the last card", async () => {
+    const { code, creator, idOf } = await contractIn();
+    await start(code, creator.playerId);
+    let state = replay(hands, "NT", "S", []);
+    for (let seq = 1; !isComplete(state); seq++) {
+      const seat = toPlay(state);
+      const card = chooseCard(state, () => 0.5);
+      const res = await play(code, seq, cardCode(card), idOf[seat === dummyOf("S") ? "S" : seat]);
+      expect(res.status).toBe(200);
+      state = playCard(state, parseCard(res.json.card)!);
+    }
+    let snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
+    expect(snap.results[0]).toMatchObject({ contract: "3NT", declarer: "S", tricks: null, onDevices: true });
+    expect(snap.plays).toHaveLength(52);
+    expect((await play(code, 53, "SA", idOf.W)).status).toBe(409);
+
+    const tricks = tricksWon(state).declarer;
+    await api("PUT", `/events/${code}/boards/1`, { contract: "3NT", declarer: "S", tricks }, idOf.E);
+    snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
+    expect(snap.results[0]).toMatchObject({ tricks, onDevices: true });
+    expect(snap.plays).toEqual([]); // finished boards' cards aren't sent
+  }, 30_000); // 52 requests
+
+  it("plays one board at a time", async () => {
+    const { code, creator } = await contractIn();
+    await start(code, creator.playerId);
+    await api("PUT", `/events/${code}/boards/2`, { contract: "2H", declarer: "E", tricks: null }, creator.playerId);
+    const second = await api("POST", `/events/${code}/boards/2/play`, {}, creator.playerId);
+    expect(second.status).toBe(409);
+  });
+
+  describe("claims", () => {
+    const claim = (code: string, tricks: number, id: string) => api<ClaimDto>("POST", `/events/${code}/boards/1/claim`, { tricks }, id);
+    const answer = (code: string, accept: boolean, id: string) =>
+      api<ClaimDto | null>("POST", `/events/${code}/boards/1/claim/answer`, { accept }, id);
+    const withdraw = (code: string, id: string) => api("DELETE", `/events/${code}/boards/1/claim`, undefined, id);
+    const claimsNow = async (code: string) => (await api<EventSnapshot>("GET", `/events/${code}`)).json.claims;
+
+    it("stops play until both defenders answer declarer's claim; one refusal ends it", async () => {
+      const { code, creator, idOf } = await contractIn();
+      await start(code, creator.playerId);
+      await play(code, 1, "HK", idOf.W);
+      expect((await claim(code, 14, idOf.S)).status).toBe(400); // only 13 left
+      expect((await claim(code, 9, idOf.N)).status).toBe(403); // dummy can't
+      expect((await claim(code, 9, idOf.S)).json).toEqual({ board: 1, seat: "S", tricks: 9, acceptedBy: [] });
+      expect((await claim(code, 9, idOf.W)).status).toBe(409); // one at a time
+      expect((await play(code, 2, "HA", idOf.S)).status).toBe(409); // play waits
+
+      expect((await answer(code, true, idOf.N)).status).toBe(403); // declarer's side doesn't answer
+      expect((await answer(code, true, idOf.E)).json).toMatchObject({ acceptedBy: ["E"] });
+      expect((await answer(code, false, idOf.W)).json).toBeNull();
+      expect(await claimsNow(code)).toEqual([]);
+      expect((await play(code, 2, "HA", idOf.S)).status).toBe(200); // play goes on
+    });
+
+    it("can be taken back by the claimer until it's accepted", async () => {
+      const { code, creator, idOf } = await contractIn();
+      await start(code, creator.playerId);
+      await claim(code, 13, idOf.S);
+      expect((await withdraw(code, idOf.E)).status).toBe(403);
+      expect((await withdraw(code, idOf.S)).status).toBe(204);
+      expect(await claimsNow(code)).toEqual([]);
+
+      await claim(code, 13, idOf.S);
+      await answer(code, true, idOf.E);
+      await answer(code, true, idOf.W);
+      expect(await claimsNow(code)).toEqual([{ board: 1, seat: "S", tricks: 13, acceptedBy: ["E", "W"] }]);
+      expect((await withdraw(code, idOf.S)).status).toBe(409);
+      expect((await answer(code, false, idOf.E)).status).toBe(409);
+      expect((await play(code, 1, "HK", idOf.W)).status).toBe(409); // the hand is over
+    });
+
+    it("is answered by declarer alone when a defender claims", async () => {
+      const { code, creator, idOf } = await contractIn();
+      await start(code, creator.playerId);
+      await claim(code, 4, idOf.E);
+      expect((await answer(code, true, idOf.N)).status).toBe(403); // dummy
+      expect((await answer(code, true, idOf.S)).json).toMatchObject({ acceptedBy: ["S"] });
+    });
+
+    it("is pushed to everyone, and cleared when play stops", async () => {
+      const { code, creator, others, idOf } = await contractIn();
+      const ann = await connect(code, others[0]!.playerId);
+      await start(code, creator.playerId);
+      await claim(code, 13, idOf.S);
+      expect(await ann.waitFor((m) => m.type === "claim")).toMatchObject({ type: "claim", board: 1, claim: { seat: "S", tricks: 13 } });
+      await api("DELETE", `/events/${code}/boards/1/play`, undefined, creator.playerId);
+      await start(code, creator.playerId);
+      expect(await claimsNow(code)).toEqual([]);
+      ann.ws.close();
+    });
+  });
+
+  it("keeps the contract while the cards are played; a full result or stopping ends it", async () => {
+    const { code, creator, others, idOf } = await contractIn();
+    await start(code, creator.playerId);
+    await play(code, 1, "HK", idOf.W);
+    const put = (body: unknown) => api<ResultDto>("PUT", `/events/${code}/boards/1`, body, creator.playerId);
+    expect((await put({ contract: "4S", declarer: "S", tricks: null })).status).toBe(409);
+
+    expect((await api("DELETE", `/events/${code}/boards/1/play`, undefined, others[0]!.playerId)).status).toBe(403);
+    expect((await api("DELETE", `/events/${code}/boards/1/play`, undefined, creator.playerId)).status).toBe(204);
+    const snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
+    expect(snap.results[0]).toMatchObject({ onDevices: false, tricks: null });
+    expect(snap.plays).toEqual([]);
+
+    await start(code, creator.playerId);
+    expect((await put({ contract: "3NT", declarer: "S", tricks: 9 })).json).toMatchObject({ tricks: 9, onDevices: true });
+    expect((await play(code, 1, "HK", idOf.W)).status).toBe(409); // finished
+  });
+
+  it("pushes each card to everyone", async () => {
+    const { code, creator, others, idOf } = await contractIn();
+    const ann = await connect(code, others[0]!.playerId);
+    await start(code, creator.playerId);
+    await ann.waitFor((m) => m.type === "result" && m.result.onDevices);
+    await play(code, 1, "HK", idOf.W);
+    expect(await ann.waitFor((m) => m.type === "play")).toEqual({ type: "play", play: { board: 1, seq: 1, seat: "W", card: "HK" } });
+    ann.ws.close();
   });
 });
 

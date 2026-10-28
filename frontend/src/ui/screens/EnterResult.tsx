@@ -1,6 +1,4 @@
-import AddIcon from "@mui/icons-material/Add";
-import RemoveIcon from "@mui/icons-material/Remove";
-import { Box, Button, FormControlLabel, IconButton, Switch, Typography } from "@mui/material";
+import { Box, Button, FormControlLabel, Switch, Typography } from "@mui/material";
 import { useState } from "react";
 import { describeResult } from "../../core/describe";
 import { scoreFor, scoreResult } from "../../core/scoring";
@@ -19,6 +17,7 @@ import { Breakdown } from "../components/Breakdown";
 import { ContractText, ScoreText, StrainSymbol } from "../controls/BridgeText";
 import { ChoiceGroup } from "../controls/ChoiceGroup";
 import { Panel } from "../controls/Layout";
+import { NumberStepper } from "../controls/NumberStepper";
 import { SheetDialog } from "../controls/SheetDialog";
 import { relationShort, seatWithRelation } from "../labels";
 import { formatTrickResult } from "../../core/contract";
@@ -163,50 +162,21 @@ export function EnterResultDialog({ open, step, board, seat, initial, onSave, on
       {askTricks && !passedOut && (
         <>
           {contract && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle2" component="p" sx={{ mb: 0.5 }}>
-                Tricks taken by declarer
-              </Typography>
-              <Box sx={{ display: "grid", gridTemplateColumns: (t) => `${t.spacing(7)} 1fr ${t.spacing(7)}`, gap: 1 }}>
-                <IconButton
-                  aria-label="One trick fewer"
-                  disabled={effectiveTricks <= 0}
-                  onClick={() => setTricks(effectiveTricks - 1)}
-                  sx={{ border: 1, borderColor: "divider", borderRadius: 1 }}
-                >
-                  <RemoveIcon />
-                </IconButton>
-                <Box
-                  component="output"
-                  aria-live="polite"
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    border: 1,
-                    borderColor: "divider",
-                    borderRadius: 1,
-                    py: 0.5,
-                  }}
-                >
-                  <Typography variant="h4" component="span" className="num">
-                    {effectiveTricks}
-                  </Typography>
-                  <Typography color="text.secondary">
-                    <ContractText contract={contract} />{" "}
-                    {formatTrickResult({ contract, declarer: "N", tricks: effectiveTricks })}
-                  </Typography>
-                </Box>
-                <IconButton
-                  aria-label="One trick more"
-                  disabled={effectiveTricks >= 13}
-                  onClick={() => setTricks(effectiveTricks + 1)}
-                  sx={{ border: 1, borderColor: "divider", borderRadius: 1 }}
-                >
-                  <AddIcon />
-                </IconButton>
-              </Box>
-            </Box>
+            <NumberStepper
+              label="Tricks taken by declarer"
+              value={effectiveTricks}
+              min={0}
+              max={13}
+              onChange={setTricks}
+              lessLabel="One trick fewer"
+              moreLabel="One trick more"
+              caption={
+                <>
+                  <ContractText contract={contract} />{" "}
+                  {formatTrickResult({ contract, declarer: "N", tricks: effectiveTricks })}
+                </>
+              }
+            />
           )}
         </>
       )}

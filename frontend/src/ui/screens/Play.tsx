@@ -15,7 +15,8 @@ import {
   tally as tallyOf,
 } from "../../session/session";
 import type { Game } from "../../providers/types";
-import type { EventSnapshot, ResultDto } from "../../session/store";
+import type { ClaimDto, EventSnapshot, PlayDto, ResultDto } from "../../session/store";
+import { cardCode, parseCard } from "../../core/play";
 import { games } from "../../services";
 import { AnalysisDialog, BoardInfoDialog, BreakdownDialog, FieldDialog } from "../components/BoardDialogs";
 import { TallyDialog } from "../components/TallyDialog";
@@ -35,11 +36,15 @@ interface Props {
   seat: Seat;
   /** Called with the saved result, so the screen updates without waiting for the live update. */
   onSaved: (result: ResultDto) => void;
+  /** Called with a card you played, likewise. */
+  onPlayed: (play: PlayDto) => void;
+  /** Called with a claim you made or answered (null: refused or taken back), likewise. */
+  onClaim: (board: number, claim: ClaimDto | null) => void;
   /** Show a notice about something someone else did (see controls/Notice). */
   onNotice: (notice: NoticeMessage) => void;
 }
 
-export function Play({ snapshot, game, seat, onSaved, onNotice }: Props) {
+export function Play({ snapshot, game, seat, onSaved, onPlayed, onClaim, onNotice }: Props) {
   const session = useMemo(
     () => sessionFromShared(game, seat, snapshot.startBoard, snapshot.results),
     [game, seat, snapshot.startBoard, snapshot.results],
@@ -53,6 +58,13 @@ export function Play({ snapshot, game, seat, onSaved, onNotice }: Props) {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [current]);
+
+  // When a board's cards start being played on the devices, every device goes to it: the table
+  // plays it together.
+  const liveBoard = snapshot.results.find((r) => r.onDevices && r.tricks === null)?.board;
+  useEffect(() => {
+    if (liveBoard !== undefined) setCurrent(liveBoard);
+  }, [liveBoard]);
 
   // Tell this device when someone else corrects a finished board: it may be one you've moved on
   // from, and it changes the tally.
@@ -99,6 +111,27 @@ export function Play({ snapshot, game, seat, onSaved, onNotice }: Props) {
 
   const tallyLabel = tally.played === 0 ? `${dir}: no boards yet` : `${dir} ${formatMargin(tally.margin)}`;
 
+  const isCreator = snapshot.you?.isCreator ?? false;
+  const live = !!shared && shared.onDevices && shared.tricks === null;
+  const cards = useMemo(
+    () =>
+      snapshot.plays
+        .filter((p) => p.board === board.number)
+        .sort((a, b) => a.seq - b.seq)
+        .map((p) => parseCard(p.card)!),
+    [snapshot.plays, board.number],
+  );
+
+  /** For the board's buttons: a failure shows above the board, like a failed save. */
+  async function act(what: string, run: () => Promise<void>) {
+    setSaveError(null);
+    try {
+      await run();
+    } catch (e) {
+      setSaveError(`${what}: ${(e as Error).message}`);
+    }
+  }
+
   async function save(result: TableResult, contractOnly: boolean) {
     setSaveError(null);
     try {
@@ -106,7 +139,7 @@ export function Play({ snapshot, game, seat, onSaved, onNotice }: Props) {
       onSaved(await games.saveResult(snapshot.code, board.number, contractOnly ? { ...stored, tricks: null } : stored));
       setDialog(null);
     } catch (e) {
-      setSaveError((e as Error).message);
+      setSaveError(`Couldn't save the result: ${(e as Error).message}`);
     }
   }
 
@@ -115,7 +148,7 @@ export function Play({ snapshot, game, seat, onSaved, onNotice }: Props) {
       {saveError && (
         <Screen>
           <Alert severity="error" onClose={() => setSaveError(null)}>
-            Couldn't save the result: {saveError}
+            {saveError}
           </Alert>
         </Screen>
       )}
@@ -139,6 +172,31 @@ export function Play({ snapshot, game, seat, onSaved, onNotice }: Props) {
         onBoardInfo={() => setDialog("info")}
         onEnterContract={() => setDialog("contract")}
         onEnterResult={() => setDialog("result")}
+        onStartPlay={
+          isCreator && contract
+            ? () => void act("Couldn't start playing", async () => onSaved(await games.startCardPlay(snapshot.code, board.number)))
+            : undefined
+        }
+        play={
+          live && contract
+            ? {
+                cards,
+                claim: snapshot.claims.find((k) => k.board === board.number) ?? null,
+                onPlay: async (seq, card) => onPlayed(await games.playCard(snapshot.code, board.number, seq, cardCode(card))),
+                onClaim: async (tricks) => onClaim(board.number, await games.claim(snapshot.code, board.number, tricks)),
+                onAnswerClaim: async (accept) => onClaim(board.number, await games.answerClaim(snapshot.code, board.number, accept)),
+                onWithdrawClaim: async () => {
+                  await games.withdrawClaim(snapshot.code, board.number);
+                  onClaim(board.number, null);
+                },
+                onEnterResult: async (tricks) =>
+                  onSaved(await games.saveResult(snapshot.code, board.number, { contract: shared!.contract, declarer: contract.declarer, tricks })),
+                onStop: isCreator
+                  ? () => void act("Couldn't stop playing", () => games.stopCardPlay(snapshot.code, board.number))
+                  : undefined,
+              }
+            : null
+        }
         onCorrect={() => setDialog("correct")}
         onBreakdown={() => setDialog("breakdown")}
         onField={() => setDialog("field")}

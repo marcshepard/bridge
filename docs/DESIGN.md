@@ -270,6 +270,34 @@ shows where to sit physically: "You're North, opposite Bob, with Ann on your lef
   the best result double dummy, and the commentary.
 - **Next board.** Each device moves on by itself; nobody waits for one person to advance the table.
 
+**Playing the cards on devices (being tried out):** instead of real cards, a board's cards can be
+played on the devices. For now the creator turns it on board by board (**Play**, beside **Enter
+the result**, once the contract is in); one board at a time, and every device jumps to it.
+
+- The board screen becomes the play table: the join code and tally on top, then a status strip
+  (contract, tricks for each side, whose turn it is or why a card can't go), the partner's edge on
+  top, left and right opponents beside the trick, and your hand at the bottom. Opponents show only
+  their name and card count.
+- **Dummy** goes down after the opening lead. Declarer's dummy is always partner, so it's opposite
+  only when you're declarer: a short fan you tap to play from. On your left or right (you're
+  defending) it's a read-only suit-per-row list, never rotated. Declarer plays dummy's cards;
+  dummy's player only watches, with their own cards at the bottom.
+- **Tap to pick, tap again to play.** A picked card lifts without coming to the front, so a tap
+  meant for a neighbour can't play it. Unplayable cards are greyed out and say why when tapped. When
+  only one card is legal it's picked already: one tap plays it. No undo (a card shown to partner
+  can't be taken back).
+- **The trick:** a fixed-size compass in the middle. A finished trick shows face up for 1.5
+  seconds, then lies face down; anyone can tap it to see it again until the next lead (and after
+  the last trick).
+- **Claims:** a player (not dummy) claims how many of the tricks left their side will take. Their
+  hand is shown to everyone and play stops. The claimer's opponents answer, but never dummy: when a
+  defender claims, declarer answers alone. One refusal ends the claim and play goes on; the
+  claimer can take it back until it's accepted.
+- **The end:** after the last card or an accepted claim, the status strip shows the outcome
+  ("Game down 1: 9 tricks") and anyone taps **Enter the result**, which saves it like any result.
+  Until then the board stays in play on the devices.
+- **Stop playing** (creator) throws away the cards played on the board.
+
 **End game:** any player can end the game (with a confirmation). A post-mortem after it is in the
 backlog.
 
@@ -281,7 +309,7 @@ backlog.
    (or random); the app assigns seats and tells people where to sit.
 2. **No owner-only powers after setup.** The creator makes the game and picks partnerships. After
    that all four players are equal: anyone can enter or correct results and anyone can end the
-   game. A creator's device dying costs nothing, and ownership never needs transferring.
+   game. (While card play on devices is being tried out, only the creator starts and stops it.) A creator's device dying costs nothing, and ownership never needs transferring.
 3. **Disconnected is not "left".** Phones die and lock, laptops sleep; nobody remembers to tap Leave. With push,
    the game knows who is connected and shows a disconnected player's name greyed out, with a no-signal icon.
    - **Same device:** reopening the app or link puts you back in your seat and catches up on missed
@@ -318,7 +346,7 @@ game file is ours. No Common Game data is used (see AGENTS.md); bots still show 
 ### Not now
 
 Solo practice on one device (the original local-only app) was **removed**: the app is for exactly
-4 people playing a shared game. In-app bidding and card play, and other ideas, are in
+4 people playing a shared game. In-app bidding, and other ideas, are in
 [BACKLOG.md](BACKLOG.md).
 
 ## Backend: Cloudflare Workers + D1
@@ -364,7 +392,12 @@ The schema is `backend/migrations/0001_init.sql`. In short:
 - **players**: `player_id` (the device's secret key), `slot` (public handle 1–4, in join order),
   `name`, `is_creator`, `seat` (assigned when play starts).
 - **results**: one row per board per table: `contract`, `declarer`, `tricks`, `entered_by` (slot),
-  `updated_at`.
+  `updated_at`, `on_devices` (the cards are played on the devices; with `tricks` NULL the board is
+  being played right now).
+- **plays** (`0004_card_play.sql`): each card played on the devices, in order: `board`, `seq`
+  (1–52), `seat` (dummy's when declarer plays it), `card` ("SA").
+- **claims** (`0005_claims.sql`): at most one per board: `seat`, `tricks` (of those left, for the
+  claimer's side), `accepted_by` (seats, e.g. "EW"). Refused or taken back: deleted.
 
 One result per table per board: whoever at that table enters or corrects it, everyone sees the
 same result. Scores, matchpoints and tallies are **not stored**; every device computes them from the
@@ -382,7 +415,7 @@ the player with `isCreator`; there's no separate host key.
 | Method and path | Who | Does |
 |---|---|---|
 | `POST /api/events` | Anyone | Create a game from a game file: `{ name, game, startBoard }` → `{ code, playerId, slot }`. The creator is slot 1 |
-| `GET /api/events/:code` | Anyone with the code | Snapshot: title, status, game, players (with seats and who's connected), results, and `you` if your player ID was sent |
+| `GET /api/events/:code` | Anyone with the code | Snapshot: title, status, game, players (with seats and who's connected), results, the cards and claim on a board being played on the devices, and `you` if your player ID was sent |
 | `POST /api/events/:code/players` | Anyone with the code | Join the lobby: `{ name }` → `{ code, playerId, slot }`. Closed once play starts or with 4 players |
 | `DELETE /api/events/:code/players/me` | A player | Leave the lobby (frees the place). If the creator leaves the lobby, the game is cancelled |
 | `POST /api/events/:code/partnerships` | Creator | `{ partnerSlot }` or `{ random: true }`; assigns seats (partners opposite, at random) and starts play |
@@ -391,6 +424,12 @@ the player with `isCreator`; there's no separate host key.
 | `GET /api/events/:code/requests/:id` | The requester (its `playerId`) | `{ status }`: pending, allowed, denied, cancelled or expired (10 minutes) |
 | `DELETE /api/events/:code/requests/:id` | The requester | Withdraw the request |
 | `POST /api/events/:code/requests/:id/answer` | A player | `{ allow }`. First answer wins. Allowing gives the seat (and its results) the requester's key and name; the old key stops working and the old device is disconnected |
+| `POST /api/events/:code/boards/:board/play` | Creator | Start playing the board's cards on the devices (its contract must be in; one board at a time) |
+| `DELETE /api/events/:code/boards/:board/play` | Creator | Stop: the cards played and any claim are thrown away |
+| `POST /api/events/:code/boards/:board/cards` | The player whose turn it is (declarer for dummy) | `{ seq, card }`: play a card. `seq` is its number on the board, so a double tap can't play twice. Checked with `core/play.ts` |
+| `POST /api/events/:code/boards/:board/claim` | A player, not dummy | `{ tricks }`: claim that many of the tricks left. Play stops until it's answered |
+| `POST /api/events/:code/boards/:board/claim/answer` | The claimer's opponents, not dummy | `{ accept }`. A refusal ends the claim |
+| `DELETE /api/events/:code/boards/:board/claim` | The claimer | Take the claim back (until it's accepted) |
 | `GET /api/events/:code/results?since=` | A player | Results changed at or after a timestamp (catching up after a reconnect) |
 | `POST /api/events/:code/end` | A player | End the game |
 | `DELETE /api/events/:code` | Creator | Delete the game and its results |
@@ -405,7 +444,8 @@ a 400, 403, 404 or 409 status.
 
 **Pushed messages** (`PushMessage` in `api-types.ts`): `result` (a saved result), `players`
 (someone joined, left or got a seat: refetch the snapshot), `status` (playing or ended),
-`presence` (which slots are connected), `request` (someone asks for a seat), `requestClosed` (it
+`presence` (which slots are connected), `play` (a card played on a device), `claim` (a claim
+made or answered; null when refused or taken back), `request` (someone asks for a seat), `requestClosed` (it
 was allowed, denied or withdrawn; the table is told "Dana has replaced Joe", "Marc has moved to
 another device" or "Ann didn't let Dana replace Joe"), `deleted`.
 

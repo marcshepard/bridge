@@ -2,13 +2,18 @@
 // The request and response shapes are the backend's API contract (backend/src/api-types.ts).
 
 import type {
+  AnswerClaimRequest,
   AnswerSeatRequest,
+  ClaimDto,
+  ClaimRequest,
   CreateEventRequest,
   EventSnapshot,
   JoinedResponse,
   JoinRequest,
   LiveTicketResponse,
   PartnershipsRequest,
+  PlayCardRequest,
+  PlayDto,
   ResultDto,
   SaveResultRequest,
   SeatRequestCreated,
@@ -115,6 +120,33 @@ export class ApiGameStore implements GameStore {
 
   saveResult(code: string, board: number, result: SaveResultRequest): Promise<ResultDto> {
     return this.request<ResultDto>("PUT", `/events/${code}/boards/${board}`, code, result);
+  }
+
+  startCardPlay(code: string, board: number): Promise<ResultDto> {
+    return this.request<ResultDto>("POST", `/events/${code}/boards/${board}/play`, code, {});
+  }
+
+  async stopCardPlay(code: string, board: number): Promise<void> {
+    await this.request<void>("DELETE", `/events/${code}/boards/${board}/play`, code);
+  }
+
+  playCard(code: string, board: number, seq: number, card: string): Promise<PlayDto> {
+    const body: PlayCardRequest = { seq, card };
+    return this.request<PlayDto>("POST", `/events/${code}/boards/${board}/cards`, code, body);
+  }
+
+  claim(code: string, board: number, tricks: number): Promise<ClaimDto> {
+    const body: ClaimRequest = { tricks };
+    return this.request<ClaimDto>("POST", `/events/${code}/boards/${board}/claim`, code, body);
+  }
+
+  answerClaim(code: string, board: number, accept: boolean): Promise<ClaimDto | null> {
+    const body: AnswerClaimRequest = { accept };
+    return this.request<ClaimDto | null>("POST", `/events/${code}/boards/${board}/claim/answer`, code, body);
+  }
+
+  async withdrawClaim(code: string, board: number): Promise<void> {
+    await this.request<void>("DELETE", `/events/${code}/boards/${board}/claim`, code);
   }
 
   /**

@@ -26,6 +26,33 @@ export interface ResultDto {
   /** Slot of the player who entered (or last corrected) it. */
   enteredBy: number;
   updatedAt: string;
+  /**
+   * The cards are being played on the players' devices: true from the start of play. While
+   * `tricks` is null the board is being played; the tricks are filled in when the last card is.
+   */
+  onDevices: boolean;
+}
+
+/**
+ * A claim on a board being played on the devices: `seat` says their side will take `tricks` of
+ * the tricks still to play. Accepted once all the claimer's opponents but dummy are in
+ * `acceptedBy` (see `claimAccepted` in core/play.ts).
+ */
+export interface ClaimDto {
+  board: number;
+  seat: Seat;
+  tricks: number;
+  acceptedBy: Seat[];
+}
+
+/** One card played on a device, in order (`seq` 1–52) on its board. */
+export interface PlayDto {
+  board: number;
+  seq: number;
+  /** Whose card it is: dummy's seat when declarer plays it. */
+  seat: Seat;
+  /** "SA", "HT": suit then rank. */
+  card: string;
 }
 
 /** Someone asking to take over a seat (a new player, or the same one on another device). */
@@ -49,6 +76,10 @@ export interface EventSnapshot {
   game: GameFileV1;
   players: PublicPlayer[];
   results: ResultDto[];
+  /** The cards played so far on boards being played on devices right now. */
+  plays: PlayDto[];
+  /** Claims made on boards being played on devices right now. */
+  claims: ClaimDto[];
   /** Seat requests waiting for an answer. Only sent to players in the game. */
   requests: SeatRequestDto[];
   /** Present when the request carried a valid X-Player-Id for this game. */
@@ -75,6 +106,23 @@ export interface SaveResultRequest {
   contract: string;
   declarer: Seat | null;
   tricks: number | null;
+}
+
+/**
+ * Play a card on a board being played on devices. `seq` is which card of the board this is (1–52),
+ * so a repeated tap, or two devices at once, can't play twice.
+ */
+export interface PlayCardRequest {
+  seq: number;
+  card: string;
+}
+
+/** Claim this many of the tricks still to play, for your side. */
+export interface ClaimRequest {
+  tricks: number;
+}
+export interface AnswerClaimRequest {
+  accept: boolean;
 }
 
 /** Ask to take over a seat in a full or started game. Someone at the table must allow it. */
@@ -123,6 +171,8 @@ export interface ErrorResponse {
 
 export type PushMessage =
   | { type: "result"; result: ResultDto }
+  | { type: "play"; play: PlayDto } // a card played on a device
+  | { type: "claim"; board: number; claim: ClaimDto | null } // a claim made or answered; null: refused or taken back
   | { type: "players" } // someone joined, left or got a seat: refetch the snapshot
   | { type: "status"; status: EventStatus }
   | { type: "presence"; connected: number[] } // slots with a live connection

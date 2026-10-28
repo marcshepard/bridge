@@ -5,15 +5,33 @@
 
 import { Hono, type Context } from "hono";
 import { tableResult } from "../../frontend/src/core/contract";
+import {
+  cardCode,
+  claimAccepted,
+  claimAnswerers,
+  dummyOf,
+  isComplete,
+  parseCard,
+  playCard,
+  replay,
+  toPlay,
+  tricksLeft,
+} from "../../frontend/src/core/play";
+import type { Seat } from "../../frontend/src/core/types";
 import { parseGameFile, type GameFileV1 } from "../../frontend/src/providers/gameFile";
 import type {
+  AnswerClaimRequest,
   AnswerSeatRequest,
+  ClaimDto,
+  ClaimRequest,
   CreateEventRequest,
   EventSnapshot,
   JoinedResponse,
   JoinRequest,
   LiveTicketResponse,
   PartnershipsRequest,
+  PlayCardRequest,
+  PlayDto,
   PushMessage,
   ResultDto,
   ResultsSinceResponse,
@@ -177,9 +195,11 @@ async function createEvent(c: Ctx, name: string, file: GameFileV1, start: number
 app.get("/events/:code", async (c) => {
   const event = await loadEvent(c);
   const now = nowIso(); // taken before reading, so `since=now` can't miss a concurrent save
-  const [players, results, connected, requests] = await Promise.all([
+  const [players, results, plays, claims, connected, requests] = await Promise.all([
     db.getPlayers(c.env.DB, event.code),
     db.getResults(c.env.DB, event.code),
+    db.getLivePlays(c.env.DB, event.code),
+    db.getLiveClaims(c.env.DB, event.code),
     hub(c.env, event.code).connectedSlots(),
     db.getPendingSeatRequests(c.env.DB, event.code, requestCutoff()),
   ]);
@@ -199,6 +219,8 @@ app.get("/events/:code", async (c) => {
       connected: connected.includes(p.slot),
     })),
     results,
+    plays,
+    claims,
     requests: me ? requests.map(db.toSeatRequest) : [],
     you: me ? { slot: me.slot, isCreator: me.is_creator === 1, seat: me.seat } : null,
     now,
@@ -288,6 +310,12 @@ app.put("/events/:code/boards/:board", async (c) => {
 
   const req = await body<SaveResultRequest>(c);
   const contractOnly = req.tricks === null;
+  // A full result can always be entered (it ends play on the devices); the contract can't change
+  // under the cards being played.
+  const current = await db.getResult(c.env.DB, event.code, board);
+  if (contractOnly && current?.onDevices && current.tricks === null) {
+    throw new HttpError(409, "The cards are being played on this board, so the contract can't change now");
+  }
   let parsed;
   try {
     // A contract on its own is checked like a full result, with a stand-in trick count.
@@ -296,6 +324,7 @@ app.put("/events/:code/boards/:board", async (c) => {
     throw new HttpError(400, (e as Error).message);
   }
   const result: ResultDto = {
+    onDevices: current?.onDevices ?? false,
     board,
     contract: parsed.contract ? String(req.contract).toUpperCase().replace(/\s+/g, "") : "PASS",
     declarer: parsed.declarer,
@@ -307,6 +336,168 @@ app.put("/events/:code/boards/:board", async (c) => {
   await db.upsertResult(c.env.DB, event.code, result);
   await push(c, event.code, { type: "result", result });
   return c.json(result);
+});
+
+// ---- Playing the cards on the devices ------------------------------------------------------------
+
+/** The board's game data and its result row, for the card-play routes. */
+async function boardInPlay(c: Ctx, event: db.EventRow) {
+  if (event.status !== "playing") throw new HttpError(409, "The game isn't in play");
+  const number = Number(c.req.param("board"));
+  const board = parseGameFile(JSON.parse(event.game_json)).boards.find((b) => b.number === number);
+  if (!board) throw new HttpError(404, `Board ${number} isn't in this game`);
+  return { board, result: await db.getResult(c.env.DB, event.code, number) };
+}
+
+/**
+ * Start playing a board's cards on the devices, once its contract is in. For now only the game's
+ * creator can, board by board, while it's being tried out. One board at a time: the table plays
+ * it together, until its result is entered.
+ */
+app.post("/events/:code/boards/:board/play", async (c) => {
+  const event = await loadEvent(c);
+  const me = caller(c, await db.getPlayers(c.env.DB, event.code));
+  if (!me.is_creator) throw new HttpError(403, "Only the player who started the game can start playing on devices");
+  const { board, result } = await boardInPlay(c, event);
+  if (!result || result.tricks !== null || !result.declarer || result.contract === "PASS") {
+    throw new HttpError(409, "Enter the contract first");
+  }
+  const other = (await db.getResults(c.env.DB, event.code)).find(
+    (r) => r.onDevices && r.tricks === null && r.board !== board.number,
+  );
+  if (other) throw new HttpError(409, `Board ${other.board} is being played on the devices; finish it first`);
+  if (!result.onDevices) {
+    await db.setOnDevices(c.env.DB, event.code, board.number, true, nowIso());
+  }
+  const started = (await db.getResult(c.env.DB, event.code, board.number))!;
+  await push(c, event.code, { type: "result", result: started });
+  return c.json(started);
+});
+
+/** Stop playing a board on the devices: the cards played so far are thrown away. Creator only. */
+app.delete("/events/:code/boards/:board/play", async (c) => {
+  const event = await loadEvent(c);
+  const me = caller(c, await db.getPlayers(c.env.DB, event.code));
+  if (!me.is_creator) throw new HttpError(403, "Only the player who started the game can stop playing on devices");
+  const { board, result } = await boardInPlay(c, event);
+  if (!result?.onDevices) return c.body(null, 204);
+  await db.setOnDevices(c.env.DB, event.code, board.number, false, nowIso());
+  await push(c, event.code, { type: "result", result: (await db.getResult(c.env.DB, event.code, board.number))! });
+  return c.body(null, 204);
+});
+
+/**
+ * A board being played on the devices, as it stands: the position after the cards so far, and
+ * any claim. Throws unless the board is being played (started, and its result not yet entered).
+ */
+async function liveBoard(c: Ctx, event: db.EventRow) {
+  const { board, result } = await boardInPlay(c, event);
+  if (!result?.onDevices || result.tricks !== null || !result.declarer) {
+    throw new HttpError(409, "This board isn't being played on the devices");
+  }
+  const contract = tableResult(result.contract, result.declarer, 0).contract!;
+  const [plays, claim] = await Promise.all([
+    db.getPlays(c.env.DB, event.code, board.number),
+    db.getClaim(c.env.DB, event.code, board.number),
+  ]);
+  const state = replay(board.hands, contract.strain, result.declarer, plays.map((p) => parseCard(p.card)!));
+  return { board, declarer: result.declarer, plays, claim, state };
+}
+
+/**
+ * Play a card. It must be your turn (declarer also plays dummy's cards), and the card must be
+ * legal: the same rules the devices use. After the last card the board waits for someone to enter
+ * the result (the devices work it out from the tricks).
+ */
+app.post("/events/:code/boards/:board/cards", async (c) => {
+  const event = await loadEvent(c);
+  const me = caller(c, await db.getPlayers(c.env.DB, event.code));
+  const { board, declarer, plays, claim, state } = await liveBoard(c, event);
+  if (claim) throw new HttpError(409, "There's a claim to answer first");
+  const req = await body<PlayCardRequest>(c);
+  const card = parseCard(String(req.card ?? ""));
+  if (!card) throw new HttpError(400, "That isn't a card");
+  if (req.seq !== plays.length + 1) throw new HttpError(409, "That card has already been played, or play has moved on");
+  if (isComplete(state)) throw new HttpError(409, "All the cards have been played");
+
+  const seat = toPlay(state);
+  const mine: Seat | null = me.seat === dummyOf(declarer) ? null : me.seat;
+  if (seat !== mine && !(seat === dummyOf(declarer) && me.seat === declarer)) {
+    throw new HttpError(409, "It isn't your turn");
+  }
+  try {
+    playCard(state, card);
+  } catch (e) {
+    throw new HttpError(400, (e as Error).message);
+  }
+
+  const play: PlayDto = { board: board.number, seq: req.seq, seat, card: cardCode(card) };
+  if (!(await db.insertPlay(c.env.DB, event.code, play, nowIso()))) {
+    throw new HttpError(409, "That card has already been played, or play has moved on");
+  }
+  await push(c, event.code, { type: "play", play });
+  return c.json(play);
+});
+
+/**
+ * Claim: say how many of the tricks still to play your side will take. Your cards are shown to
+ * everyone, and play stops until it's answered. Declarer or a defender can claim (not dummy).
+ */
+app.post("/events/:code/boards/:board/claim", async (c) => {
+  const event = await loadEvent(c);
+  const me = caller(c, await db.getPlayers(c.env.DB, event.code));
+  const { board, declarer, claim, state } = await liveBoard(c, event);
+  if (!me.seat || me.seat === dummyOf(declarer)) throw new HttpError(403, "Dummy can't claim");
+  if (claim) throw new HttpError(409, "There's already a claim");
+  if (isComplete(state)) throw new HttpError(409, "All the cards have been played");
+  const req = await body<ClaimRequest>(c);
+  const left = tricksLeft(state);
+  if (!Number.isInteger(req.tricks) || req.tricks < 0 || req.tricks > left) {
+    throw new HttpError(400, `Claim between 0 and ${left} tricks`);
+  }
+  const made: ClaimDto = { board: board.number, seat: me.seat, tricks: req.tricks, acceptedBy: [] };
+  await db.insertClaim(c.env.DB, event.code, made, nowIso());
+  await push(c, event.code, { type: "claim", board: board.number, claim: made });
+  return c.json(made);
+});
+
+/**
+ * Accept or refuse a claim. The claimer's opponents answer (declarer alone, when a defender
+ * claims: dummy doesn't). One refusal ends the claim and play goes on; when everyone who answers
+ * has accepted, the board waits for its result to be entered.
+ */
+app.post("/events/:code/boards/:board/claim/answer", async (c) => {
+  const event = await loadEvent(c);
+  const me = caller(c, await db.getPlayers(c.env.DB, event.code));
+  const { board, declarer, claim } = await liveBoard(c, event);
+  if (!claim) throw new HttpError(409, "There's no claim to answer");
+  if (claimAccepted(claim, declarer)) throw new HttpError(409, "The claim has already been accepted");
+  if (!me.seat || !claimAnswerers(claim.seat, declarer).includes(me.seat)) {
+    throw new HttpError(403, "Only the claimer's opponents answer a claim");
+  }
+  const req = await body<AnswerClaimRequest>(c);
+  if (!req.accept) {
+    await db.deleteClaim(c.env.DB, event.code, board.number);
+    await push(c, event.code, { type: "claim", board: board.number, claim: null });
+    return c.json(null);
+  }
+  const answered: ClaimDto = { ...claim, acceptedBy: [...new Set([...claim.acceptedBy, me.seat])] };
+  await db.setClaimAccepted(c.env.DB, event.code, board.number, answered.acceptedBy);
+  await push(c, event.code, { type: "claim", board: board.number, claim: answered });
+  return c.json(answered);
+});
+
+/** The claimer takes back a claim nobody has finished accepting. */
+app.delete("/events/:code/boards/:board/claim", async (c) => {
+  const event = await loadEvent(c);
+  const me = caller(c, await db.getPlayers(c.env.DB, event.code));
+  const { board, declarer, claim } = await liveBoard(c, event);
+  if (!claim) return c.body(null, 204);
+  if (me.seat !== claim.seat) throw new HttpError(403, "Only the player who claimed can take it back");
+  if (claimAccepted(claim, declarer)) throw new HttpError(409, "The claim has been accepted");
+  await db.deleteClaim(c.env.DB, event.code, board.number);
+  await push(c, event.code, { type: "claim", board: board.number, claim: null });
+  return c.body(null, 204);
 });
 
 /** Results changed since a timestamp: how a phone catches up after reconnecting. */

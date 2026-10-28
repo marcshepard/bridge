@@ -5,8 +5,10 @@
 // (`ApiGameStore`) and the identity lives in this browser (`LocalProfileStore`).
 
 import type {
+  ClaimDto,
   EventSnapshot,
   PartnershipsRequest,
+  PlayDto,
   PushMessage,
   ResultDto,
   SaveResultRequest,
@@ -15,7 +17,9 @@ import type {
 import type { GameFileV1 } from "../providers/gameFile";
 
 export type {
+  ClaimDto,
   EventSnapshot,
+  PlayDto,
   PublicPlayer,
   ResultDto,
   SeatRequestDto,
@@ -47,6 +51,18 @@ export interface GameStore {
   choosePartnerships(code: string, choice: PartnershipsRequest): Promise<void>;
   /** Save or correct the table's result on a board. Everyone at the table sees it straight away. */
   saveResult(code: string, board: number, result: SaveResultRequest): Promise<ResultDto>;
+  /** The creator starts playing a board's cards on the devices (its contract must be in). */
+  startCardPlay(code: string, board: number): Promise<ResultDto>;
+  /** The creator stops playing a board on the devices; the cards played are thrown away. */
+  stopCardPlay(code: string, board: number): Promise<void>;
+  /** Play a card ("SA") as card number `seq` (1–52) on the board. Rejects with the reason if refused. */
+  playCard(code: string, board: number, seq: number, card: string): Promise<PlayDto>;
+  /** Claim this many of the tricks left on the board, for your side. */
+  claim(code: string, board: number, tricks: number): Promise<ClaimDto>;
+  /** Accept or refuse the claim on the board (the claimer's opponents). Null once refused. */
+  answerClaim(code: string, board: number, accept: boolean): Promise<ClaimDto | null>;
+  /** The claimer takes their claim back. */
+  withdrawClaim(code: string, board: number): Promise<void>;
   /**
    * Ask to take over a seat (by slot) in a full or started game. Someone at the table has to allow
    * it. Returns the request's ID, and whether anyone is connected to answer it right now.

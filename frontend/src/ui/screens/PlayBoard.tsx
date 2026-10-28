@@ -9,6 +9,7 @@ import { formatScore } from "../../core/scoring";
 import { type ReactNode, useState } from "react";
 import type { BoardComparison } from "../../core/compare";
 import { hcp } from "../../core/deal";
+import type { Card, Claim } from "../../core/play";
 import { type Contract, type Hand as HandT, type Seat, SEATS, SEAT_NAMES, directionOf, isVulnerable } from "../../core/types";
 import type { Board } from "../../providers/types";
 import { Hand, HandTiles } from "../components/Hand";
@@ -18,6 +19,7 @@ import { PlayerName } from "../controls/PlayerName";
 import { Panel, Screen, Section } from "../controls/Layout";
 import { ScoreChip, type Tone } from "../controls/ScoreChip";
 import { formatJoinCode, netParts } from "../labels";
+import { PlayHand } from "./PlayHand";
 
 interface Props {
   /** The game's join code, so anyone at the table can read it out to someone rejoining. */
@@ -45,6 +47,19 @@ interface Props {
   onBoardInfo: () => void;
   onEnterContract: () => void;
   onEnterResult: () => void;
+  /** Start playing the cards on the devices (for now the game's creator only, board by board). */
+  onStartPlay?: () => void;
+  /** While the cards are being played on the devices: the play table takes over the page. */
+  play: {
+    cards: Card[];
+    claim: Claim | null;
+    onPlay: (seq: number, card: Card) => Promise<void>;
+    onClaim: (tricks: number) => Promise<void>;
+    onAnswerClaim: (accept: boolean) => Promise<void>;
+    onWithdrawClaim: () => Promise<void>;
+    onEnterResult: (tricks: number) => Promise<void>;
+    onStop?: () => void;
+  } | null;
   onCorrect: () => void;
   onBreakdown: () => void;
   onField: () => void;
@@ -112,14 +127,43 @@ export function PlayBoard(p: Props) {
   const matchpoints =
     c && c.mpPct !== null ? `${netParts(c.mpPct).pct} matchpoints, net ${netParts(c.mpPct).net}` : "";
 
+  const top = (
+    <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
+      <Typography variant="body1" color="text.secondary" sx={{ flex: 1 }}>
+        Join code <strong className="num">{formatJoinCode(p.code)}</strong>
+      </Typography>
+      <ScoreChip label={p.tally.label} tone={p.tally.tone} onClick={p.onTally} ariaLabel={p.tally.ariaLabel} />
+    </Stack>
+  );
+
+  // While the cards are played on screen, the play table takes the place of everything below the
+  // top row, including Previous and Next board: the table plays this board together.
+  if (p.play && p.contract && !c) {
+    return (
+      <Screen>
+        {top}
+        <PlayHand
+          board={board}
+          seat={seat}
+          contract={p.contract}
+          names={p.names}
+          away={p.away}
+          cards={p.play.cards}
+          claim={p.play.claim}
+          onPlay={p.play.onPlay}
+          onClaim={p.play.onClaim}
+          onAnswerClaim={p.play.onAnswerClaim}
+          onWithdrawClaim={p.play.onWithdrawClaim}
+          onEnterResult={p.play.onEnterResult}
+          onStop={p.play.onStop}
+        />
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
-        <Typography variant="body1" color="text.secondary" sx={{ flex: 1 }}>
-          Join code <strong className="num">{formatJoinCode(p.code)}</strong>
-        </Typography>
-        <ScoreChip label={p.tally.label} tone={p.tally.tone} onClick={p.onTally} ariaLabel={p.tally.ariaLabel} />
-      </Stack>
+      {top}
 
       {/*
         Once the board is over: the result first (two thin lines, each part opening its detail: the
@@ -214,9 +258,16 @@ export function PlayBoard(p: Props) {
           </Section>
           {/* The contract row enters the contract, so the main button only appears once there's one. */}
           {p.contract && (
-            <Button variant="contained" size="large" fullWidth sx={{ mt: 3 }} onClick={p.onEnterResult}>
-              Enter the result
-            </Button>
+            <Stack direction="row" spacing={1} sx={{ mt: 3 }}>
+              {p.onStartPlay && (
+                <Button variant="outlined" size="large" onClick={p.onStartPlay}>
+                  Play
+                </Button>
+              )}
+              <Button variant="contained" size="large" fullWidth onClick={p.onEnterResult}>
+                Enter the result
+              </Button>
+            </Stack>
           )}
         </>
       )}
