@@ -4,7 +4,6 @@
 import { Box, ButtonBase, Collapse, LinearProgress, List, ListItem, Typography } from "@mui/material";
 import { useState } from "react";
 import type { BoardComparison, ScoreGroup } from "../../core/compare";
-import { describeResult } from "../../core/describe";
 import { ResultText, ScoreText } from "../controls/BridgeText";
 import { formatPct } from "../labels";
 
@@ -33,7 +32,8 @@ export function Traveller({ c }: { c: BoardComparison }) {
         const g = row.group;
         const ours = g === null || g.isOurs;
         const open = expanded === row.score;
-        const others = g ? g.results.length - 1 : 0;
+        // Contracts behind this score that the row doesn't name (your row names none of the field's).
+        const others = g ? g.results.length - (ours ? 0 : 1) : 0;
         return (
           <ListItem
             key={row.score}
@@ -66,8 +66,7 @@ export function Traveller({ c }: { c: BoardComparison }) {
                 <ScoreText score={row.score} strong />
               </Typography>
               <Typography variant="body2" sx={{ gridArea: "what", minWidth: 0 }}>
-                {ours && <strong>You: </strong>}
-                {ours ? describeResult(c.ours) : (g!.results[0]?.description ?? "Contract not known")}
+                {ours ? <strong>Your result</strong> : g!.results[0]?.description}
                 {others > 0 && !open && (
                   <Box component="span" sx={{ color: "text.secondary" }}>
                     {" "}

@@ -16,7 +16,7 @@ import { devMode, games } from "../../services";
 import type { EventSnapshot, PublicPlayer } from "../../session/store";
 import { ChoiceGroup } from "../controls/ChoiceGroup";
 import { Screen, Section } from "../controls/Layout";
-import { formatJoinCode } from "../labels";
+import { formatJoinCode, isAway } from "../labels";
 
 const PLACES = 4;
 
@@ -62,17 +62,22 @@ function PlayerList({ players, mySlot }: { players: PublicPlayer[]; mySlot: numb
   const places = Array.from({ length: PLACES }, (_, i) => players.find((p) => p.slot === i + 1) ?? null);
   return (
     <List disablePadding aria-label="Players" sx={{ display: "grid", gap: 1 }}>
-      {places.map((p, i) => (
-        <ListItem key={i} disablePadding>
-          <Paper variant="outlined" sx={{ width: "100%", px: 2, py: 1, ...(p?.slot === mySlot && { borderColor: "primary.main" }) }}>
-            <ListItemText
-              primary={p ? `${p.name}${p.slot === mySlot ? " (you)" : ""}` : "Waiting for a player…"}
-              secondary={p?.isCreator ? "Started the game" : undefined}
-              slotProps={{ primary: { variant: "subtitle1", component: "p", color: p ? "textPrimary" : "textSecondary" } }}
-            />
-          </Paper>
-        </ListItem>
-      ))}
+      {places.map((p, i) => {
+        const away = !!p && isAway(p, mySlot);
+        return (
+          <ListItem key={i} disablePadding>
+            <Paper variant="outlined" sx={{ width: "100%", px: 2, py: 1, ...(p?.slot === mySlot && { borderColor: "primary.main" }) }}>
+              <ListItemText
+                primary={p ? `${p.name}${p.slot === mySlot ? " (you)" : ""}${away ? " (away)" : ""}` : "Waiting for a player…"}
+                secondary={p?.isCreator ? "Started the game" : undefined}
+                slotProps={{
+                  primary: { variant: "subtitle1", component: "p", color: !p || away ? "textDisabled" : "textPrimary" },
+                }}
+              />
+            </Paper>
+          </ListItem>
+        );
+      })}
     </List>
   );
 }

@@ -1,6 +1,14 @@
 import { SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import type { EventSnapshot, JoinedResponse, PushMessage, ResultDto } from "../src/api-types";
+import type {
+  EventSnapshot,
+  JoinedResponse,
+  LiveTicketResponse,
+  PushMessage,
+  ResultDto,
+  SeatRequestCreated,
+  SeatRequestState,
+} from "../src/api-types";
 import { assignSeats } from "../src/seats";
 import game from "./fixtures/game.json";
 
@@ -39,7 +47,8 @@ async function gameInPlay() {
 
 /** Open a live connection and collect the messages it receives. */
 async function connect(code: string, playerId: string) {
-  const res = await SELF.fetch(`https://bridge.test/api/events/${code}/live?playerId=${playerId}`, {
+  const { ticket } = (await api<LiveTicketResponse>("POST", `/events/${code}/live-ticket`, undefined, playerId)).json;
+  const res = await SELF.fetch(`https://bridge.test/api/events/${code}/live?ticket=${ticket}`, {
     headers: { Upgrade: "websocket" },
   });
   expect(res.status).toBe(101);
@@ -179,6 +188,23 @@ describe("results", () => {
     expect(snap.results[0]).toMatchObject({ contract: "4SX", tricks: 9 });
   });
 
+  it("takes the contract first, then the tricks", async () => {
+    const { code, creator, others } = await gameInPlay();
+    const put = (body: unknown, id = creator.playerId) => api<ResultDto>("PUT", `/events/${code}/boards/1`, body, id);
+
+    const bid = await put({ contract: "3nt", declarer: "W", tricks: null }, others[0]!.playerId);
+    expect(bid.status).toBe(200);
+    expect(bid.json).toMatchObject({ contract: "3NT", declarer: "W", tricks: null, enteredBy: 2 });
+    expect((await put({ contract: "3NT", declarer: null, tricks: null })).status).toBe(400);
+
+    const played = await put({ contract: "3NT", declarer: "W", tricks: 8 });
+    expect(played.json).toMatchObject({ contract: "3NT", tricks: 8, enteredBy: 1 });
+
+    // Passed out has no play, so it's complete even when sent as a contract only.
+    const passed = await api<ResultDto>("PUT", `/events/${code}/boards/2`, { contract: "PASS", declarer: null, tricks: null }, creator.playerId);
+    expect(passed.json).toMatchObject({ contract: "PASS", tricks: 0 });
+  });
+
   it("validates contracts, tricks, boards and who's asking", async () => {
     const { code, creator } = await gameInPlay();
     const put = (b: number, body: unknown, id = creator.playerId) => api("PUT", `/events/${code}/boards/${b}`, body, id);
@@ -230,12 +256,19 @@ describe("live updates", () => {
     bob.ws.close();
   });
 
-  it("refuses a connection from someone who isn't a player", async () => {
-    const { code } = await gameInPlay();
-    const res = await SELF.fetch(`https://bridge.test/api/events/${code}/live?playerId=nope`, {
-      headers: { Upgrade: "websocket" },
-    });
-    expect(res.status).toBe(403);
+  it("refuses a connection without a valid, unused pass", async () => {
+    const { code, creator } = await gameInPlay();
+    expect((await api("POST", `/events/${code}/live-ticket`, undefined, "not-a-player")).status).toBe(403);
+    const open = (ticket: string) =>
+      SELF.fetch(`https://bridge.test/api/events/${code}/live?ticket=${ticket}`, { headers: { Upgrade: "websocket" } });
+    expect((await open("made-up")).status).toBe(403);
+
+    const { ticket } = (await api<LiveTicketResponse>("POST", `/events/${code}/live-ticket`, undefined, creator.playerId)).json;
+    const first = await open(ticket);
+    expect(first.status).toBe(101);
+    first.webSocket!.accept();
+    expect((await open(ticket)).status).toBe(403); // single use
+    first.webSocket!.close();
   });
 
   it("tells everyone when the game ends", async () => {
@@ -244,6 +277,77 @@ describe("live updates", () => {
     expect((await api("POST", `/events/${code}/end`, undefined, others[2]!.playerId)).status).toBe(204);
     await ann.waitFor((m) => m.type === "status" && m.status === "ended");
     ann.ws.close();
+  });
+});
+
+// ---- Seat requests ---------------------------------------------------------------------------------
+
+describe("seat requests", () => {
+  async function ask(code: string, name: string, slot: number) {
+    return api<SeatRequestCreated>("POST", `/events/${code}/requests`, { name, slot });
+  }
+  const status = async (code: string, r: SeatRequestCreated) =>
+    (await api<SeatRequestState>("GET", `/events/${code}/requests/${r.requestId}`, undefined, r.playerId)).json.status;
+
+  it("hands the seat over when someone at the table allows it", async () => {
+    const { code, others } = await gameInPlay();
+    const ann = await connect(code, others[0]!.playerId);
+    const bob = await connect(code, others[1]!.playerId); // Bob (slot 3) is being replaced
+    await bob.waitFor((m) => m.type === "presence" && m.connected.includes(2) && m.connected.includes(3));
+
+    const asked = await ask(code, "Dana", 3);
+    expect(asked.status).toBe(201);
+    expect(asked.json.anyoneConnected).toBe(true);
+    const dana = asked.json;
+    await ann.waitFor((m) => m.type === "request" && m.request.name === "Dana" && m.request.slot === 3);
+    expect(await status(code, dana)).toBe("pending");
+    // Players see it in the snapshot too (for anyone who connects later); outsiders don't.
+    expect((await api<EventSnapshot>("GET", `/events/${code}`, undefined, others[0]!.playerId)).json.requests).toHaveLength(1);
+    expect((await api<EventSnapshot>("GET", `/events/${code}`)).json.requests).toEqual([]);
+
+    expect((await api("POST", `/events/${code}/requests/${dana.requestId}/answer`, { allow: true }, others[0]!.playerId)).status).toBe(204);
+    expect(await status(code, dana)).toBe("allowed");
+
+    // Dana now holds the seat; Bob's key no longer works, and his device was told and cut off.
+    const asDana = (await api<EventSnapshot>("GET", `/events/${code}`, undefined, dana.playerId)).json;
+    expect(asDana.you).toMatchObject({ slot: 3 });
+    expect(asDana.players.find((p) => p.slot === 3)?.name).toBe("Dana");
+    expect((await api<EventSnapshot>("GET", `/events/${code}`, undefined, others[1]!.playerId)).json.you).toBeNull();
+    expect((await api("POST", `/events/${code}/live-ticket`, undefined, others[1]!.playerId)).status).toBe(403);
+    const news = await bob.waitFor((m) => m.type === "requestClosed");
+    expect(news).toMatchObject({ outcome: "allowed", by: 2, replacedName: "Bob", request: { name: "Dana", slot: 3 } });
+    await ann.waitFor((m) => m.type === "presence" && !m.connected.includes(3));
+    ann.ws.close();
+  });
+
+  it("can be denied or cancelled, and only the first answer counts", async () => {
+    const { code, creator, others } = await gameInPlay();
+    const answer = (id: string, allow: boolean, who = creator.playerId) =>
+      api("POST", `/events/${code}/requests/${id}/answer`, { allow }, who);
+
+    const denied = (await ask(code, "Dana", 4)).json;
+    expect((await answer(denied.requestId, false)).status).toBe(204);
+    expect(await status(code, denied)).toBe("denied");
+    expect((await answer(denied.requestId, true, others[0]!.playerId)).status).toBe(409);
+
+    const cancelled = (await ask(code, "Dana", 4)).json;
+    expect((await api("DELETE", `/events/${code}/requests/${cancelled.requestId}`, undefined, cancelled.playerId)).status).toBe(204);
+    expect(await status(code, cancelled)).toBe("cancelled");
+
+    // Outsiders can't answer, and allowing one request turns down others for the same seat.
+    const first = (await ask(code, "Eve", 4)).json;
+    const second = (await ask(code, "Fay", 4)).json;
+    expect((await answer(first.requestId, true, "not-a-player")).status).toBe(403);
+    expect((await answer(first.requestId, true)).status).toBe(204);
+    expect(await status(code, second)).toBe("denied");
+  });
+
+  it("is only for full games, and for a real player's seat", async () => {
+    const created = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game })).json;
+    expect((await ask(created.code, "Dana", 1)).status).toBe(409); // there's room: just join
+    const { code } = await lobbyOfFour();
+    expect((await ask(code, "Dana", 9)).status).toBe(400);
+    expect((await ask(code, "Dana", 2)).status).toBe(201); // a full lobby works too
   });
 });
 

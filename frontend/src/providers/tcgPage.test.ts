@@ -51,8 +51,8 @@ describe("Common Game results page", () => {
   });
 
   it("reads the date, the field name and every board's deal", () => {
-    expect(file.id).toBe("tcg-2026-10-22-299ers");
-    expect(game.summary.title).toBe("The Common Game, Thu 22 Oct 2026 (299ers field)");
+    expect(file.id).toBe("tcg-2026-10-22-299er");
+    expect(game.summary.title).toBe("The Common Game, Thu 22 Oct 2026 (299er)");
     expect(game.summary.date).toBe("2026-10-22");
     expect(game.boards.map((b) => [b.number, b.dealer, b.vul])).toEqual([
       [1, "N", "None"],
@@ -89,10 +89,10 @@ describe("Common Game results page", () => {
     expect([c.beat, c.tied]).toEqual([30, 45]);
   });
 
-  it("calls the regular archive's field Open", () => {
+  it("adds no field label for the regular archive", () => {
     const open = tcgPageToGameFile(PAGE.replace("<h2> 299ers Top 50 Ranking</h2>", "<h2>  Top 50 Ranking</h2>"), "p.html");
-    expect(open.id).toBe("tcg-2026-10-22-open");
-    expect(open.title).toBe("The Common Game, Thu 22 Oct 2026 (Open field)");
+    expect(open.id).toBe("tcg-2026-10-22");
+    expect(open.title).toBe("The Common Game, Thu 22 Oct 2026");
   });
 
   it("is chosen by file name or by content when uploaded", () => {
@@ -107,9 +107,9 @@ describe("Common Game results page", () => {
 const REAL = resolve(__dirname, "../../../private/The Common Game Top 50 Page.html");
 
 describe.skipIf(!existsSync(REAL))("saved Common Game page in private/", () => {
-  it("imports all 36 boards and the whole Open field, with no warnings", () => {
+  it("imports all 36 boards and the whole field, with no warnings", () => {
     const game = parseGameFile(fileToGameFile("The Common Game Top 50 Page.html", readFileSync(REAL, "utf-8")));
-    expect(game.summary.title).toBe("The Common Game, Fri 16 Oct 2026 (Open field)");
+    expect(game.summary.title).toBe("The Common Game, Fri 16 Oct 2026");
     expect(game.boards).toHaveLength(36);
     expect(game.boards[0]!.field.reduce((n, f) => n + f.count, 0)).toBe(938);
     expect(game.boards.every((b) => b.field.length > 0)).toBe(true);

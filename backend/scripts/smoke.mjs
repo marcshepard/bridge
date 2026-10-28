@@ -34,7 +34,8 @@ const { seats } = await call("POST", `/events/${code}/partnerships`, { random: t
 console.log(`Random partnerships; seats by slot: ${JSON.stringify(seats)}`);
 
 const pushed = [];
-const ws = new WebSocket(`ws://localhost:${port}/api/events/${code}/live?playerId=${playerId}`);
+const { ticket } = await call("POST", `/events/${code}/live-ticket`, null, playerId);
+const ws = new WebSocket(`ws://localhost:${port}/api/events/${code}/live?ticket=${ticket}`);
 ws.onmessage = (e) => pushed.push(JSON.parse(e.data));
 await new Promise((resolve, reject) => {
   ws.onopen = resolve;

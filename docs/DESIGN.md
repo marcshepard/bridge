@@ -245,13 +245,17 @@ shows where to sit physically: "You're North, opposite Bob, with Ann on your lef
 
 **Playing a board:**
 
-- Below the header: game title (from the PBN `Event`, or the TCG page), the board number and the
-  position in the session ("Board 7, 3 of 24"), and the **running tally** for your side, e.g.
+- Below the header: game title (from the PBN `Event`, or the TCG page), the board number out of
+  the game's boards ("Board 7 of 24"; where you are in the session isn't shown), and the **running tally** for your side, e.g.
   "NS +140". Tapping the tally opens a dialog with the board-by-board grid.
 - Dealer, vulnerability, and the contract once entered.
 - A compass with the players' names, **you at the bottom**, and your hand below it.
-- **Enter result** (any player at the table): contract, declarer, tricks, using the existing
-  result dialog. Everyone sees it immediately, labelled "entered by Ann", and anyone can correct it.
+- **Enter the contract** (any player, once the bidding is over): contract and declarer, or passed
+  out. Everyone sees it at once, during the play, with a **Change** button.
+- **Enter the result** (any player, once the play is over): the tricks. Everyone sees it
+  immediately, labelled "entered by Ann", and anyone can **Correct** contract and tricks together.
+  A correction by someone else shows a notice on every other device ("Ann corrected board 3: now
+  …", with **Show board**), since it may be a board they've moved on from and it changes the tally.
 
 **After the result:**
 
@@ -370,11 +374,16 @@ the player with `isCreator`; there's no separate host key.
 | `POST /api/events/:code/players` | Anyone with the code | Join the lobby: `{ name }` → `{ code, playerId, slot }`. Closed once play starts or with 4 players |
 | `DELETE /api/events/:code/players/me` | A player | Leave the lobby (frees the place). If the creator leaves the lobby, the game is cancelled |
 | `POST /api/events/:code/partnerships` | Creator | `{ partnerSlot }` or `{ random: true }`; assigns seats (partners opposite, at random) and starts play |
-| `PUT /api/events/:code/boards/:board` | A player | Save or correct a result: `{ contract, declarer, tricks }` |
+| `PUT /api/events/:code/boards/:board` | A player | Save or correct a result: `{ contract, declarer, tricks }`. `tricks: null` saves just the contract (bidding over, play not); passed out is always complete |
+| `POST /api/events/:code/requests` | Anyone with the code | Full or started game only: ask to take over a seat, `{ name, slot }` → `{ requestId, playerId, anyoneConnected }` |
+| `GET /api/events/:code/requests/:id` | The requester (its `playerId`) | `{ status }`: pending, allowed, denied, cancelled or expired (10 minutes) |
+| `DELETE /api/events/:code/requests/:id` | The requester | Withdraw the request |
+| `POST /api/events/:code/requests/:id/answer` | A player | `{ allow }`. First answer wins. Allowing gives the seat (and its results) the requester's key and name; the old key stops working and the old device is disconnected |
 | `GET /api/events/:code/results?since=` | A player | Results changed at or after a timestamp (catching up after a reconnect) |
 | `POST /api/events/:code/end` | A player | End the game |
 | `DELETE /api/events/:code` | Creator | Delete the game and its results |
-| `GET /api/events/:code/live?playerId=` | A player | WebSocket for pushed updates |
+| `POST /api/events/:code/live-ticket` | A player | `{ ticket }`: a single-use pass to open the WebSocket, valid for a minute. Browsers can't send headers on a WebSocket, and the secret `playerId` mustn't appear in an address (addresses end up in logs) |
+| `GET /api/events/:code/live?ticket=` | A player (with a pass) | WebSocket for pushed updates |
 | `POST /api/events/:code/test-players` | Dev only | Fill the empty places with test players |
 
 Every write is validated in the Worker with the same `core/` functions the frontend uses (contract
@@ -383,7 +392,9 @@ a 400, 403, 404 or 409 status.
 
 **Pushed messages** (`PushMessage` in `api-types.ts`): `result` (a saved result), `players`
 (someone joined, left or got a seat: refetch the snapshot), `status` (playing or ended),
-`presence` (which slots are connected), `deleted`.
+`presence` (which slots are connected), `request` (someone asks for a seat), `requestClosed` (it
+was allowed, denied or withdrawn; the table is told "Dana has replaced Joe", "Marc has moved to
+another device" or "Ann didn't let Dana replace Joe"), `deleted`.
 
 **Updates:** pushed by the game's Durable Object; see the decision below.
 
@@ -578,35 +589,66 @@ game after a dropped connection, and test players are off in the live app.
 - **Feedback:** a "Send feedback" link in Help (navia.apps@gmail.com).
 - *Review:* Marc deploys, installs it on his phone, and plays a game on the live app.
 
-### Stage 5: feedback, then resilience and finish (next)
+### Stage 5: presence, reconnecting and security (in progress)
 
-- Fixes and changes from the bridge group's first evenings.
-- Presence in the UI (disconnected players greyed out), reconnect and catch up via
-  `results?since=`, reclaiming a seat from a different device (a connected player approves).
-- End game with the post-mortem (celebration or commiseration, then the tally grid with each
-  board's final state in a dialog).
-- Backend: rate-limit failed code lookups; scheduled clean-up of games past `expires_at` (cron).
+Work happens on the `dev` branch from here on; `main` is what's deployed. Feedback from the bridge
+group is slated as its own work when it arrives, not as a stage. Built in three slices, each
+tested by hand and committed on its own:
+
+- **5a. Presence and connection status** (**done**; frontend, the backend already pushes presence):
+  disconnected players greyed out with "(away)" in the lobby and on the compass; a "Reconnecting…"
+  strip when your own connection drops, and the whole game is refetched when it comes back.
+  (Refetching the snapshot rather than `results?since=` is simpler and can't miss anything; the
+  snapshot is small and D1 is the store of record.)
+- **5b. Getting your seat back (the security model).** A seat is tied to a secret `playerId` in
+  the browser, so losing or switching device used to lock you out. One way back covers both:
+  - *Join as replacement* (**done**): joining a full or started game lists the players; pick whose
+    seat you're taking (your own, to carry on from another device) and tap "Join as replacement".
+    Everyone connected gets Allow / Deny; the first answer wins and everyone is told the outcome.
+    Allowed: the requester's new key and name take the seat and its results, the old key stops
+    working, and the old device is disconnected and sent Home ("Dana has replaced you"). The
+    requester's screen checks every 2 seconds while it waits; requests lapse after 10 minutes, and
+    at most 5 can wait per game. Migration 0003 (`seat_requests`).
+  - *Dropped:* a "Continue on another device" QR code (replacement already does it; the QR code
+    would only skip the approval), and freeing the seat on "Leave game" during play (leaving keeps
+    the seat yours, and anyone can take it over by replacement).
+  - The `playerId` no longer goes in the WebSocket address (addresses end up in Cloudflare's
+    logs): the device swaps it for a single-use pass first (`live-ticket`).
+- **Fit and finish, alongside 5b** (**done**):
+  - The contract is entered on its own once the bidding is over, then the tricks after the play
+    (migration 0002 lets `tricks` be empty).
+  - A notice when someone else corrects a finished board (shared `Notice` control, also used for
+    seat-request news).
+  - A simpler field dialog: "Most common: −100 EW", "Your result" on your row, and no "Contract not
+    known" on score-only rows (the Common Game page has no contracts; PBN travellers can).
+- **5c. Limits and housekeeping** (backend): rate limits on wrong join codes and on game creation
+  (Cloudflare's rate limiting binding if the free plan has it, else a counter in D1); a nightly
+  cron trigger that deletes games past `expires_at`.
+
+Stages 6, 7 and 8 are separate pieces of work; their order is still to be decided.
 
 ### Stage 6: starting a game from a phone
 
-Players mostly use phones, but saving a Common Game page is a computer job. In order of preference:
+Players mostly use phones, but saving a Common Game page is a computer job. Research first (real
+samples from phones), then build the routes that work:
 
-- **Prepare on a computer, play on a phone:** a "Continue on your phone" QR code in the lobby moves
-  the creator's seat to their phone.
+- **Prepare on a computer, play on a phone:** start the game on the computer, then join from the
+  phone as a replacement for your own seat and allow it from the computer (5b).
 - **Email or cloud:** save the page on a computer, open it from the phone's file picker (works
   today; needs a line in Help).
 - **Saving on a phone:** Chrome on Android saves pages as `.mhtml`, which the importer could read;
   iPhone Safari saves PDF or `.webarchive` (to investigate with real samples).
 - Not: fetching pages from the Common Game site on the server (bot protection, permission), or
   copy and paste (loses the structure).
-- The real fix is the Common Game agreeing to archived downloads (asked; no reply yet).
+- The real fix is the Common Game agreeing to archived downloads (asked; no reply yet). If phones
+  can't get Common Game data, stage 8's other sources matter more.
 
 ### Stage 7: online play (no self-dealing)
 
 In-app bidding and card play for players who aren't at one table: dealing, turns, dummy shown
 after the opening lead, following suit, claims, undo, and the score worked out from the play.
-The biggest piece of work; it needs stage 5's reconnect handling, since a phone asleep mid-hand
-would stall play.
+The biggest piece of work (several days); it needs stage 5's reconnect handling, since a phone
+asleep mid-hand would stall play.
 
 ### Stage 8: PBN from other sources
 
@@ -626,6 +668,11 @@ Also accept `ScoreTable` rows with a score but no contract, if real files have t
 format already supports score-only results from stage 2).
 
 - *Review:* each sample imports with the expected boards, field and warnings.
+
+### Later, depending on feedback
+
+- End of game with a post-mortem (celebration or commiseration, then the tally grid with each
+  board's final state in a dialog).
 
 ### Working notes for a new session
 
@@ -667,7 +714,7 @@ it:
 First from a 299er-archive page for Thursday 22 Oct 2026 (since removed), then confirmed on the
 regular archive's page for Friday 16 Oct 2026 (36 boards, 938 tables on board 1). The two archives
 use the same markup. The 299er page's heading says "299ers Top 50 Ranking" (newer players only);
-the regular page's says just "Top 50 Ranking", and is the Open field (all players). The page names
+the regular page's says just "Top 50 Ranking", and includes all players; game titles add no label for it, and "(299er)" for the 299er page. The page names
 the game only by its date: no set ID or session name.
 
 - **Per board:** `<h2> Board N (10/22/26)</h2>`; dealer in `#board_setup_dealer` ("N Deals");

@@ -2,12 +2,18 @@
 // The request and response shapes are the backend's API contract (backend/src/api-types.ts).
 
 import type {
+  AnswerSeatRequest,
   CreateEventRequest,
   EventSnapshot,
   JoinedResponse,
+  LiveTicketResponse,
   PartnershipsRequest,
   ResultDto,
   SaveResultRequest,
+  SeatRequestCreated,
+  SeatRequestRequest,
+  SeatRequestState,
+  SeatRequestStatus,
 } from "../../../backend/src/api-types";
 import type { GameFileV1 } from "../providers/gameFile";
 import type { GameStore, LiveMessage, ProfileStore } from "./store";
@@ -37,11 +43,16 @@ export class ApiGameStore implements GameStore {
     private readonly base = "/api",
   ) {}
 
-  private async request<T>(method: string, path: string, code?: string, body?: unknown): Promise<T> {
+  /** A call as this device's player in game `code` (if it is one). */
+  private request<T>(method: string, path: string, code?: string, body?: unknown): Promise<T> {
+    return this.send<T>(method, path, code ? this.profile.playerId(code) : null, body);
+  }
+
+  /** A call with the given key in X-Player-Id (or none). */
+  private async send<T>(method: string, path: string, key: string | null, body?: unknown): Promise<T> {
     const headers: Record<string, string> = {};
     if (body !== undefined) headers["Content-Type"] = "application/json";
-    const id = code ? this.profile.playerId(code) : null;
-    if (id) headers["X-Player-Id"] = id;
+    if (key) headers["X-Player-Id"] = key;
 
     let res: Response;
     try {
@@ -100,36 +111,91 @@ export class ApiGameStore implements GameStore {
     return this.request<ResultDto>("PUT", `/events/${code}/boards/${board}`, code, result);
   }
 
+  /**
+   * The key each pending seat request was given, by request ID. Kept in memory only: it's not this
+   * device's key to the game until the request is allowed.
+   */
+  private readonly requestKeys = new Map<string, string>();
+
+  async requestSeat(code: string, name: string, slot: number) {
+    const c = normaliseCode(code);
+    const body: SeatRequestRequest = { name, slot };
+    const created = await this.request<SeatRequestCreated>("POST", `/events/${c}/requests`, undefined, body);
+    this.requestKeys.set(created.requestId, created.playerId);
+    return { requestId: created.requestId, anyoneConnected: created.anyoneConnected };
+  }
+
+  async seatRequestStatus(code: string, requestId: string): Promise<SeatRequestStatus> {
+    const c = normaliseCode(code);
+    const key = this.requestKeys.get(requestId);
+    if (!key) return "cancelled";
+    const { status } = await this.send<SeatRequestState>("GET", `/events/${c}/requests/${requestId}`, key);
+    if (status !== "pending") this.requestKeys.delete(requestId);
+    if (status === "allowed") this.remember({ code: c, playerId: key, slot: 0 });
+    return status;
+  }
+
+  async cancelSeatRequest(code: string, requestId: string): Promise<void> {
+    const key = this.requestKeys.get(requestId);
+    if (!key) return;
+    this.requestKeys.delete(requestId);
+    await this.send<void>("DELETE", `/events/${normaliseCode(code)}/requests/${requestId}`, key);
+  }
+
+  async answerSeatRequest(code: string, requestId: string, allow: boolean): Promise<void> {
+    const body: AnswerSeatRequest = { allow };
+    await this.request<void>("POST", `/events/${code}/requests/${requestId}/answer`, code, body);
+  }
+
   async fillWithTestPlayers(code: string): Promise<void> {
     await this.request<unknown>("POST", `/events/${code}/test-players`, code, {});
   }
 
   subscribe(code: string, onMessage: (message: LiveMessage) => void): () => void {
-    const playerId = this.profile.playerId(code);
-    if (!playerId) return () => {};
+    if (!this.profile.playerId(code)) return () => {};
 
     let socket: WebSocket | null = null;
+    let connecting = false;
     let ping: ReturnType<typeof setInterval> | undefined;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let failures = 0;
     let opened = false;
+    /** Whether we last told the screen we're connected (null: not said yet). */
+    let online: boolean | null = null;
     let stopped = false;
 
-    const url = () => {
-      const proto = location.protocol === "https:" ? "wss:" : "ws:";
-      return `${proto}//${location.host}${this.base}/events/${code}/live?playerId=${encodeURIComponent(playerId)}`;
+    // A dropped link, or one that couldn't be opened: say so once per outage, then try again later.
+    const lost = () => {
+      if (stopped) return;
+      if (online !== false) onMessage({ type: "disconnected" });
+      online = false;
+      retry = setTimeout(() => void connect(), RETRY_MS[Math.min(failures++, RETRY_MS.length - 1)]);
     };
 
-    const connect = () => {
+    const connect = async () => {
       clearTimeout(retry);
-      if (stopped || (socket && socket.readyState <= WebSocket.OPEN)) return;
-      const ws = new WebSocket(url());
+      if (stopped || connecting || (socket && socket.readyState <= WebSocket.OPEN)) return;
+      // Swap this device's key for a single-use pass: the key itself never goes in an address.
+      connecting = true;
+      let ticket: string;
+      try {
+        ({ ticket } = await this.request<LiveTicketResponse>("POST", `/events/${code}/live-ticket`, code));
+      } catch {
+        connecting = false;
+        lost();
+        return;
+      }
+      connecting = false;
+      if (stopped) return;
+      const proto = location.protocol === "https:" ? "wss:" : "ws:";
+      const ws = new WebSocket(`${proto}//${location.host}${this.base}/events/${code}/live?ticket=${ticket}`);
       socket = ws;
       ws.onopen = () => {
         failures = 0;
         // Anything pushed while we were away was missed: tell the screen to catch up.
         if (opened) onMessage({ type: "reconnected" });
         opened = true;
+        online = true;
         ping = setInterval(() => ws.readyState === WebSocket.OPEN && ws.send("ping"), PING_MS);
       };
       ws.onmessage = (e) => {
@@ -142,17 +208,16 @@ export class ApiGameStore implements GameStore {
       };
       ws.onclose = () => {
         clearInterval(ping);
-        if (stopped) return;
-        retry = setTimeout(connect, RETRY_MS[Math.min(failures++, RETRY_MS.length - 1)]);
+        lost();
       };
     };
 
     // Phones and laptops drop sockets while asleep; reconnect as soon as the page is looked at again.
     const onVisible = () => {
-      if (document.visibilityState === "visible") connect();
+      if (document.visibilityState === "visible") void connect();
     };
     document.addEventListener("visibilitychange", onVisible);
-    connect();
+    void connect();
 
     return () => {
       stopped = true;

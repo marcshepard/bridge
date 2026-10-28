@@ -10,13 +10,24 @@ import type {
   PushMessage,
   ResultDto,
   SaveResultRequest,
+  SeatRequestStatus,
 } from "../../../backend/src/api-types";
 import type { GameFileV1 } from "../providers/gameFile";
 
-export type { EventSnapshot, PublicPlayer, ResultDto } from "../../../backend/src/api-types";
+export type {
+  EventSnapshot,
+  PublicPlayer,
+  ResultDto,
+  SeatRequestDto,
+  SeatRequestStatus,
+} from "../../../backend/src/api-types";
 
-/** What a live subscription hears: the backend's pushes, plus "reconnected" after a dropped link. */
-export type LiveMessage = PushMessage | { type: "reconnected" };
+/**
+ * What a live subscription hears: the backend's pushes, plus this device's own connection news:
+ * "disconnected" when the link drops (once per outage) and "reconnected" when it's back (anything
+ * pushed in between was missed, so catch up).
+ */
+export type LiveMessage = PushMessage | { type: "disconnected" } | { type: "reconnected" };
 
 export interface GameStore {
   /** Create a game from a game file. You join it as the first player; returns its join code. */
@@ -31,6 +42,17 @@ export interface GameStore {
   choosePartnerships(code: string, choice: PartnershipsRequest): Promise<void>;
   /** Save or correct the table's result on a board. Everyone at the table sees it straight away. */
   saveResult(code: string, board: number, result: SaveResultRequest): Promise<ResultDto>;
+  /**
+   * Ask to take over a seat (by slot) in a full or started game. Someone at the table has to allow
+   * it. Returns the request's ID, and whether anyone is connected to answer it right now.
+   */
+  requestSeat(code: string, name: string, slot: number): Promise<{ requestId: string; anyoneConnected: boolean }>;
+  /** How your request stands. Once it's allowed, this device is in the game (it's the current game). */
+  seatRequestStatus(code: string, requestId: string): Promise<SeatRequestStatus>;
+  /** Give up waiting. */
+  cancelSeatRequest(code: string, requestId: string): Promise<void>;
+  /** At the table: allow or deny someone's request for a seat. */
+  answerSeatRequest(code: string, requestId: string, allow: boolean): Promise<void>;
   /** Dev only: fill the empty places with test players. */
   fillWithTestPlayers(code: string): Promise<void>;
   /** Live updates for a game. Returns a function that stops them. */

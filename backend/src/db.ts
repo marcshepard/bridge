@@ -1,7 +1,7 @@
 // All SQL lives here. Routes call these functions; nothing else touches D1 directly.
 
 import type { Seat } from "../../frontend/src/core/types";
-import type { EventStatus, ResultDto } from "./api-types";
+import type { EventStatus, ResultDto, SeatRequestDto } from "./api-types";
 
 export interface EventRow {
   code: string;
@@ -25,7 +25,7 @@ interface ResultRow {
   board: number;
   contract: string;
   declarer: Seat | null;
-  tricks: number;
+  tricks: number | null;
   entered_by: number;
   updated_at: string;
 }
@@ -122,8 +122,81 @@ export async function getResults(db: D1Database, code: string, since?: string): 
   return results.map(toResult);
 }
 
+// ---- Seat requests ------------------------------------------------------------------------------
+
+export interface SeatRequestRow {
+  id: string;
+  slot: number;
+  name: string;
+  player_id: string;
+  status: "pending" | "allowed" | "denied" | "cancelled";
+  answered_by: number | null;
+  created_at: string;
+}
+
+export const toSeatRequest = (r: SeatRequestRow): SeatRequestDto => ({
+  id: r.id,
+  slot: r.slot,
+  name: r.name,
+  createdAt: r.created_at,
+});
+
+export async function insertSeatRequest(db: D1Database, code: string, r: SeatRequestRow) {
+  await db
+    .prepare(
+      "INSERT INTO seat_requests (id, event_code, slot, name, player_id, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', ?)",
+    )
+    .bind(r.id, code, r.slot, r.name, r.player_id, r.created_at)
+    .run();
+}
+
+export async function getSeatRequest(db: D1Database, code: string, id: string): Promise<SeatRequestRow | null> {
+  return db
+    .prepare("SELECT * FROM seat_requests WHERE event_code = ? AND id = ?")
+    .bind(code, id)
+    .first<SeatRequestRow>();
+}
+
+/** Pending requests made after `since` (older ones have lapsed), oldest first. */
+export async function getPendingSeatRequests(db: D1Database, code: string, since: string): Promise<SeatRequestRow[]> {
+  const { results } = await db
+    .prepare(
+      "SELECT * FROM seat_requests WHERE event_code = ? AND status = 'pending' AND created_at > ? ORDER BY created_at",
+    )
+    .bind(code, since)
+    .all<SeatRequestRow>();
+  return results;
+}
+
+/**
+ * Close a pending request. Returns false if it was no longer pending (someone else answered first),
+ * so only one answer ever wins.
+ */
+export async function closeSeatRequest(
+  db: D1Database,
+  code: string,
+  id: string,
+  status: "allowed" | "denied" | "cancelled",
+  answeredBy: number | null,
+): Promise<boolean> {
+  const res = await db
+    .prepare("UPDATE seat_requests SET status = ?, answered_by = ? WHERE event_code = ? AND id = ? AND status = 'pending'")
+    .bind(status, answeredBy, code, id)
+    .run();
+  return res.meta.changes > 0;
+}
+
+/** The seat changes hands: the requester's key and name replace the old player's. */
+export async function replacePlayer(db: D1Database, code: string, slot: number, playerId: string, name: string) {
+  await db
+    .prepare("UPDATE players SET player_id = ?, name = ? WHERE event_code = ? AND slot = ?")
+    .bind(playerId, name, code, slot)
+    .run();
+}
+
 export async function deleteEvent(db: D1Database, code: string) {
   await db.batch([
+    db.prepare("DELETE FROM seat_requests WHERE event_code = ?").bind(code),
     db.prepare("DELETE FROM results WHERE event_code = ?").bind(code),
     db.prepare("DELETE FROM players WHERE event_code = ?").bind(code),
     db.prepare("DELETE FROM events WHERE code = ?").bind(code),

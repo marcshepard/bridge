@@ -5,17 +5,20 @@
 // dialog with the code filled in. A reload goes straight back to the game you're in.
 
 import { Alert, Button, Typography } from "@mui/material";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parseGameFile } from "../providers/gameFile";
 import { games, profile } from "../services";
 import { ApiError } from "../session/apiGameStore";
 import type { EventSnapshot, ResultDto } from "../session/store";
 import { AppHeader } from "./controls/AppHeader";
 import { Screen } from "./controls/Layout";
+import { Notice, type NoticeMessage } from "./controls/Notice";
 import { SheetDialog } from "./controls/SheetDialog";
 import { HelpDialog } from "./components/HelpDialog";
 import { InstallBanner } from "./components/InstallBanner";
-import { formatJoinCode } from "./labels";
+import { ReconnectingBanner } from "./components/ReconnectingBanner";
+import { SeatRequestDialog } from "./components/SeatRequestDialog";
+import { formatJoinCode, sameName, seatRequestNews } from "./labels";
 import { Home } from "./screens/Home";
 import { JoinGame } from "./screens/JoinGame";
 import { Lobby } from "./screens/Lobby";
@@ -34,10 +37,21 @@ function takeJoinCodeFromUrl(): string | null {
   return code;
 }
 
-/** The game you're in: its snapshot, kept current by live updates. */
-function useGame(code: string | null, onGone: (why: string) => void) {
+/** While the live connection is down, check this often whether you still have your seat. */
+const OFFLINE_CHECK_MS = 10_000;
+
+/**
+ * The game you're in: its snapshot, kept current by live updates, and whether this device's live
+ * connection is up (`online`). After a dropped connection the whole snapshot is fetched again.
+ * `onNews` hears about things worth telling you (a seat changing hands).
+ */
+function useGame(code: string | null, onGone: (why: string) => void, onNews: (text: string) => void) {
   const [snapshot, setSnapshot] = useState<EventSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [online, setOnline] = useState(true);
+  // The latest snapshot, for live messages that need to know who's who.
+  const latest = useRef(snapshot);
+  latest.current = snapshot;
 
   /** A result saved here or pushed from another device: replace that board's result. */
   const mergeResult = useCallback((result: ResultDto) => {
@@ -49,7 +63,7 @@ function useGame(code: string | null, onGone: (why: string) => void) {
     try {
       const snap = await games.snapshot(code);
       if (!snap.you) {
-        onGone("You're no longer in that game.");
+        onGone("You're no longer in that game: someone else has taken your seat.");
         return;
       }
       setSnapshot(snap);
@@ -63,19 +77,48 @@ function useGame(code: string | null, onGone: (why: string) => void) {
   useEffect(() => {
     setSnapshot(null);
     setError(null);
+    setOnline(true);
     if (!code) return;
     void refresh();
     return games.subscribe(code, (m) => {
       if (m.type === "deleted") onGone("The person who started the game cancelled it.");
+      else if (m.type === "disconnected") setOnline(false);
       else if (m.type === "presence") {
         setSnapshot((s) => s && { ...s, players: s.players.map((p) => ({ ...p, connected: m.connected.includes(p.slot) })) });
       } else if (m.type === "result") {
         mergeResult(m.result);
-      } else void refresh(); // players, status, reconnected: fetch the whole picture again
+      } else if (m.type === "request") {
+        setSnapshot((s) => s && { ...s, requests: [...s.requests.filter((r) => r.id !== m.request.id), m.request] });
+      } else if (m.type === "requestClosed") {
+        setSnapshot((s) => s && { ...s, requests: s.requests.filter((r) => r.id !== m.request.id) });
+        const snap = latest.current;
+        const moving = sameName(m.request.name, m.replacedName);
+        if (m.outcome === "allowed" && snap?.you?.slot === m.request.slot) {
+          // It's your seat that changed hands: this device is out of the game.
+          onGone(moving ? "You've moved this game to another device." : `${m.request.name} has replaced you in this game.`);
+          return;
+        }
+        const by = snap?.players.find((p) => p.slot === m.by)?.name ?? null;
+        const news = seatRequestNews(m.outcome, m.request.name, m.replacedName, by);
+        if (news) onNews(news);
+      } else {
+        // players, status, reconnected: fetch the whole picture again
+        if (m.type === "reconnected") setOnline(true);
+        void refresh();
+      }
     });
-  }, [code, refresh, onGone, mergeResult]);
+  }, [code, refresh, onGone, onNews, mergeResult]);
 
-  return { snapshot, error, refresh, mergeResult };
+  // While disconnected, keep checking: if your seat was given to someone else meanwhile, the live
+  // connection can't come back, and this is how you find out.
+  useEffect(() => {
+    if (online || !code) return;
+    void refresh();
+    const timer = setInterval(() => void refresh(), OFFLINE_CHECK_MS);
+    return () => clearInterval(timer);
+  }, [online, code, refresh]);
+
+  return { snapshot, error, refresh, mergeResult, online };
 }
 
 export function App() {
@@ -102,7 +145,14 @@ export function App() {
     [code],
   );
 
-  const { snapshot, error, mergeResult } = useGame(code, onGone);
+  // One notice at a time, for news from the rest of the table (see controls/Notice).
+  const [news, setNews] = useState<NoticeMessage | null>(null);
+  const onNews = useCallback((text: string) => setNews({ key: Date.now(), text }), []);
+  const [laterRequests, setLaterRequests] = useState<string[]>([]);
+
+  const { snapshot, error, mergeResult, online } = useGame(code, onGone, onNews);
+  // Seat requests to answer: only once you're in the game, and not ones you've put off.
+  const request = snapshot?.you ? snapshot.requests.find((r) => !laterRequests.includes(r.id)) : undefined;
   // The game file is parsed once per game, not on every live update.
   const gameJson = snapshot?.game;
   const game = useMemo(() => (gameJson ? parseGameFile(gameJson) : null), [snapshot?.code]);
@@ -148,7 +198,7 @@ export function App() {
       />
     );
   } else if (snapshot && snapshot.status === "playing" && game && mySeat) {
-    page = <Play snapshot={snapshot} game={game} seat={mySeat} onSaved={mergeResult} />;
+    page = <Play snapshot={snapshot} game={game} seat={mySeat} onSaved={mergeResult} onNotice={setNews} />;
   } else if (snapshot) {
     page = <Lobby snapshot={snapshot} onDone={() => onGone("")} />;
   } else {
@@ -181,6 +231,7 @@ export function App() {
         onHelp={() => setDialog("help")}
         onLeaveGame={code && snapshot ? () => setDialog("leave") : undefined}
       />
+      {code && !online && <ReconnectingBanner />}
       <InstallBanner />
       {page}
 
@@ -193,6 +244,24 @@ export function App() {
         onJoined={enter}
       />
       <HelpDialog open={dialog === "help"} onClose={() => setDialog(null)} />
+      <Notice notice={news} onClose={() => setNews(null)} />
+      {code && snapshot && request && (
+        <SeatRequestDialog
+          key={request.id}
+          request={request}
+          players={snapshot.players}
+          onAnswer={async (allow) => {
+            try {
+              await games.answerSeatRequest(code, request.id, allow);
+            } catch (e) {
+              // Someone else got there first: their answer stands, and the news is on its way.
+              if (!(e instanceof ApiError && e.status === 409)) throw e;
+            }
+            setLaterRequests((ids) => [...ids, request.id]);
+          }}
+          onLater={() => setLaterRequests((ids) => [...ids, request.id])}
+        />
+      )}
       <SheetDialog
         open={dialog === "leave"}
         title="Leave this game?"

@@ -85,3 +85,37 @@ export function netParts(pct: number): { net: string; working: string; pct: stri
     pct: `${tenth.toFixed(1)}%`,
   };
 }
+
+
+/**
+ * A player with no live connection right now (asleep, closed the app, lost signal). You're never
+ * shown as away on your own screen: if your connection is down, the reconnecting banner says so.
+ */
+export function isAway(p: { connected: boolean; slot: number }, mySlot: number | null): boolean {
+  return !p.connected && p.slot !== mySlot;
+}
+
+/**
+ * Whether two display names are the same person's, ignoring case and spacing: a seat request under
+ * the seat's own name is someone moving to another device, not a replacement.
+ */
+export function sameName(a: string, b: string): boolean {
+  const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+  return norm(a) === norm(b);
+}
+
+/** What the table is told when a seat request ends. Cancelled requests just disappear. */
+export function seatRequestNews(
+  outcome: "allowed" | "denied" | "cancelled",
+  name: string,
+  replacedName: string,
+  answeredBy: string | null,
+): string | null {
+  const moving = sameName(name, replacedName);
+  if (outcome === "allowed") return moving ? `${name} has moved to another device.` : `${name} has replaced ${replacedName}.`;
+  if (outcome === "denied") {
+    const who = answeredBy ?? "Someone";
+    return moving ? `${who} didn't let ${name} move to another device.` : `${who} didn't let ${name} replace ${replacedName}.`;
+  }
+  return null;
+}

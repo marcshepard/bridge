@@ -4,8 +4,8 @@
 // Every player's device works out the same scores from the same results, using core/.
 
 import { compareBoard, scoreField, type BoardComparison } from "../core/compare";
-import { contractCode, tableResult } from "../core/contract";
-import { type Seat, type TableResult, directionOf } from "../core/types";
+import { contractCode, parseContract, tableResult } from "../core/contract";
+import { type Contract, type Seat, type TableResult, directionOf } from "../core/types";
 import type { Game } from "../providers/types";
 
 export interface StoredResult {
@@ -43,19 +43,43 @@ export function newSession(game: Game, seat: Seat, startBoard: number): Session 
   };
 }
 
+/** A board's entry in the shared game: a full result, or just the contract (`tricks: null`) mid-play. */
+export type SharedEntry = { board: number; contract: string; declarer: Seat | null; tricks: number | null };
+
 /**
  * Your view of a shared game: your seat, the table's play order, and the results the table has
- * entered so far (one per board, whoever entered it).
+ * entered so far (one per board, whoever entered it). A board with only its contract isn't done yet.
  */
-export function sessionFromShared(
-  game: Game,
-  seat: Seat,
-  startBoard: number,
-  results: Array<{ board: number } & StoredResult>,
-): Session {
+export function sessionFromShared(game: Game, seat: Seat, startBoard: number, results: SharedEntry[]): Session {
   const s = newSession(game, seat, startBoard);
-  for (const r of results) s.results[r.board] = { contract: r.contract, declarer: r.declarer, tricks: r.tricks };
+  for (const r of results) {
+    if (r.tricks !== null) s.results[r.board] = { contract: r.contract, declarer: r.declarer, tricks: r.tricks };
+  }
   return s;
+}
+
+/** The contract the table is playing on a board, once it's entered and before the result is. */
+export function pendingContract(results: SharedEntry[], board: number): { contract: Contract; declarer: Seat } | null {
+  const r = results.find((x) => x.board === board);
+  if (!r || r.tricks !== null || !r.declarer) return null;
+  const contract = parseContract(r.contract);
+  return contract ? { contract, declarer: r.declarer } : null;
+}
+
+/**
+ * Boards whose finished result someone else has just changed: in `next` but different in `prev`,
+ * where `prev` already had the tricks. Entering a result for the first time isn't a correction (it
+ * shows on the board itself); a correction can change a board you've moved on from, and your tally.
+ */
+export function corrections<T extends SharedEntry & { enteredBy: number; updatedAt: string }>(
+  prev: T[],
+  next: T[],
+  mySlot: number | null,
+): T[] {
+  return next.filter((r) => {
+    const before = prev.find((p) => p.board === r.board);
+    return before !== undefined && before.tricks !== null && before.updatedAt !== r.updatedAt && r.enteredBy !== mySlot;
+  });
 }
 
 export function toStored(r: TableResult): StoredResult {

@@ -31,19 +31,13 @@ function perspective(c: BoardComparison, seat: Seat): string | undefined {
     : "your side defended, so this counts against declarer";
 }
 
-/** The most common result in the field, in words: "+420 for your side at 45 of 127 tables (game made)". */
+/** The most common score in the field, for your side by name: "−100 EW". The list below has the detail. */
 function MostCommon({ c }: { c: BoardComparison }) {
   const g = c.mostCommon;
   if (!g) return null;
-  const r = g.results[0];
   return (
     <>
-      <ScoreText score={g.score} /> for your side at {g.count} of {c.fieldSize} tables
-      {r && (
-        <>
-          : {r.description.toLowerCase()} (<ResultText result={r.result} />)
-        </>
-      )}
+      <ScoreText score={g.score} /> {c.direction}
     </>
   );
 }

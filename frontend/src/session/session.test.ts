@@ -3,7 +3,17 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { tableResult } from "../core/contract";
 import { parseGameFile } from "../providers/gameFile";
-import { boardOrderFrom, marginFor, newSession, nextUnplayed, sessionFromShared, tally, toStored } from "./session";
+import {
+  boardOrderFrom,
+  corrections,
+  marginFor,
+  newSession,
+  nextUnplayed,
+  pendingContract,
+  sessionFromShared,
+  tally,
+  toStored,
+} from "./session";
 
 const game = parseGameFile(
   JSON.parse(readFileSync(resolve(__dirname, "../../public/games/sample-synthetic-01.json"), "utf-8")),
@@ -52,6 +62,38 @@ describe("sessions", () => {
     expect(Object.keys(s.results)).toEqual(["3", "4"]);
     expect(nextUnplayed(s)).toBe(5);
     expect(tally(s, game).played).toBe(2);
+  });
+
+  it("treats a board with only its contract as still in play", () => {
+    const shared = [
+      { board: 3, contract: "4S", declarer: "N" as const, tricks: null },
+      { board: 4, contract: "3NT", declarer: "E" as const, tricks: 9 },
+    ];
+    const s = sessionFromShared(game, "S", 3, shared);
+    expect(Object.keys(s.results)).toEqual(["4"]);
+    expect(nextUnplayed(s)).toBe(3);
+    expect(pendingContract(shared, 3)).toEqual({ contract: { level: 4, strain: "S", doubling: "" }, declarer: "N" });
+    expect(pendingContract(shared, 4)).toBeNull(); // finished
+    expect(pendingContract(shared, 5)).toBeNull(); // nothing yet
+  });
+
+  it("spots corrections by someone else to finished boards", () => {
+    const entry = (board: number, tricks: number | null, enteredBy: number, updatedAt: string) => ({
+      board,
+      contract: "4S",
+      declarer: "N" as const,
+      tricks,
+      enteredBy,
+      updatedAt,
+    });
+    const before = [entry(1, 10, 1, "t1"), entry(2, null, 1, "t1"), entry(3, 9, 2, "t1")];
+    const after = [
+      entry(1, 9, 2, "t2"), // corrected by slot 2: news
+      entry(2, 10, 2, "t2"), // first result after the contract: not a correction
+      entry(3, 8, 1, "t2"), // corrected by me (slot 1): no news
+      entry(4, 10, 2, "t2"), // a new board: not a correction
+    ];
+    expect(corrections(before, after, 1).map((r) => r.board)).toEqual([1]);
   });
 
   it("round-trips a stored result", () => {

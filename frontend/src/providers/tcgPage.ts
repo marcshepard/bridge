@@ -142,16 +142,17 @@ export function tcgPageToGameFile(html: string, fileName: string): GameFileV1 {
     boards.push(board);
   });
 
-  // Which field this copy of the page shows: "299ers Top 50 Ranking" on the 299er archive, plain
-  // "Top 50 Ranking" on the regular archive, which is the Open field (all players).
-  const heading = /<h2>\s*([^<]*?)\s*Top 50 Ranking\s*<\/h2>/.exec(html);
-  const fieldName = heading ? heading[1]!.trim() || "Open" : undefined;
+  // Which field this copy of the page shows. The regular archive's heading is just "Top 50 Ranking"
+  // (everyone): no label, as the Common Game itself doesn't name it. The 299er archive's is
+  // "299ers Top 50 Ranking" (newer players only), labelled "299er" the way players say it.
+  const heading = /<h2>\s*([^<]*?)\s*Top 50 Ranking\s*<\/h2>/.exec(html)?.[1]?.trim();
+  const fieldName = heading ? heading.replace(/s$/, "") : undefined;
   const when = date ? formatDate(date) : fileName.replace(/\.[^.]+$/, "");
 
   return {
     schemaVersion: 1,
     id: `tcg-${date ?? "unknown"}${fieldName ? `-${fieldName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}` : ""}`,
-    title: `The Common Game, ${when}${fieldName ? ` (${fieldName} field)` : ""}`,
+    title: `The Common Game, ${when}${fieldName ? ` (${fieldName})` : ""}`,
     ...(date ? { date } : {}),
     source: {
       name: "The Common Game",

@@ -50,9 +50,14 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           cards. Take those cards from your deck, then bid and play as normal.
         </li>
         <li>
-          When the board is finished, anyone taps <strong>Enter the result</strong>: the contract, who declared,
-          and how many tricks declarer took. It appears on everyone's screen at once, with who entered it. If it's
-          wrong, anyone can tap <strong>Correct it</strong>.
+          When the bidding is over, anyone taps <strong>Enter the contract</strong>: the contract and who's
+          declaring (or <strong>Passed out</strong>). It shows on everyone's screen at once, so you can all keep
+          it in mind during the play. If it's wrong, tap <strong>Change</strong>.
+        </li>
+        <li>
+          When the play is over, anyone taps <strong>Enter the result</strong>: how many tricks declarer took. If
+          a result turns out to be wrong, anyone can tap <strong>Correct</strong>, even on an earlier board.
+          Everyone else gets a message saying which board changed, since it can change the running tally.
         </li>
         <li>
           You then see all four hands, your side's score, and both sides' matchpoints, for example 83 / 17.{" "}
@@ -64,6 +69,31 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           Tap <strong>Next board</strong> when you're ready. Each screen moves on by itself, so nobody waits for
           anyone else. The running tally at the top (for example NS +140) adds up how far ahead or behind the
           field you are; tap it to see every board.
+        </li>
+        <li>
+          If someone's phone goes to sleep or loses signal, their name is greyed out with <strong>(away)</strong>{" "}
+          until they're back. If it's yours, a <strong>Reconnecting…</strong> strip shows at the top; the app
+          reconnects by itself and catches up on anything you missed.
+        </li>
+      </Box>
+
+      <Heading>Swapping a player, or changing devices</Heading>
+      <Typography sx={{ mb: 1 }}>
+        If someone has to drop out, someone else can take their seat. Or if your phone's battery dies, you can
+        carry on from another device.
+      </Typography>
+      <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
+        <li>
+          Ask anyone at the table for the join code (it's at the top of their board screen), then tap{" "}
+          <strong>Join a game</strong> and type it.
+        </li>
+        <li>
+          The game is already full, so you see who's playing. Pick whose seat you're taking (your own, if you're
+          changing devices) and tap <strong>Join as replacement</strong>.
+        </li>
+        <li>
+          Everyone at the table is asked whether to allow it; the first answer counts. Once someone allows it,
+          you're in that seat with all its results so far, and the old device leaves the game.
         </li>
       </Box>
 

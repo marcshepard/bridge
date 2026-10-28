@@ -7,15 +7,20 @@ import { Hono, type Context } from "hono";
 import { tableResult } from "../../frontend/src/core/contract";
 import { parseGameFile, type GameFileV1 } from "../../frontend/src/providers/gameFile";
 import type {
+  AnswerSeatRequest,
   CreateEventRequest,
   EventSnapshot,
   JoinedResponse,
   JoinRequest,
+  LiveTicketResponse,
   PartnershipsRequest,
   PushMessage,
   ResultDto,
   ResultsSinceResponse,
   SaveResultRequest,
+  SeatRequestCreated,
+  SeatRequestRequest,
+  SeatRequestState,
 } from "./api-types";
 import * as db from "./db";
 import type { Env } from "./env";
@@ -28,6 +33,10 @@ const MAX_PLAYERS = 4;
 const EVENT_LIFETIME_DAYS = 30;
 const MAX_NAME_LENGTH = 30;
 const MAX_GAME_BYTES = 512 * 1024;
+/** A seat request nobody answers lapses after this long. */
+const REQUEST_LIFETIME_MINUTES = 10;
+/** At most this many seat requests can wait at once in a game, so nobody can flood the table. */
+const MAX_PENDING_REQUESTS = 5;
 
 type Ctx = Context<{ Bindings: Env }>;
 
@@ -51,6 +60,8 @@ app.onError((err, c) => {
 // ---- Helpers ------------------------------------------------------------------------------------
 
 const nowIso = () => new Date().toISOString();
+/** Seat requests made before this time have lapsed. */
+const requestCutoff = () => new Date(Date.now() - REQUEST_LIFETIME_MINUTES * 60_000).toISOString();
 
 function cleanName(raw: unknown): string {
   const name = typeof raw === "string" ? raw.trim().replace(/\s+/g, " ") : "";
@@ -148,10 +159,11 @@ app.post("/events", async (c) => {
 app.get("/events/:code", async (c) => {
   const event = await loadEvent(c);
   const now = nowIso(); // taken before reading, so `since=now` can't miss a concurrent save
-  const [players, results, connected] = await Promise.all([
+  const [players, results, connected, requests] = await Promise.all([
     db.getPlayers(c.env.DB, event.code),
     db.getResults(c.env.DB, event.code),
     hub(c.env, event.code).connectedSlots(),
+    db.getPendingSeatRequests(c.env.DB, event.code, requestCutoff()),
   ]);
   const id = c.req.header("X-Player-Id");
   const me = id ? players.find((p) => p.player_id === id) : undefined;
@@ -169,6 +181,7 @@ app.get("/events/:code", async (c) => {
       connected: connected.includes(p.slot),
     })),
     results,
+    requests: me ? requests.map(db.toSeatRequest) : [],
     you: me ? { slot: me.slot, isCreator: me.is_creator === 1, seat: me.seat } : null,
     now,
   };
@@ -241,7 +254,10 @@ app.post("/events/:code/partnerships", async (c) => {
   return c.json({ seats: Object.fromEntries(seats) });
 });
 
-/** Save or correct a board's result. Any seated player can. */
+/**
+ * Save or correct a board's result, or just its contract (`tricks: null`) once the bidding is over.
+ * Any seated player can.
+ */
 app.put("/events/:code/boards/:board", async (c) => {
   const event = await loadEvent(c);
   const me = caller(c, await db.getPlayers(c.env.DB, event.code));
@@ -252,9 +268,11 @@ app.put("/events/:code/boards/:board", async (c) => {
   if (!game.boards.some((b) => b.number === board)) throw new HttpError(404, `Board ${board} isn't in this game`);
 
   const req = await body<SaveResultRequest>(c);
+  const contractOnly = req.tricks === null;
   let parsed;
   try {
-    parsed = tableResult(String(req.contract ?? ""), req.declarer ?? null, req.tricks ?? null);
+    // A contract on its own is checked like a full result, with a stand-in trick count.
+    parsed = tableResult(String(req.contract ?? ""), req.declarer ?? null, contractOnly ? 0 : (req.tricks ?? undefined));
   } catch (e) {
     throw new HttpError(400, (e as Error).message);
   }
@@ -262,7 +280,8 @@ app.put("/events/:code/boards/:board", async (c) => {
     board,
     contract: parsed.contract ? String(req.contract).toUpperCase().replace(/\s+/g, "") : "PASS",
     declarer: parsed.declarer,
-    tricks: parsed.tricks,
+    // Passed out needs no play, so it's a complete result straight away.
+    tricks: contractOnly && parsed.contract ? null : parsed.tricks,
     enteredBy: me.slot,
     updatedAt: nowIso(),
   };
@@ -301,18 +320,130 @@ app.delete("/events/:code", async (c) => {
 });
 
 /**
- * Live updates. Browsers can't set headers on a WebSocket, so the player ID comes as a query
- * parameter; it's checked here before the connection is handed to the game's EventHub.
+ * A single-use pass for opening the live connection. Browsers can't set headers on a WebSocket,
+ * and the secret player ID mustn't go in its address (addresses end up in logs), so the device
+ * swaps its ID (sent in the header as usual) for a short-lived pass, and puts that in the address.
  */
+app.post("/events/:code/live-ticket", async (c) => {
+  const event = await loadEvent(c);
+  const me = caller(c, await db.getPlayers(c.env.DB, event.code));
+  return c.json<LiveTicketResponse>({ ticket: await hub(c.env, event.code).issueTicket(me.slot, me.player_id) });
+});
+
+/** Live updates (`?ticket=` from live-ticket). The game's EventHub checks the pass. */
 app.get("/events/:code/live", async (c) => {
   if (c.req.header("Upgrade") !== "websocket") throw new HttpError(400, "Expected a WebSocket upgrade");
   const event = await loadEvent(c);
-  const id = c.req.query("playerId");
-  const me = (await db.getPlayers(c.env.DB, event.code)).find((p) => p.player_id === id);
-  if (!me) throw new HttpError(403, "You're not a player in this game");
-  const headers = new Headers(c.req.raw.headers);
-  headers.set("X-Slot", String(me.slot));
-  return hub(c.env, event.code).fetch(new Request(c.req.raw, { headers }));
+  return hub(c.env, event.code).fetch(c.req.raw);
+});
+
+// ---- Seat requests: taking over a seat --------------------------------------------------------------
+//
+// When a game is full or has started, someone with the code can ask to take over a seat: to replace
+// a player, or to carry on as themselves on another device. Anyone at the table can allow or deny
+// it, and the first answer wins. Allowing it hands the seat (and its results) to the requester's
+// new key; the old key stops working and the old device is disconnected.
+
+/** Ask for a seat. Returns the requester's key, which they use to check on the request. */
+app.post("/events/:code/requests", async (c) => {
+  const event = await loadEvent(c);
+  const req = await body<SeatRequestRequest>(c);
+  const name = cleanName(req.name);
+  if (event.status === "ended") throw new HttpError(409, "This game has ended");
+  const players = await db.getPlayers(c.env.DB, event.code);
+  if (nextFreeSlot(players) !== null) throw new HttpError(409, "This game still has room: join it instead");
+  const slot = Number(req.slot);
+  if (!players.some((p) => p.slot === slot)) throw new HttpError(400, "Pick one of the players");
+  const pending = await db.getPendingSeatRequests(c.env.DB, event.code, requestCutoff());
+  if (pending.length >= MAX_PENDING_REQUESTS) {
+    throw new HttpError(409, "Too many requests are waiting for this game. Try again in a few minutes.");
+  }
+
+  const row: db.SeatRequestRow = {
+    id: newPlayerId(),
+    slot,
+    name,
+    player_id: newPlayerId(),
+    status: "pending",
+    answered_by: null,
+    created_at: nowIso(),
+  };
+  await db.insertSeatRequest(c.env.DB, event.code, row);
+  await push(c, event.code, { type: "request", request: db.toSeatRequest(row) });
+  const connected = await hub(c.env, event.code).connectedSlots();
+  return c.json<SeatRequestCreated>({ requestId: row.id, playerId: row.player_id, anyoneConnected: connected.length > 0 }, 201);
+});
+
+/** The requester's own request, checked with their key. */
+async function ownRequest(c: Ctx, code: string): Promise<db.SeatRequestRow> {
+  const r = await db.getSeatRequest(c.env.DB, code, c.req.param("id") ?? "");
+  if (!r || r.player_id !== c.req.header("X-Player-Id")) throw new HttpError(404, "No such request");
+  return r;
+}
+
+/** How the requester's request stands. Once it's allowed, their key works as a player's. */
+app.get("/events/:code/requests/:id", async (c) => {
+  const event = await loadEvent(c);
+  const r = await ownRequest(c, event.code);
+  const status = r.status === "pending" && r.created_at <= requestCutoff() ? "expired" : r.status;
+  return c.json<SeatRequestState>({ status });
+});
+
+/** The requester gives up waiting. */
+app.delete("/events/:code/requests/:id", async (c) => {
+  const event = await loadEvent(c);
+  const r = await ownRequest(c, event.code);
+  if (await db.closeSeatRequest(c.env.DB, event.code, r.id, "cancelled", null)) {
+    const replacedName = (await db.getPlayers(c.env.DB, event.code)).find((p) => p.slot === r.slot)?.name ?? "";
+    await push(c, event.code, { type: "requestClosed", request: db.toSeatRequest(r), outcome: "cancelled", by: null, replacedName });
+  }
+  return c.body(null, 204);
+});
+
+/** Anyone at the table allows or denies a request. The first answer wins. */
+app.post("/events/:code/requests/:id/answer", async (c) => {
+  const event = await loadEvent(c);
+  const players = await db.getPlayers(c.env.DB, event.code);
+  const me = caller(c, players);
+  const { allow } = await body<AnswerSeatRequest>(c);
+  const r = await db.getSeatRequest(c.env.DB, event.code, c.req.param("id") ?? "");
+  if (!r) throw new HttpError(404, "No such request");
+  if (r.status !== "pending" || r.created_at <= requestCutoff()) {
+    throw new HttpError(409, "That request has already been answered or has lapsed");
+  }
+  if (!(await db.closeSeatRequest(c.env.DB, event.code, r.id, allow ? "allowed" : "denied", me.slot))) {
+    throw new HttpError(409, "Someone else answered it first");
+  }
+
+  const old = players.find((p) => p.slot === r.slot);
+  const closed = (outcome: "allowed" | "denied", req: db.SeatRequestRow): PushMessage => ({
+    type: "requestClosed",
+    request: db.toSeatRequest(req),
+    outcome,
+    by: me.slot,
+    replacedName: old?.name ?? "",
+  });
+  if (!allow || !old) {
+    await push(c, event.code, closed("denied", r));
+    return c.body(null, 204);
+  }
+
+  await db.replacePlayer(c.env.DB, event.code, r.slot, r.player_id, r.name);
+  // Anyone else waiting for the same seat is turned down: it's taken now.
+  const others = (await db.getPendingSeatRequests(c.env.DB, event.code, requestCutoff())).filter((x) => x.slot === r.slot);
+  for (const x of others) await db.closeSeatRequest(c.env.DB, event.code, x.id, "denied", me.slot);
+
+  const h = hub(c.env, event.code);
+  const messages = [closed("allowed", r), ...others.map((x) => closed("denied", x)), { type: "players" } as const];
+  // In order: everyone hears the news (the old device too, so it can say why it's leaving), then
+  // the old device is cut off.
+  c.executionCtx.waitUntil(
+    (async () => {
+      for (const m of messages) await h.notify(m);
+      await h.closePlayer(old.player_id);
+    })().catch((e) => console.error("push failed", e)),
+  );
+  return c.body(null, 204);
 });
 
 /** Dev only: fill the empty places with test players so a game can start from one device. */

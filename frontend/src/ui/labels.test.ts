@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMargin, formatMpPair, formatPct, netParts } from "./labels";
+import { formatMargin, formatMpPair, formatPct, isAway, netParts, sameName, seatRequestNews } from "./labels";
 
 describe("numbers on screen are whole", () => {
   it("percentages round to whole numbers", () => {
@@ -30,5 +30,27 @@ describe("a board's net", () => {
   it("shows one decimal when rounding would hide where the net comes from", () => {
     expect(netParts(95.4)).toEqual({ net: "+91", working: "95.4 − 4.6", pct: "95.4%" });
     expect(netParts(20.3)).toEqual({ net: "−59", working: "20.3 − 79.7", pct: "20.3%" });
+  });
+});
+
+describe("who is away", () => {
+  it("is anyone else without a live connection, never yourself", () => {
+    expect(isAway({ slot: 2, connected: false }, 1)).toBe(true);
+    expect(isAway({ slot: 2, connected: true }, 1)).toBe(false);
+    expect(isAway({ slot: 1, connected: false }, 1)).toBe(false);
+  });
+});
+
+describe("seat request news", () => {
+  it("says who replaced whom, or that someone moved device", () => {
+    expect(seatRequestNews("allowed", "Dana", "Joe", "Ann")).toBe("Dana has replaced Joe.");
+    expect(seatRequestNews("allowed", "marc", "Marc", "Ann")).toBe("marc has moved to another device.");
+    expect(seatRequestNews("denied", "Dana", "Joe", "Ann")).toBe("Ann didn't let Dana replace Joe.");
+    expect(seatRequestNews("cancelled", "Dana", "Joe", null)).toBeNull();
+  });
+
+  it("matches names ignoring case and spacing", () => {
+    expect(sameName("  Marc  Shep", "marc shep")).toBe(true);
+    expect(sameName("Marc", "Mark")).toBe(false);
   });
 });
