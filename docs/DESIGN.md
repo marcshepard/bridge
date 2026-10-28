@@ -589,7 +589,7 @@ game after a dropped connection, and test players are off in the live app.
 - **Feedback:** a "Send feedback" link in Help (navia.apps@gmail.com).
 - *Review:* Marc deploys, installs it on his phone, and plays a game on the live app.
 
-### Stage 5: presence, reconnecting and security (in progress)
+### Stage 5: presence, reconnecting and security (done)
 
 Work happens on the `dev` branch from here on; `main` is what's deployed. Feedback from the bridge
 group is slated as its own work when it arrives, not as a stage. Built in slices, each tested by
@@ -621,41 +621,46 @@ hand and committed on its own:
     seat-request news).
   - A simpler field dialog: "Most common: −100 EW", "Your result" on your row, and no "Contract not
     known" on score-only rows (the Common Game page has no contracts; PBN travellers can).
-- **5c. Nightly clean-up** (backend; built, awaiting Marc's test): a cron trigger at 03:00 UTC
+- **5c. Nightly clean-up** (**done**; backend): a cron trigger at 03:00 UTC
   (`triggers` in `wrangler.jsonc`) runs `cleanUp` in `src/index.ts`, which deletes games past
   `expires_at` (30 days after creation) with their players, results and seat requests. Each run
   logs how many games it deleted, and their codes, to the Worker's logs. Rate limiting moved to
   stage 9.
 
-Stages 6, 7, 8 and 9 are separate pieces of work; their order is still to be decided.
+Stages 7 and 9 are separate pieces of work; their order is still to be decided. (Stage 8, PBN
+from other sources, was folded into stage 6.)
 
-### Stage 6: starting a game from a phone
+### Stage 6: where games come from, and starting from a phone (done; docs only)
 
-Players mostly use phones, but saving a Common Game page is a computer job. Research first (real
-samples from phones), then build the routes that work:
+Two questions, settled without new code:
 
-- **Prepare on a computer, play on a phone:** start the game on the computer, then join from the
-  phone as a replacement for your own seat and allow it from the computer (5b).
+**Starting a game from a phone.** Players mostly use phones, but saving a Common Game page is a
+computer job. Decided: *prepare on a computer, play on a phone*. Start the game on the computer,
+then join from the phone as a replacement for your own seat and allow it from the computer (5b).
+The Common Game steps in Start a game and the Help say how. Other routes, parked unless that proves
+not enough:
+
 - **Email or cloud:** save the page on a computer, open it from the phone's file picker (works
-  today; needs a line in Help).
+  today; would need a line in Help).
 - **Saving on a phone:** Chrome on Android saves pages as `.mhtml`, which the importer could read;
-  iPhone Safari saves PDF or `.webarchive` (to investigate with real samples).
+  iPhone Safari saves PDF or `.webarchive` (would need real samples).
 - Not: fetching pages from the Common Game site on the server (bot protection, permission), or
   copy and paste (loses the structure).
-- The real fix is the Common Game agreeing to archived downloads (asked; no reply yet). If phones
-  can't get Common Game data, stage 8's other sources matter more.
+- The real fix is still the Common Game agreeing to archived downloads (asked; no reply yet).
 
-### Stage 7: online play (no self-dealing)
+**Other sources of games (was stage 8).** Looked for sources with fields big enough to make the
+comparison interesting, the way the Common Game's are (hundreds of tables per board). None found:
 
-In-app bidding and card play for players who aren't at one table: dealing, turns, dummy shown
-after the opening lead, following suit, claims, undo, and the score worked out from the play.
-The biggest piece of work (several days); it needs stage 5's reconnect handling, since a phone
-asleep mid-hand would stall play.
-
-### Stage 8: PBN from other sources
-
-PBN files vary a lot by the program that wrote them. Collect real samples and add a fixture-based
-test for each (cut down to a few boards), fixing the importer where needed:
+- *ContractBridge/pbn-files on GitHub* (mostly 1996–97 championships, the same files as Tis
+  Veugen's PBN homepage): its files import as they are, but they have 1–14 tables per board, and
+  no licence. Ruled out.
+- *ACBL Live for Clubs:* a club game's "hand record" PBN is deals only, and a club field is about
+  10 tables. *ACBL tournament results* turn away automated access, like the Common Game.
+- Parked until a large-field source turns up. PBN files any player brings still work (the
+  importer reads deals, `ScoreTable` travellers and one-result-per-table files). If one turns up,
+  the work is: collect real samples of what it writes, add a fixture-based test for each (made-up
+  data in the same layout, cut down to a few boards), and fix the importer where needed. Things
+  that vary by the program that wrote a file:
 
 | Written by | Typical contents | Watch for |
 |---|---|---|
@@ -666,10 +671,12 @@ test for each (cut down to a few boards), fixing the importer where needed:
 | Hand generators (Dealer, BigDeal, Goldsmith) | deals only | no `Event`/`Date`; `#` repeats |
 | PBN 2.1 standard examples | edge cases | escaped quotes, multi-line commentary |
 
-Also accept `ScoreTable` rows with a score but no contract, if real files have them (the game
-format already supports score-only results from stage 2).
+### Stage 7: online play (no self-dealing)
 
-- *Review:* each sample imports with the expected boards, field and warnings.
+In-app bidding and card play for players who aren't at one table: dealing, turns, dummy shown
+after the opening lead, following suit, claims, undo, and the score worked out from the play.
+The biggest piece of work (several days); it needs stage 5's reconnect handling, since a phone
+asleep mid-hand would stall play.
 
 ### Stage 9: rate limiting
 

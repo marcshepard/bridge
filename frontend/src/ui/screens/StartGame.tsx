@@ -45,8 +45,12 @@ function TcgHelp() {
         <li>Choose the saved .html file here.</li>
       </Box>
       <Typography variant="body2" sx={{ mt: 1 }}>
-        Phones can't easily save web pages, so do this part on a computer. The page you save is the field you'll
-        be compared with (for example Open or 299er).
+        Phones can't easily save web pages, so start the game on the computer. To play on your phone instead,
+        join the game from your phone, choose <strong>Join as replacement</strong>, pick your own seat, and tap{" "}
+        <strong>Allow</strong> on the computer.
+      </Typography>
+      <Typography variant="body2" sx={{ mt: 1 }}>
+        The page you save is the field you'll be compared with: the 299er page compares you with the 299ers.
       </Typography>
     </Alert>
   );

@@ -79,8 +79,9 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
 
       <Heading>Swapping a player, or changing devices</Heading>
       <Typography sx={{ mb: 1 }}>
-        If someone has to drop out, someone else can take their seat. Or if your phone's battery dies, you can
-        carry on from another device.
+        If someone has to drop out, someone else can take their seat. Or you can carry on from another device:
+        if your phone's battery dies, or if you started the game on a computer (to upload a Common Game page,
+        say) and want to play on your phone.
       </Typography>
       <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
         <li>
