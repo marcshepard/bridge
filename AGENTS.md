@@ -81,7 +81,7 @@ docs/BACKLOG.md           What's left to build, and what was parked
 
 In `backend/`: `npm test` (API tests), `npm run typecheck`, `npm run smoke` (end-to-end check
 against a running `npm run dev`), and `npm run deploy` (build and publish to Cloudflare; Marc runs
-it, see "Deploying" in docs/DESIGN.md).
+it, see "Deploying" in README.md).
 
 From the repo root: `python scripts/make_sample_game.py` regenerates the sample game, after
 `pip install -r scripts/requirements.txt`.

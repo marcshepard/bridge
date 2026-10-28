@@ -476,24 +476,11 @@ One Worker serves everything: the API under `/api`, and the built frontend (`fro
 every other path (`assets` in `backend/wrangler.jsonc`). Free Cloudflare plan: Workers, D1 and
 SQLite-backed Durable Objects are all included.
 
-**First time** (in `backend/`, after `npm install` in both folders):
-
-```bash
-npx wrangler login               # opens the browser to connect wrangler to your Cloudflare account
-npx wrangler d1 create bridge    # creates the database; copy the database_id it prints into wrangler.jsonc
-npm run deploy                   # builds the frontend, sets up the database, uploads the Worker
-```
-
-`npm run deploy` builds the frontend, applies any new database migrations to the live database
-(it asks you to confirm), then uploads the Worker and the frontend. The first deploy may ask you
-to choose a `workers.dev` subdomain for the account. It prints the address, e.g.
-`https://bridge-replay.<subdomain>.workers.dev`.
-
-**Updates:** `npm run deploy` again. Games in progress carry on: the database isn't touched except
-by new migrations.
-
-**Logs:** `npx wrangler tail` streams live logs, or see the Worker's Observability tab in the
-Cloudflare dashboard.
+The steps (releasing an update, fixing a failed deploy, logs, and first-time setup) are under
+"Deploying" in the [README](../README.md). `npm run deploy` builds the frontend, applies new
+database migrations to the live database, then uploads the Worker and the frontend. Games in
+progress carry on: the database isn't touched except by new migrations. The nightly clean-up's
+schedule (`triggers` in `wrangler.jsonc`) is set by the same deploy.
 
 In the live app, dev mode is off: no "Fill with test players" button, `?as=` is ignored, and the
 backend refuses the test-players endpoint (`ALLOW_TEST_PLAYERS` is "false").

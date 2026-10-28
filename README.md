@@ -126,5 +126,69 @@ VS Code tasks: **Install sample-data tools (Python)**, then **Generate sample ga
 
 ## Deploying
 
-The app runs on Cloudflare (free plan): one Worker serves the frontend and the API. The steps,
-first time and for updates, are under "Deploying" in [docs/DESIGN.md](docs/DESIGN.md).
+The app runs on Cloudflare (free plan): one Worker serves the frontend and the API, at
+https://bridge-replay.navia-apps.workers.dev. How that's set up is under "Deploying" in
+[docs/DESIGN.md](docs/DESIGN.md).
+
+### Releasing an update
+
+Work happens on `dev`; `main` is what's live. From the repo root, once `dev` is committed and its
+tests pass:
+
+```bash
+git checkout main
+git merge --ff-only dev
+git push origin main dev
+git checkout dev
+```
+
+Then deploy, in `backend/`:
+
+```bash
+npm run deploy
+```
+
+It does three things, in order, and stops at the first that fails:
+
+1. Builds the frontend (`frontend/dist`).
+2. Applies any new database migrations to the live database. It lists them and asks you to
+   confirm: type `y`. Games in progress keep their data.
+3. Uploads the Worker and the frontend. The output ends with the address and the nightly
+   clean-up schedule (`0 3 * * *`).
+
+Check the live site afterwards (a hard refresh, or reopen the installed app).
+
+### If the deploy fails
+
+- **"The given account is not valid or is not authorized to access this service [code: 7403]"**,
+  or any other sign-in error: wrangler's saved Cloudflare sign-in has expired. Sign in again (it
+  opens your browser), then rerun `npm run deploy`:
+
+  ```bash
+  npx wrangler login
+  ```
+
+  `npx wrangler whoami` shows who you're signed in as.
+- **A failure partway through** is safe to rerun: migrations that were applied are recorded and
+  aren't applied twice. If it stopped before step 3, the live site is unchanged.
+  `npx wrangler d1 migrations list bridge --remote` lists the migrations still to apply.
+
+### Logs
+
+`npx wrangler tail` (in `backend/`) streams live logs; or open the Worker in the Cloudflare
+dashboard and use its Observability tab. The nightly clean-up logs a line each run ("Nightly
+clean-up: deleted N expired games").
+
+### First time only
+
+Already done for the live app. For a new Cloudflare account, in `backend/`, after `npm install` in
+both folders:
+
+```bash
+npx wrangler login
+npx wrangler d1 create bridge
+npm run deploy
+```
+
+`d1 create` prints a `database_id`: put it in `backend/wrangler.jsonc` before deploying. The first
+deploy may ask you to choose a `workers.dev` subdomain for the account.
