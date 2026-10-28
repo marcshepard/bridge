@@ -1,6 +1,6 @@
 // Wording that depends on where you sit: "Partner", "your left-hand opponent", "You're vulnerable".
 
-import { type Seat, type Vulnerability, SEATS, SEAT_NAMES, directionOf, isVulnerable } from "../core/types";
+import { type Seat, type Strain, type Suit, type Vulnerability, SEATS, SEAT_NAMES, directionOf, isVulnerable } from "../core/types";
 
 export type Relation = "you" | "partner" | "lho" | "rho";
 
@@ -35,6 +35,23 @@ export function vulnerabilityPhrase(me: Seat, vul: Vulnerability): string {
   if (vul === "None") return "Nobody is vulnerable";
   if (vul === "Both") return "Everybody is vulnerable";
   return isVulnerable(vul, directionOf(me)) ? "You are vulnerable, they are not" : "They are vulnerable, you are not";
+}
+
+/**
+ * The order to lay out a hand's suits side by side: trumps first, then the rest alternating black
+ * and red so neighbouring suits never look alike. With no trumps (yet), ♠ ♥ ♣ ♦.
+ */
+export function handSuitOrder(trump: Strain | null): Suit[] {
+  switch (trump) {
+    case "H":
+      return ["H", "S", "D", "C"];
+    case "D":
+      return ["D", "S", "H", "C"];
+    case "C":
+      return ["C", "H", "S", "D"];
+    default:
+      return ["S", "H", "C", "D"];
+  }
 }
 
 /** Percentages are shown as whole numbers: "83%". (Calculations stay exact.) */

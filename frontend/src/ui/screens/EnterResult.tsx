@@ -41,6 +41,8 @@ interface Props {
   /** `contractOnly` is true when saving a contract without the tricks. */
   onSave: (r: TableResult, contractOnly: boolean) => void;
   onClose: () => void;
+  /** Who last saved this board's contract or result, if anyone has yet. */
+  lastSavedBy?: string | null;
 }
 
 const TITLES: Record<EntryStep, string> = {
@@ -58,7 +60,7 @@ const STRAINS: Array<{ value: Strain; aria: string }> = [
 ];
 
 /** Contract, declarer and tricks (or some of them, see EntryStep), with the score worked out live. */
-export function EnterResultDialog({ open, step, board, seat, initial, onSave, onClose }: Props) {
+export function EnterResultDialog({ open, step, board, seat, initial, onSave, onClose, lastSavedBy }: Props) {
   const [passedOut, setPassedOut] = useState(initial ? initial.contract === null : false);
   const [level, setLevel] = useState<number | null>(initial?.contract?.level ?? null);
   const [strain, setStrain] = useState<Strain | null>(initial?.contract?.strain ?? null);
@@ -223,6 +225,12 @@ export function EnterResultDialog({ open, step, board, seat, initial, onSave, on
             )}
           </Panel>
         </Box>
+      )}
+
+      {lastSavedBy && (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
+          Last saved by: {lastSavedBy}
+        </Typography>
       )}
     </SheetDialog>
   );

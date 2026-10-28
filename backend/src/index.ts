@@ -455,7 +455,7 @@ app.post("/events/:code/test-players", async (c) => {
   const players = await db.getPlayers(c.env.DB, event.code);
   const added: number[] = [];
   for (let slot = nextFreeSlot(players); slot !== null; slot = nextFreeSlot(players)) {
-    const row = { player_id: newPlayerId(), slot, name: `Test player ${slot}`, is_creator: 0, seat: null };
+    const row = { player_id: newPlayerId(), slot, name: `Bot ${slot}`, is_creator: 0, seat: null };
     await db.insertPlayer(c.env.DB, event.code, row, nowIso());
     players.push(row);
     added.push(slot);

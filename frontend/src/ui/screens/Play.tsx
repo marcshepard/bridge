@@ -17,7 +17,7 @@ import {
 import type { Game } from "../../providers/types";
 import type { EventSnapshot, ResultDto } from "../../session/store";
 import { games } from "../../services";
-import { AnalysisDialog, BreakdownDialog, FieldDialog } from "../components/BoardDialogs";
+import { AnalysisDialog, BoardInfoDialog, BreakdownDialog, FieldDialog } from "../components/BoardDialogs";
 import { TallyDialog } from "../components/TallyDialog";
 import { ResultText } from "../controls/BridgeText";
 import { Screen } from "../controls/Layout";
@@ -27,7 +27,7 @@ import { formatMargin, isAway } from "../labels";
 import { EnterResultDialog, type EntryStep } from "./EnterResult";
 import { PlayBoard } from "./PlayBoard";
 
-type Dialog = EntryStep | "tally" | "breakdown" | "field" | "analysis" | null;
+type Dialog = EntryStep | "tally" | "info" | "breakdown" | "field" | "analysis" | null;
 
 interface Props {
   snapshot: EventSnapshot;
@@ -120,9 +120,9 @@ export function Play({ snapshot, game, seat, onSaved, onNotice }: Props) {
         </Screen>
       )}
       <PlayBoard
-        title={snapshot.title}
         code={snapshot.code}
         board={board}
+        position={position + 1}
         seat={seat}
         names={names}
         away={away}
@@ -136,6 +136,7 @@ export function Play({ snapshot, game, seat, onSaved, onNotice }: Props) {
         contract={contract}
         enteredBy={enteredBy}
         onTally={() => setDialog("tally")}
+        onBoardInfo={() => setDialog("info")}
         onEnterContract={() => setDialog("contract")}
         onEnterResult={() => setDialog("result")}
         onCorrect={() => setDialog("correct")}
@@ -154,6 +155,7 @@ export function Play({ snapshot, game, seat, onSaved, onNotice }: Props) {
           seat={seat}
           initial={comparison ? comparison.ours.result : contract ? { ...contract, tricks: null } : null}
           onSave={(r, contractOnly) => void save(r, contractOnly)}
+          lastSavedBy={enteredBy}
           onClose={() => setDialog(null)}
         />
       )}
@@ -167,6 +169,14 @@ export function Play({ snapshot, game, seat, onSaved, onNotice }: Props) {
           setCurrent(b);
           setDialog(null);
         }}
+      />
+      <BoardInfoDialog
+        open={dialog === "info"}
+        onClose={() => setDialog(null)}
+        board={board}
+        position={position + 1}
+        title={snapshot.title}
+        game={game}
       />
       {comparison && (
         <>

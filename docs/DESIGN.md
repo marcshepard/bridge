@@ -241,27 +241,32 @@ shows where to sit physically: "You're North, opposite Bob, with Ann on your lef
 
 **Playing a board:**
 
-- Below the header: game title (from the PBN `Event`, or the TCG page), the board number out of
-  the game's boards ("Board 7 of 24"; where you are in the session isn't shown), and the **running tally** for your side, e.g.
-  "NS +140". Tapping the tally opens a dialog with the board-by-board grid.
-- Dealer, vulnerability, and the contract once entered.
-- A compass with the players' names, **you at the bottom**, and your hand below it.
-- **Enter the contract** (any player, once the bidding is over): contract and declarer, or passed
-  out. Everyone sees it at once, during the play, with a **Change** button.
+- Below the header: the **join code** (to read out to someone rejoining) and the **running tally**
+  for your side, e.g. "NS +140". Tapping the tally opens a dialog with the board-by-board grid.
+- A compass with the players' names, **you at the bottom**, and Dealer / Vulnerable chips under
+  the names (no separate dealer and vulnerability sentence). A player who isn't connected is
+  greyed out with a small no-signal icon; tap it for "Away".
+- The **board number** in the middle of the compass counts from 1 in the order you play (a game
+  started at original board 9 shows 1 there). Tap it for board details: the game's title, the
+  original board number "of" the game's boards, and how many field results it's scored against.
+- **Contract** row: "Contract: Tap to enter" until the bidding is over, then "Contract: 4♠ by West".
+  Tapping it opens the contract dialog (any player); everyone sees it at once.
+- **Your hand (11 HCP)**: by default a fan of overlapping playing cards, rank over suit in each
+  corner, sorted by suit (trumps first once there's a contract, colours alternating), sized from
+  the screen's width. **Large** switches to big suit rows for reading at arm's length.
 - **Enter the result** (any player, once the play is over): the tricks. Everyone sees it
-  immediately, labelled "entered by Ann", and anyone can **Correct** contract and tricks together.
-  A correction by someone else shows a notice on every other device ("Ann corrected board 3: now
-  …", with **Show board**), since it may be a board they've moved on from and it changes the tally.
+  immediately. The entry dialog says "Last saved by: Ann" once anything is saved. A correction by
+  someone else shows a notice on every other device ("Ann corrected board 3: now …", with **Show
+  board**), since it may be a board they've moved on from and it changes the tally.
 
 **After the result:**
 
-- All four hands, the result ("3NT by E, −1"), your side's score ("+50" for NS, "−50" for EW) and
-  matchpoints for both sides ("83 / 17").
-- Tap the **score** for the score breakdown dialog.
-- Tap the **matchpoints** for the field dialog: all field results plus yours, with the most common
-  result and the double-dummy par result called out.
-- **Analysis** dialog: your result, the most common result, the best result double dummy, and
-  expert commentary when the source has it.
+- Two lines above the compass: "2♣× by N, made +180 N/S" and "83% matchpoints, net +66". Tap the
+  result to correct it, the score for the score breakdown dialog, and the matchpoints for the field
+  dialog (all field results plus yours, with the most common result and the par result called out).
+- The compass fills in with **all four hands**, each in its seat under the name.
+- **Analysis** (only when the board has expert commentary): your result, the most common result,
+  the best result double dummy, and the commentary.
 - **Next board.** Each device moves on by itself; nobody waits for one person to advance the table.
 
 **End game:** any player can end the game (with a confirmation). A post-mortem after it is in the
@@ -277,7 +282,7 @@ backlog.
    that all four players are equal: anyone can enter or correct results and anyone can end the
    game. A creator's device dying costs nothing, and ownership never needs transferring.
 3. **Disconnected is not "left".** Phones die and lock, laptops sleep; nobody remembers to tap Leave. With push,
-   the game knows who is connected and shows a disconnected player's name greyed out.
+   the game knows who is connected and shows a disconnected player's name greyed out, with a no-signal icon.
    - **Same device:** reopening the app or link puts you back in your seat and catches up on missed
      results.
    - **Different device, or a new player:** join with the code; the game is full, so you pick
@@ -294,8 +299,8 @@ backlog.
 
 ### Dev mode: simulated players
 
-- **Fill with test players** (dev builds only): a lobby button that adds Test East, Test South and
-  Test West so a game starts immediately and every board can be played from one device. Nothing else
+- **Fill with test players** (dev builds only): a lobby button that adds Bot 2, Bot 3 and Bot 4 (the
+  number is the order they joined) so a game starts immediately and every board can be played from one device. Nothing else
   is needed from the test players, because any player can enter results.
 - **Several identities in one browser:** a dev-only URL option `?as=2` gives a tab its own player
   ID, so four tabs side by side behave like four players' devices for testing live sync.

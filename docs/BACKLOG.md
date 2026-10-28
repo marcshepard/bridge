@@ -17,11 +17,22 @@ biggest piece of work (several days).
 **UX direction (discussed 27 Oct 2026):** phone-first, in portrait, which BBO and Funbridge show is
 workable. Bigger screens use the same parts laid out round a table.
 
-- **Hands as suit rows, not fanned cards:** "♠ A Q 10 9 7", one row per suit, each card its own
-  tap target of 44px or more (13 overlapping cards on a phone would be about 25px each). Cards you
-  can't play (following suit) are greyed out. The same control serves your hand and dummy.
-- **Dummy on top**, smaller (you only read it, unless you're declarer), labelled with its seat
-  ("Dummy (North, partner)"), so the screen never rotates.
+- **Hands as overlapped cards** (updated 28 Oct 2026): the fan the board screen now uses for your
+  hand (`HandTiles`), rank over suit in each card's corner, sized from the row's width. Tap a card
+  to select it (it lifts), tap again to play it, so a strip about 24px wide on a phone is safe
+  against misplays. Cards you can't play (following suit) are greyed out. The same control serves
+  your hand and dummy.
+- **Dummy on top**, as a shorter fan: the corner index stays full size, less of each card shows
+  below it. Labelled with its seat ("Dummy (North, partner)"). When you're declarer, dummy's cards
+  lift and play like yours.
+- **Dummy on your left or right** (you're a defender, or declarer's dummy sits sideways): still
+  drawn upright, never rotated (rotated cards are hard to read). An idea to try: one small fan per
+  suit, stacked, in a column at that side.
+- **Opponents' hands:** just their name and how many cards they hold, so the width goes to the
+  fans.
+- **Height is the budget** on a phone held upright, roughly: dummy 20%, the trick 30%, your hand
+  25%, the rest for the status strip. The cards' sizes come from the width, so making them shorter
+  is cheap.
 - **The current trick in the middle**, as a small compass like the board screen's, with who led
   and the trick number; tap for the last trick.
 - **One status strip:** contract, tricks won by each side, whose turn it is, board and code.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMargin, formatMpPair, formatPct, isAway, netParts, sameName, seatRequestNews } from "./labels";
+import { formatMargin, formatMpPair, formatPct, handSuitOrder, isAway, netParts, sameName, seatRequestNews } from "./labels";
 
 describe("numbers on screen are whole", () => {
   it("percentages round to whole numbers", () => {
@@ -52,5 +52,19 @@ describe("seat request news", () => {
   it("matches names ignoring case and spacing", () => {
     expect(sameName("  Marc  Shep", "marc shep")).toBe(true);
     expect(sameName("Marc", "Mark")).toBe(false);
+  });
+});
+
+describe("a hand's suits side by side", () => {
+  it("alternate black and red with no trumps", () => {
+    expect(handSuitOrder(null)).toEqual(["S", "H", "C", "D"]);
+    expect(handSuitOrder("NT")).toEqual(["S", "H", "C", "D"]);
+    expect(handSuitOrder("S")).toEqual(["S", "H", "C", "D"]);
+  });
+
+  it("put trumps first and still alternate colours", () => {
+    expect(handSuitOrder("H")).toEqual(["H", "S", "D", "C"]);
+    expect(handSuitOrder("D")).toEqual(["D", "S", "H", "C"]);
+    expect(handSuitOrder("C")).toEqual(["C", "H", "S", "D"]);
   });
 });

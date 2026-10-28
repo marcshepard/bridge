@@ -6,7 +6,7 @@ import { formatTrickResult } from "../../core/contract";
 import { formatScore } from "../../core/scoring";
 import { type Contract, type Strain, type Suit, type TableResult, SUIT_SYMBOLS } from "../../core/types";
 
-const SUIT_NAMES: Record<Suit, string> = { S: "spades", H: "hearts", D: "diamonds", C: "clubs" };
+export const SUIT_NAMES: Record<Suit, string> = { S: "spades", H: "hearts", D: "diamonds", C: "clubs" };
 
 /** ♠ ♥ ♦ ♣ (hearts and diamonds in the theme's red), or "NT". */
 export function StrainSymbol({ strain }: { strain: Strain }) {

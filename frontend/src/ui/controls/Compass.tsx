@@ -13,14 +13,14 @@ interface Props {
   me: Seat;
   /** What to show under each seat's name, e.g. the player sitting there. */
   seats: Record<Seat, ReactNode>;
-  /** Shown in the middle of the table, e.g. the board number. */
+  /** Shown in the middle of the table, e.g. the board number. It can be a button. */
   center?: ReactNode;
 }
 
 export function Compass({ me, seats, center }: Props) {
   return (
     <Box
-      role="list"
+      role="group"
       aria-label="Who sits where"
       sx={{
         display: "grid",
@@ -31,32 +31,8 @@ export function Compass({ me, seats, center }: Props) {
         mx: "auto",
       }}
     >
-      {SEATS.map((seat) => {
-        const relation = relationTo(me, seat);
-        return (
-          <Paper
-            key={seat}
-            role="listitem"
-            variant="outlined"
-            sx={{
-              gridArea: AREA[relation],
-              p: 1.5,
-              textAlign: "center",
-              ...(relation === "you" && { bgcolor: "action.selected", borderColor: "primary.main" }),
-            }}
-          >
-            <Typography variant="caption" component="p" color="text.secondary">
-              {SEAT_NAMES[seat]}
-            </Typography>
-            <Typography variant="subtitle1" component="div" sx={{ overflowWrap: "anywhere" }}>
-              {seats[seat]}
-            </Typography>
-          </Paper>
-        );
-      })}
-      {/* Decorative: anything shown here is also said elsewhere on the screen. */}
+      {/* First in reading order, though drawn in the middle: on the board screen it's the heading. */}
       <Box
-        aria-hidden
         sx={{
           gridArea: "table",
           bgcolor: "action.hover",
@@ -70,6 +46,29 @@ export function Compass({ me, seats, center }: Props) {
       >
         {center}
       </Box>
+      {SEATS.map((seat) => {
+        const relation = relationTo(me, seat);
+        return (
+          <Paper
+            key={seat}
+            variant="outlined"
+            sx={{
+              gridArea: AREA[relation],
+              px: 0.5,
+              py: 1.5,
+              textAlign: "center",
+              ...(relation === "you" && { bgcolor: "action.selected", borderColor: "primary.main" }),
+            }}
+          >
+            <Typography variant="caption" component="p" color="text.secondary">
+              {SEAT_NAMES[seat]}
+            </Typography>
+            <Typography variant="subtitle1" component="div" sx={{ overflowWrap: "anywhere" }}>
+              {seats[seat]}
+            </Typography>
+          </Paper>
+        );
+      })}
     </Box>
   );
 }

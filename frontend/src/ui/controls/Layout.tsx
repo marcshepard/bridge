@@ -13,14 +13,32 @@ export function Screen({ children }: { children: ReactNode }) {
   );
 }
 
-/** A titled block of content within a screen. */
-export function Section({ title, children, id }: { title?: ReactNode; children: ReactNode; id?: string }) {
+/**
+ * A titled block of content within a screen. `action` sits at the right of the title (a toggle,
+ * say). `tight` closes up the space above, for a section that belongs with the row before it.
+ */
+export function Section({
+  title,
+  children,
+  id,
+  action,
+  tight = false,
+}: {
+  title?: ReactNode;
+  children: ReactNode;
+  id?: string;
+  action?: ReactNode;
+  tight?: boolean;
+}) {
   return (
-    <Box component="section" sx={{ mt: 4 }} aria-labelledby={title && id ? id : undefined}>
+    <Box component="section" sx={{ mt: tight ? 1 : 4 }} aria-labelledby={title && id ? id : undefined}>
       {title && (
-        <Typography variant="h6" component="h2" id={id} sx={{ mb: 1 }}>
-          {title}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          <Typography variant="h6" component="h2" id={id} sx={{ flex: 1 }}>
+            {title}
+          </Typography>
+          {action}
+        </Box>
       )}
       {children}
     </Box>

@@ -46,24 +46,36 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
       <Heading>Playing a board</Heading>
       <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
         <li>
-          The board screen shows who sits where (you at the bottom), the dealer, who is vulnerable, and your 13
-          cards. Take those cards from your deck, then bid and play as normal.
+          The board screen shows who sits where (you at the bottom, partner opposite). <strong>Dealer</strong>{" "}
+          and <strong>Vulnerable</strong> labels under the names show who deals and which side is vulnerable;
+          a side with no label isn't. Below that are your 13 cards, sorted by suit, with your high-card points
+          (HCP: ace 4, king 3, queen 2, jack 1). Tap <strong>Large</strong> to show them bigger, a suit per row,
+          and <strong>Small</strong> to go back. Take those cards
+          from your deck, then bid and play as normal.
         </li>
         <li>
-          When the bidding is over, anyone taps <strong>Enter the contract</strong>: the contract and who's
+          The number in the middle of the table is the board you're on, counting from 1. Tap it to see which
+          game it comes from, its number in that game, and how many results from the original game it's
+          scored against.
+        </li>
+        <li>
+          When the bidding is over, anyone taps <strong>Contract: Tap to enter</strong> and enters the contract and who's
           declaring (or <strong>Passed out</strong>). It shows on everyone's screen at once, so you can all keep
-          it in mind during the play. If it's wrong, tap <strong>Change</strong>.
+          it in mind during the play, for example <strong>Contract: 4♠ by West</strong>. If it's wrong, tap the
+          contract to change it.
         </li>
         <li>
           When the play is over, anyone taps <strong>Enter the result</strong>: how many tricks declarer took. If
-          a result turns out to be wrong, anyone can tap <strong>Correct</strong>, even on an earlier board.
+          a result turns out to be wrong, anyone can tap the result to correct it, even on an earlier board.
           Everyone else gets a message saying which board changed, since it can change the running tally.
         </li>
         <li>
-          You then see all four hands, your side's score, and both sides' matchpoints, for example 83 / 17.{" "}
-          <strong>Score breakdown</strong> shows how the score adds up, <strong>The field</strong> shows what the
-          original pairs scored, and <strong>Analysis</strong> shows the best possible result and any expert
-          commentary.
+          You then see the result in two lines, for example <strong>2♣× by N, made, +180 N/S</strong> and{" "}
+          <strong>83% matchpoints, net +66</strong>. Below them, the table fills in with all four hands, each in
+          its seat (you're still at the bottom). Each part of the result opens more: tap the
+          score to see how it adds up, and the matchpoints to see what the original pairs scored. When the
+          board has expert commentary, an <strong>Analysis</strong> button shows it, with the best possible
+          result.
         </li>
         <li>
           Tap <strong>Next board</strong> when you're ready. Each screen moves on by itself, so nobody waits for
@@ -71,8 +83,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           field you are; tap it to see every board.
         </li>
         <li>
-          If someone's phone goes to sleep or loses signal, their name is greyed out with <strong>(away)</strong>{" "}
-          until they're back. If it's yours, a <strong>Reconnecting…</strong> strip shows at the top; the app
+          If someone's phone goes to sleep or loses signal, their name is greyed out with a small no-signal icon
+          (a cloud with a line through it) until they're back. Tap the icon to see what it means. If it's yours, a <strong>Reconnecting…</strong> strip shows at the top; the app
           reconnects by itself and catches up on anything you missed.
         </li>
       </Box>

@@ -1,31 +1,36 @@
 // One board as you see it at the table. Before the result: who sits where, the dealer and
 // vulnerability, your 13 cards to deal from, and the contract once the bidding is over (so everyone
 // can see it during the play). After it: the result (entered by anyone at the
-// table), your score, both sides' matchpoints, and all four hands.
+// table), your score, your matchpoints and net, and all four hands in their seats round the table.
 
 import { Box, Button, Chip, Stack, Typography } from "@mui/material";
-import type { ReactNode } from "react";
+import { formatContract, formatTableResult } from "../../core/contract";
+import { formatScore } from "../../core/scoring";
+import { type ReactNode, useState } from "react";
 import type { BoardComparison } from "../../core/compare";
-import { describeResult } from "../../core/describe";
 import { hcp } from "../../core/deal";
-import { type Contract, type Seat, SEATS, directionOf, isVulnerable } from "../../core/types";
+import { type Contract, type Hand as HandT, type Seat, SEATS, SEAT_NAMES, directionOf, isVulnerable } from "../../core/types";
 import type { Board } from "../../providers/types";
-import { FullDeal, Hand } from "../components/Hand";
+import { Hand, HandTiles } from "../components/Hand";
 import { ContractText, ResultText, ScoreText } from "../controls/BridgeText";
 import { Compass } from "../controls/Compass";
-import { EditButton } from "../controls/EditButton";
-import { Panel, Screen, Section, StatPanel } from "../controls/Layout";
+import { PlayerName } from "../controls/PlayerName";
+import { Panel, Screen, Section } from "../controls/Layout";
 import { ScoreChip, type Tone } from "../controls/ScoreChip";
-import { formatJoinCode, formatMpPair, netParts, seatWithRelation, vulnerabilityPhrase } from "../labels";
+import { formatJoinCode, netParts } from "../labels";
 
 interface Props {
-  title: string;
   /** The game's join code, so anyone at the table can read it out to someone rejoining. */
   code: string;
   board: Board;
+  /**
+   * Where this board comes in the game you're playing, from 1. It differs from `board.number` (the
+   * original game's) when you started part-way through; the board details dialog shows both.
+   */
+  position: number;
   seat: Seat;
   names: Record<Seat, string>;
-  /** Players with no live connection right now: greyed out, "(away)". */
+  /** Players with no live connection right now: greyed out, with a no-signal icon. */
   away: Record<Seat, boolean>;
   /** How many boards the game has. */
   total: number;
@@ -37,6 +42,7 @@ interface Props {
   /** Who entered the result, or the contract while that's all there is. */
   enteredBy: string | null;
   onTally: () => void;
+  onBoardInfo: () => void;
   onEnterContract: () => void;
   onEnterResult: () => void;
   onCorrect: () => void;
@@ -47,19 +53,37 @@ interface Props {
   onNext: (() => void) | null;
 }
 
-/** A seat on the compass: the player's name, plus Dealer and Vulnerable when they apply. */
-function SeatLabel({ name, dealer, vul, away }: { name: string; dealer: boolean; vul: boolean; away: boolean }) {
+/**
+ * A seat on the compass: the player's name, plus Dealer and Vulnerable when they apply. Once the
+ * board is over, `hand` adds the seat's cards, so the table shows the deal.
+ */
+function SeatLabel({
+  name,
+  dealer,
+  vul,
+  away,
+  hand,
+}: {
+  name: string;
+  dealer: boolean;
+  vul: boolean;
+  away: boolean;
+  hand?: HandT;
+}) {
   return (
     <>
-      <Box component="span" sx={away ? { color: "text.disabled" } : undefined}>
-        {name}
-        {away && " (away)"}
-      </Box>
+      <PlayerName name={name} away={away} />
       {(dealer || vul) && (
         <Stack direction="row" spacing={0.5} useFlexGap sx={{ justifyContent: "center", flexWrap: "wrap", mt: 0.5 }}>
           {dealer && <Chip size="small" label="Dealer" />}
           {vul && <Chip size="small" color="error" label="Vulnerable" />}
         </Stack>
+      )}
+      {hand && (
+        // On its own line under the name, centred as a block, with the suits lined up on the left inside it.
+        <Box sx={{ width: "fit-content", mx: "auto", textAlign: "left", mt: 1 }}>
+          <Hand hand={hand} />
+        </Box>
       )}
     </>
   );
@@ -68,7 +92,6 @@ function SeatLabel({ name, dealer, vul, away }: { name: string; dealer: boolean;
 export function PlayBoard(p: Props) {
   const { board, seat, comparison: c } = p;
   const dir = directionOf(seat);
-  const other = dir === "NS" ? "EW" : "NS";
   const seats = Object.fromEntries(
     SEATS.map((s) => [
       s,
@@ -78,151 +101,123 @@ export function PlayBoard(p: Props) {
         away={p.away[s]}
         dealer={s === board.dealer}
         vul={isVulnerable(board.vul, directionOf(s))}
+        hand={c ? board.hands[s] : undefined}
       />,
     ]),
   ) as Record<Seat, ReactNode>;
+  // Lasts while you're in the game (this screen stays put from board to board), not between visits.
+  const [largeCards, setLargeCards] = useState(false);
+  const trump = p.contract?.contract.strain ?? null;
+  const sideLabel = dir === "NS" ? "N/S" : "E/W";
+  const matchpoints =
+    c && c.mpPct !== null ? `${netParts(c.mpPct).pct} matchpoints, net ${netParts(c.mpPct).net}` : "";
 
   return (
     <Screen>
-      {/* The title shortens with "…" on a narrow screen; the join code always shows in full. */}
-      <Stack direction="row" spacing={0.5} sx={{ color: "text.secondary", minWidth: 0 }}>
-        <Typography variant="body2" noWrap sx={{ minWidth: 0 }}>
-          {p.title}
-        </Typography>
-        <Typography variant="body2" sx={{ flexShrink: 0 }}>
-          · Code <strong className="num">{formatJoinCode(p.code)}</strong>
-        </Typography>
-      </Stack>
       <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
-        <Typography variant="h5" component="h1" sx={{ flex: 1 }}>
-          Board {board.number}
-          <Typography component="span" variant="body1" color="text.secondary">
-            {" "}
-            of {p.total}
-          </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ flex: 1 }}>
+          Code <strong className="num">{formatJoinCode(p.code)}</strong>
         </Typography>
         <ScoreChip label={p.tally.label} tone={p.tally.tone} onClick={p.onTally} ariaLabel={p.tally.ariaLabel} />
       </Stack>
+
+      {/*
+        Once the board is over: the result first (two thin lines, each part opening its detail: the
+        result to correct it, your side's score to see how it adds up, the matchpoints to see the
+        field), then the table below with all four hands.
+      */}
+      {c && (
+        <Box component="section" aria-label="Result" sx={{ mb: 2, textAlign: "center" }}>
+          <Stack direction="row" useFlexGap sx={{ justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
+            <Button onClick={p.onCorrect} aria-label={`${formatTableResult(c.ours.result)}. Correct the result`} sx={{ typography: "h6", minWidth: 0 }}>
+              <ResultText result={c.ours.result} />
+            </Button>
+            <Button onClick={p.onBreakdown} aria-label={`${formatScore(c.ourScore)} ${sideLabel}. Show the score breakdown`} sx={{ typography: "h6", minWidth: 0 }}>
+              <ScoreText score={c.ourScore} />
+              &nbsp;{sideLabel}
+            </Button>
+          </Stack>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
+            {c.mpPct === null ? (
+              <Typography color="text.secondary">No field results to compare with, so no matchpoints.</Typography>
+            ) : (
+              <Button onClick={p.onField} aria-label={`${matchpoints}. Show the field`} sx={{ typography: "h6", minWidth: 0 }}>
+                <span className="num">{matchpoints}</span>
+              </Button>
+            )}
+            {board.commentary && (
+              <Button variant="outlined" onClick={p.onAnalysis}>
+                Analysis
+              </Button>
+            )}
+          </Stack>
+        </Box>
+      )}
 
       <Compass
         me={seat}
         seats={seats}
         center={
-          <Typography variant="h4" component="span" color="text.secondary">
-            {board.number}
+          <Typography variant="h4" component="h1">
+            <Button
+              onClick={p.onBoardInfo}
+              aria-label={`Board ${p.position}. Show board details`}
+              sx={{ typography: "h4" }}
+            >
+              {p.position}
+            </Button>
           </Typography>
         }
       />
-      <Typography align="center" sx={{ mt: 1.5 }}>
-        Dealer: {seatWithRelation(seat, board.dealer)}. {vulnerabilityPhrase(seat, board.vul)}.
-      </Typography>
 
-      {!c ? (
+      {!c && (
         <>
-          {p.contract && (
-            <Section title="Contract" id="contract">
-              <Panel>
-                <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: "center" }}>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="h6" component="p">
-                      <ContractText contract={p.contract.contract} /> by {seatWithRelation(seat, p.contract.declarer)}
-                    </Typography>
-                    {p.enteredBy && (
-                      <Typography variant="body2" color="text.secondary">
-                        Entered by {p.enteredBy}
-                      </Typography>
-                    )}
-                  </Box>
-                  <EditButton ariaLabel="Change the contract" onClick={p.onEnterContract}>
-                    Change
-                  </EditButton>
-                </Stack>
-              </Panel>
-            </Section>
-          )}
-          <Section title="Your hand" id="your-hand">
-            <Panel>
-              <Hand hand={board.hands[seat]} large />
-            </Panel>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
-              {hcp(board.hands[seat])} high-card points
+          {/* One thin row, so the cards stay near the top. Tap it to enter the contract, or change it. */}
+          <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: "center", justifyContent: "center", mt: 3 }}>
+            <Typography variant="h6" component="h2">
+              Contract:
             </Typography>
+            {p.contract ? (
+              <Button
+                onClick={p.onEnterContract}
+                aria-label={`${formatContract(p.contract.contract)} by ${SEAT_NAMES[p.contract.declarer]}. Change the contract`}
+                sx={{ typography: "h6", minWidth: 0 }}
+              >
+                <ContractText contract={p.contract.contract} />
+                &nbsp;by {SEAT_NAMES[p.contract.declarer]}
+              </Button>
+            ) : (
+              <Button onClick={p.onEnterContract} sx={{ typography: "h6", minWidth: 0 }}>
+                Tap to enter
+              </Button>
+            )}
+          </Stack>
+          <Section
+            title={`Your hand (${hcp(board.hands[seat])} HCP)`}
+            id="your-hand"
+            tight
+            action={
+              // Named for the size it switches to, so it isn't also shown as pressed.
+              <Button variant="outlined" onClick={() => setLargeCards(!largeCards)}>
+                {largeCards ? "Small" : "Large"}
+              </Button>
+            }
+          >
+            {/* Large: a suit per row in big type, for reading at arm's length while sorting real cards. */}
+            {largeCards ? (
+              <Panel>
+                <Hand hand={board.hands[seat]} large />
+              </Panel>
+            ) : (
+              <HandTiles hand={board.hands[seat]} trump={trump} />
+            )}
           </Section>
-          {p.contract ? (
+          {/* The contract row enters the contract, so the main button only appears once there's one. */}
+          {p.contract && (
             <Button variant="contained" size="large" fullWidth sx={{ mt: 3 }} onClick={p.onEnterResult}>
               Enter the result
             </Button>
-          ) : (
-            <Button variant="contained" size="large" fullWidth sx={{ mt: 3 }} onClick={p.onEnterContract}>
-              Enter the contract
-            </Button>
           )}
-        </>
-      ) : (
-        <>
-          <Section title="Result" id="result">
-            <Panel>
-              <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: "flex-start" }}>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="subtitle1">
-                    <ResultText result={c.ours.result} />
-                  </Typography>
-                  <Typography variant="h5" component="p">
-                    <ScoreText score={c.ourScore} />{" "}
-                    <Typography component="span" variant="body1" color="text.secondary">
-                      points for your side
-                    </Typography>
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {describeResult(c.ours)}
-                    {p.enteredBy && <> · entered by {p.enteredBy}</>}
-                  </Typography>
-                </Box>
-                <EditButton ariaLabel="Correct the result" onClick={p.onCorrect}>
-                  Correct
-                </EditButton>
-              </Stack>
-            </Panel>
-          </Section>
-
-          <Box sx={{ mt: 2 }}>
-            {c.mpPct === null ? (
-              <Panel>
-                <Typography color="text.secondary">No field results to compare with, so no matchpoints.</Typography>
-              </Panel>
-            ) : (
-              <StatPanel
-                figure={formatMpPair(c.mpPct)}
-                caption={`Matchpoints: your side (${dir}) / theirs (${other})`}
-                tone={c.mpPct >= 50 ? "primary" : "error"}
-                aside={
-                  <Box>
-                    <Typography variant="h5" component="p" className="num">
-                      Net {netParts(c.mpPct).net}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      your % minus theirs: <span className="num">{netParts(c.mpPct).working}</span>
-                    </Typography>
-                  </Box>
-                }
-              />
-            )}
-          </Box>
-          <Stack direction="row" spacing={1} useFlexGap sx={{ mt: 1.5, flexWrap: "wrap" }}>
-            <Button variant="outlined" onClick={p.onBreakdown}>
-              Score breakdown
-            </Button>
-            <Button variant="outlined" onClick={p.onField}>
-              The field
-            </Button>
-            <Button variant="outlined" onClick={p.onAnalysis}>
-              Analysis
-            </Button>
-          </Stack>
-
-          <Section title="All four hands" id="deal">
-            <FullDeal hands={board.hands} you={seat} />
-          </Section>
         </>
       )}
 

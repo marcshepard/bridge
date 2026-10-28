@@ -19,12 +19,32 @@
 //     green-black page, slightly lighter cards), rather than plain white or black.
 //   - The header stays table green in both modes (MUI would otherwise make it near-black in dark
 //     mode, the same as the page). Your avatar on it is a white circle with a green letter.
+//   - Card faces (palette.card), for hands drawn as playing cards: a white face with near-black
+//     and red ink, as on real cards, so they read the same in both modes. Dark mode dims the face
+//     a little so the cards don't glare.
 //   Everything else (error red for hearts and diamonds, text colours) is MUI's default.
 //
 // Light unless you turn on Dark mode in the avatar menu (MUI's useColorScheme; MUI remembers the
 // choice in the browser).
 
 import { createTheme } from "@mui/material/styles";
+
+/** A playing card's face: `face` background, `edge` border, `ink` for ♠♣ and `red` for ♥♦. */
+interface CardColours {
+  face: string;
+  edge: string;
+  ink: string;
+  red: string;
+}
+
+declare module "@mui/material/styles" {
+  interface Palette {
+    card: CardColours;
+  }
+  interface PaletteOptions {
+    card?: CardColours;
+  }
+}
 
 /** Card-table green: the app icon, the header and the browser bar. */
 export const TABLE_GREEN = "#1b7f5e";
@@ -37,6 +57,7 @@ export const theme = createTheme({
         primary: { main: TABLE_GREEN },
         secondary: { main: "#c99a1e", contrastText: "#1f1a0b" },
         background: { default: "#eef3f0", paper: "#fafcfb" },
+        card: { face: "#ffffff", edge: "#9aa59f", ink: "#1a1a1a", red: "#c62828" },
       },
     },
     dark: {
@@ -44,6 +65,7 @@ export const theme = createTheme({
         primary: { main: "#6fd1aa" },
         secondary: { main: "#e2bd57" },
         background: { default: "#0e1714", paper: "#16221d" },
+        card: { face: "#e6ebe8", edge: "#0e1714", ink: "#1a1a1a", red: "#b71c1c" },
       },
     },
   },

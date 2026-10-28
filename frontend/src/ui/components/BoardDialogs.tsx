@@ -1,12 +1,13 @@
-// The dialogs behind a board's result: how the score adds up, the field, and the analysis.
-// Opened from the board screen once a result is entered.
+// The dialogs behind a board: how the score adds up, the field and the analysis (opened once a
+// result is entered), and the board details (opened from the board number at any time).
 
-import { Alert, Stack, Typography } from "@mui/material";
+import { Alert, Box, Stack, Typography } from "@mui/material";
+import type { ReactNode } from "react";
 import type { BoardComparison } from "../../core/compare";
 import { describeResult } from "../../core/describe";
 import { scoreFor } from "../../core/scoring";
 import { type Seat, directionOf } from "../../core/types";
-import type { Board } from "../../providers/types";
+import type { Board, Game } from "../../providers/types";
 import { ResultText, ScoreText } from "../controls/BridgeText";
 import { Section } from "../controls/Layout";
 import { SheetDialog } from "../controls/SheetDialog";
@@ -144,6 +145,60 @@ export function AnalysisDialog({ open, onClose, board, seat, c }: Props) {
           <Typography color="text.secondary">No commentary for this board.</Typography>
         )}
       </Section>
+    </SheetDialog>
+  );
+}
+
+/** How many results a board's field has: each traveller line can stand for several tables. */
+function fieldSize(board: Board): number {
+  return board.field.reduce((n, f) => n + f.count, 0);
+}
+
+/**
+ * About the board you're on: which game it's from, its number there, and how many results it's
+ * scored against (later boards in a big game often have far fewer). Opened from the board number.
+ */
+export function BoardInfoDialog({
+  open,
+  onClose,
+  board,
+  position,
+  title,
+  game,
+}: {
+  open: boolean;
+  onClose: () => void;
+  board: Board;
+  /** Where this board comes in your game, from 1. */
+  position: number;
+  /** The game's title, e.g. "The Common Game, 16 Oct 2026 (Open field)". */
+  title: string;
+  game: Game;
+}) {
+  const rows: [string, ReactNode][] = [
+    ["Game", title],
+    [
+      "Board number",
+      <span className="num">
+        {board.number} of {game.boards.length}
+      </span>,
+    ],
+    ["Results", <span className="num">{fieldSize(board)}</span>],
+  ];
+  return (
+    <SheetDialog open={open} onClose={onClose} title={`Board ${position}`}>
+      <Box component="dl" sx={{ m: 0, display: "grid", gap: 1 }}>
+        {rows.map(([label, value]) => (
+          <Box key={label} sx={{ display: "flex", gap: 1 }}>
+            <Typography component="dt" color="text.secondary" sx={{ flexShrink: 0 }}>
+              {label}:
+            </Typography>
+            <Typography component="dd" sx={{ m: 0, minWidth: 0 }}>
+              {value}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
     </SheetDialog>
   );
 }
