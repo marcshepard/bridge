@@ -191,7 +191,8 @@ full deck, so nobody sees what's left, and the four hands never overlap.
 
 | Source | Deals | Field results | Status |
 |---|---|---|---|
-| Synthetic sample (`scripts/make_sample_game.py`) | random | **simulated** | Bundled, for development and demos |
+| Synthetic sample (`scripts/make_sample_game.py`) | random | **simulated** | Bundled, for development and tests (24 boards, small fields) |
+| Synthetic demo (`make_sample_game.py --demo`) | random | **simulated** | Built into the backend for **Start demo game**: 36 boards, a few hundred made-up tables per board (far fewer on the last six), double dummy, made-up commentary on boards 9 and 16 |
 | PBN import | yes | if the file has a `[ScoreTable]` or per-table results | Works for any PBN file the user has |
 | JSON import (our format) | yes | yes | Works. Your friend's parser can emit this |
 | The Common Game archives | yes | yes (large national field) | **Asked for permission.** Their site sits behind Cloudflare bot protection, so automated fetching isn't possible or appropriate. |
@@ -297,6 +298,15 @@ backlog.
    you beat, they lost to, and ties count half for both). For display, round your side and show the
    other side as 100 minus that, so "50.5 / 49.5" never shows as "51 / 50".
 
+### Demo games
+
+**Start demo game** on Home lets someone try the app alone in the live app: `POST
+/api/events/demo` creates a game from the synthetic demo game built into the backend
+(`backend/src/demo/demo-game.json`), starting at board 9 (to show a game needn't start at 1), and
+fills the other three places with Bot 2, Bot 3 and Bot 4. The player lands in the lobby to pick
+partners. Bots are allowed here even though test players are off in the live app, because the
+game file is ours. No Common Game data is used (see AGENTS.md); bots still show as away.
+
 ### Dev mode: simulated players
 
 - **Fill with test players** (dev builds only): a lobby button that adds Bot 2, Bot 3 and Bot 4 (the
@@ -387,6 +397,7 @@ the player with `isCreator`; there's no separate host key.
 | `POST /api/events/:code/live-ticket` | A player | `{ ticket }`: a single-use pass to open the WebSocket, valid for a minute. Browsers can't send headers on a WebSocket, and the secret `playerId` mustn't appear in an address (addresses end up in logs) |
 | `GET /api/events/:code/live?ticket=` | A player (with a pass) | WebSocket for pushed updates |
 | `POST /api/events/:code/test-players` | Dev only | Fill the empty places with test players |
+| `POST /api/events/demo` | Anyone | `{ name }` → a demo game (the built-in made-up game from board 9) with three bots; you're the creator |
 
 Every write is validated in the Worker with the same `core/` functions the frontend uses (contract
 parses, tricks 0–13, board exists in the game). Errors come back as `{ "error": "message" }` with

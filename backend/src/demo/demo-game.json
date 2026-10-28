@@ -1,0 +1,10486 @@
+{
+ "schemaVersion": 1,
+ "id": "demo-synthetic-36",
+ "title": "Demo game (made-up results)",
+ "date": "2026-10-28",
+ "session": "Demo",
+ "source": {
+  "name": "Synthetic demo",
+  "attribution": "Random deals with real double-dummy analysis; field results and commentary are made up by scripts/make_sample_game.py --demo. Not real results from any game."
+ },
+ "boards": [
+  {
+   "number": 1,
+   "dealer": "N",
+   "vul": "None",
+   "hands": {
+    "N": "73.T7.T63.QJT943",
+    "E": "K542.KQJ854..AK2",
+    "S": "QJT98.62.AK94.85",
+    "W": "A6.A93.QJ8752.76"
+   },
+   "field": [
+    {
+     "contract": "6H",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 84
+    },
+    {
+     "contract": "6H",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 22
+    },
+    {
+     "contract": "6H",
+     "declarer": "W",
+     "tricks": 12,
+     "count": 21
+    },
+    {
+     "contract": "6H",
+     "declarer": "E",
+     "tricks": 13,
+     "count": 17
+    },
+    {
+     "contract": "7H",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 14
+    },
+    {
+     "contract": "5H",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 14
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 11
+    },
+    {
+     "contract": "6NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 10
+    },
+    {
+     "contract": "6H",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 10
+    },
+    {
+     "contract": "7H",
+     "declarer": "W",
+     "tricks": 12,
+     "count": 7
+    },
+    {
+     "contract": "5H",
+     "declarer": "W",
+     "tricks": 12,
+     "count": 6
+    },
+    {
+     "contract": "6HX",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "6NTX",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 6
+    },
+    {
+     "contract": "5H",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 5
+    },
+    {
+     "contract": "2C",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 5
+    },
+    {
+     "contract": "5H",
+     "declarer": "E",
+     "tricks": 13,
+     "count": 5
+    },
+    {
+     "contract": "2CX",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 3
+    },
+    {
+     "contract": "6H",
+     "declarer": "W",
+     "tricks": 13,
+     "count": 3
+    },
+    {
+     "contract": "7NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 3
+    },
+    {
+     "contract": "5NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "7H",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "7HX",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "2CX",
+     "declarer": "S",
+     "tricks": 5,
+     "count": 2
+    },
+    {
+     "contract": "7H",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "6NT",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "5NT",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "7NTX",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "7NTX",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2CX",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 2
+    },
+    {
+     "contract": "7NT",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "6NT",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "6NT",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "5H",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "7H",
+     "declarer": "W",
+     "tricks": 13,
+     "count": 1
+    },
+    {
+     "contract": "7HX",
+     "declarer": "W",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "5NT",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "7HX",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "7H",
+     "declarer": "E",
+     "tricks": 13,
+     "count": 1
+    },
+    {
+     "contract": "7NT",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "6HX",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "2CX",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "6NTX",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "6NT",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "6NTX",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 4,
+      "H": 1,
+      "D": 4,
+      "C": 6,
+      "NT": 3
+     },
+     "E": {
+      "S": 9,
+      "H": 12,
+      "D": 9,
+      "C": 7,
+      "NT": 10
+     },
+     "S": {
+      "S": 4,
+      "H": 1,
+      "D": 4,
+      "C": 6,
+      "NT": 3
+     },
+     "W": {
+      "S": 9,
+      "H": 12,
+      "D": 9,
+      "C": 7,
+      "NT": 10
+     }
+    },
+    "par": {
+     "nsScore": -980,
+     "contracts": [
+      {
+       "contract": "6H",
+       "declarer": "E",
+       "tricks": 12
+      },
+      {
+       "contract": "6H",
+       "declarer": "W",
+       "tricks": 12
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 2,
+   "dealer": "E",
+   "vul": "NS",
+   "hands": {
+    "N": "KJT652.A42.K9.JT",
+    "E": "Q.KQ753.A862.K83",
+    "S": "974.6.QJ754.Q976",
+    "W": "A83.JT98.T3.A542"
+   },
+   "field": [
+    {
+     "contract": "4H",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 38
+    },
+    {
+     "contract": "4H",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 14
+    },
+    {
+     "contract": "4H",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 9
+    },
+    {
+     "contract": "4H",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 8
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 8
+    },
+    {
+     "contract": "4H",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "5H",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 6
+    },
+    {
+     "contract": "4C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 6
+    },
+    {
+     "contract": "4CX",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "5H",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 4
+    },
+    {
+     "contract": "4H",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 4
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "4CX",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "4HX",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "3C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "4C",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "5H",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "5HX",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "1S",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "1S",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "5H",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "5HX",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "4C",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "4C",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "4CX",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "5C",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4HX",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "5H",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "5HX",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "5C",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "5C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 9,
+      "H": 3,
+      "D": 7,
+      "C": 5,
+      "NT": 5
+     },
+     "E": {
+      "S": 4,
+      "H": 10,
+      "D": 6,
+      "C": 8,
+      "NT": 7
+     },
+     "S": {
+      "S": 9,
+      "H": 3,
+      "D": 7,
+      "C": 5,
+      "NT": 5
+     },
+     "W": {
+      "S": 4,
+      "H": 10,
+      "D": 6,
+      "C": 8,
+      "NT": 7
+     }
+    },
+    "par": {
+     "nsScore": -200,
+     "contracts": [
+      {
+       "contract": "4SX",
+       "declarer": "N",
+       "tricks": 9
+      },
+      {
+       "contract": "4SX",
+       "declarer": "S",
+       "tricks": 9
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 3,
+   "dealer": "S",
+   "vul": "EW",
+   "hands": {
+    "N": "K943.97543.974.5",
+    "E": "J872.K.AQT8.Q432",
+    "S": "Q6.862.532.AT986",
+    "W": "AT5.AQJT.KJ6.KJ7"
+   },
+   "field": [
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 108
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 31
+    },
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 26
+    },
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 24
+    },
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 21
+    },
+    {
+     "contract": "4NT",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 20
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 12,
+     "count": 12
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 3,
+     "count": 11
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 9
+    },
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 8
+    },
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 7
+    },
+    {
+     "contract": "4NT",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "4NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 6
+    },
+    {
+     "contract": "2NT",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "2SX",
+     "declarer": "N",
+     "tricks": 4,
+     "count": 3
+    },
+    {
+     "contract": "2SX",
+     "declarer": "S",
+     "tricks": 2,
+     "count": 3
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 3,
+     "count": 3
+    },
+    {
+     "contract": "4NT",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "2SX",
+     "declarer": "N",
+     "tricks": 3,
+     "count": 3
+    },
+    {
+     "contract": "4NT",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 2,
+     "count": 2
+    },
+    {
+     "contract": "2SX",
+     "declarer": "N",
+     "tricks": 2,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 4,
+     "count": 1
+    },
+    {
+     "contract": "2SX",
+     "declarer": "S",
+     "tricks": 3,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 3,
+      "H": 3,
+      "D": 1,
+      "C": 3,
+      "NT": 1
+     },
+     "E": {
+      "S": 10,
+      "H": 10,
+      "D": 11,
+      "C": 10,
+      "NT": 11
+     },
+     "S": {
+      "S": 3,
+      "H": 3,
+      "D": 1,
+      "C": 3,
+      "NT": 1
+     },
+     "W": {
+      "S": 10,
+      "H": 10,
+      "D": 11,
+      "C": 10,
+      "NT": 11
+     }
+    },
+    "par": {
+     "nsScore": -660,
+     "contracts": [
+      {
+       "contract": "3NT",
+       "declarer": "E",
+       "tricks": 11
+      },
+      {
+       "contract": "3NT",
+       "declarer": "W",
+       "tricks": 11
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 4,
+   "dealer": "W",
+   "vul": "Both",
+   "hands": {
+    "N": "J96532.65.AJ5.AJ",
+    "E": "4.AQT83.9743.743",
+    "S": "AT8.97.KQT86.T96",
+    "W": "KQ7.KJ42.2.KQ852"
+   },
+   "field": [
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 23
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 21
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 14
+    },
+    {
+     "contract": "1H",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 12
+    },
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 9
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 8
+    },
+    {
+     "contract": "1S",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 8
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 5
+    },
+    {
+     "contract": "1H",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 4
+    },
+    {
+     "contract": "1H",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "1H",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "1S",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "1D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3S",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "1S",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "1S",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "1C",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2H",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "1S",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "2H",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2C",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2H",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4C",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3DX",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4S",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4S",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1C",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 8,
+      "H": 3,
+      "D": 8,
+      "C": 4,
+      "NT": 7
+     },
+     "E": {
+      "S": 5,
+      "H": 9,
+      "D": 5,
+      "C": 9,
+      "NT": 6
+     },
+     "S": {
+      "S": 8,
+      "H": 3,
+      "D": 8,
+      "C": 4,
+      "NT": 7
+     },
+     "W": {
+      "S": 5,
+      "H": 9,
+      "D": 5,
+      "C": 9,
+      "NT": 6
+     }
+    },
+    "par": {
+     "nsScore": -140,
+     "contracts": [
+      {
+       "contract": "3H",
+       "declarer": "E",
+       "tricks": 9
+      },
+      {
+       "contract": "3H",
+       "declarer": "W",
+       "tricks": 9
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 5,
+   "dealer": "N",
+   "vul": "NS",
+   "hands": {
+    "N": "A92.J973.K983.32",
+    "E": "85.AQT862.AJ2.54",
+    "S": "KJT76.5.T54.9876",
+    "W": "Q43.K4.Q76.AKQJT"
+   },
+   "field": [
+    {
+     "contract": "4H",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 37
+    },
+    {
+     "contract": "4H",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 20
+    },
+    {
+     "contract": "4H",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 18
+    },
+    {
+     "contract": "4H",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 17
+    },
+    {
+     "contract": "4C",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 13
+    },
+    {
+     "contract": "5H",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 12
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 8
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 7
+    },
+    {
+     "contract": "3H",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 7
+    },
+    {
+     "contract": "2SX",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 6
+    },
+    {
+     "contract": "4C",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 6
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 4
+    },
+    {
+     "contract": "3H",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 4
+    },
+    {
+     "contract": "2SX",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 3
+    },
+    {
+     "contract": "5H",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "4H",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "4C",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 3
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 5,
+     "count": 3
+    },
+    {
+     "contract": "4H",
+     "declarer": "W",
+     "tricks": 12,
+     "count": 3
+    },
+    {
+     "contract": "5C",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 3
+    },
+    {
+     "contract": "5H",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "5C",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "W",
+     "tricks": 12,
+     "count": 2
+    },
+    {
+     "contract": "4C",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "4C",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "5H",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "5H",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "2SX",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "5H",
+     "declarer": "W",
+     "tricks": 12,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 6,
+      "H": 0,
+      "D": 4,
+      "C": 0,
+      "NT": 0
+     },
+     "E": {
+      "S": 7,
+      "H": 11,
+      "D": 8,
+      "C": 11,
+      "NT": 8
+     },
+     "S": {
+      "S": 6,
+      "H": 0,
+      "D": 4,
+      "C": 0,
+      "NT": 0
+     },
+     "W": {
+      "S": 7,
+      "H": 11,
+      "D": 8,
+      "C": 11,
+      "NT": 10
+     }
+    },
+    "par": {
+     "nsScore": -450,
+     "contracts": [
+      {
+       "contract": "4H",
+       "declarer": "E",
+       "tricks": 11
+      },
+      {
+       "contract": "4H",
+       "declarer": "W",
+       "tricks": 11
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 6,
+   "dealer": "E",
+   "vul": "EW",
+   "hands": {
+    "N": "K74.Q98765.2.K76",
+    "E": "T82.4.AQT73.9832",
+    "S": "J6.AJ32.K865.QJ4",
+    "W": "AQ953.KT.J94.AT5"
+   },
+   "field": [
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 34
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 31
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 20
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 14
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 14
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 12
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 11
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 10
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 9
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 9
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 7
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 6
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 6
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 5
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 5
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "3D",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 3
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 3
+    },
+    {
+     "contract": "3S",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "1D",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "2NTX",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3SX",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "3D",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "4H",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2SX",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "4NTX",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4SX",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "4DX",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3NTX",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "3DX",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "1NT",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 5,
+      "H": 9,
+      "D": 5,
+      "C": 5,
+      "NT": 6
+     },
+     "E": {
+      "S": 8,
+      "H": 4,
+      "D": 8,
+      "C": 7,
+      "NT": 7
+     },
+     "S": {
+      "S": 5,
+      "H": 9,
+      "D": 5,
+      "C": 5,
+      "NT": 6
+     },
+     "W": {
+      "S": 7,
+      "H": 4,
+      "D": 8,
+      "C": 7,
+      "NT": 7
+     }
+    },
+    "par": {
+     "nsScore": 140,
+     "contracts": [
+      {
+       "contract": "3H",
+       "declarer": "N",
+       "tricks": 9
+      },
+      {
+       "contract": "3H",
+       "declarer": "S",
+       "tricks": 9
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 7,
+   "dealer": "S",
+   "vul": "Both",
+   "hands": {
+    "N": "K72.AKQ.95.J7643",
+    "E": "AJT3.J9543.T863.",
+    "S": "Q6.8.AKJ.AKT9852",
+    "W": "9854.T762.Q742.Q"
+   },
+   "field": [
+    {
+     "contract": "6NT",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 50
+    },
+    {
+     "contract": "6NT",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 22
+    },
+    {
+     "contract": "6NT",
+     "declarer": "N",
+     "tricks": 13,
+     "count": 15
+    },
+    {
+     "contract": "5NT",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 14
+    },
+    {
+     "contract": "6NT",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 11
+    },
+    {
+     "contract": "7NT",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 8
+    },
+    {
+     "contract": "7NT",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 6
+    },
+    {
+     "contract": "7NT",
+     "declarer": "N",
+     "tricks": 13,
+     "count": 5
+    },
+    {
+     "contract": "5NT",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 5
+    },
+    {
+     "contract": "5NT",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 5
+    },
+    {
+     "contract": "7NT",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 5
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 4
+    },
+    {
+     "contract": "6NT",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "6NTX",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "5NT",
+     "declarer": "N",
+     "tricks": 13,
+     "count": 3
+    },
+    {
+     "contract": "2SX",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 3
+    },
+    {
+     "contract": "6NT",
+     "declarer": "S",
+     "tricks": 13,
+     "count": 3
+    },
+    {
+     "contract": "5NT",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "5NT",
+     "declarer": "S",
+     "tricks": 13,
+     "count": 2
+    },
+    {
+     "contract": "2SX",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "7NT",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "7NTX",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "7NTX",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "7NTX",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "7NTX",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 7,
+      "H": 6,
+      "D": 7,
+      "C": 12,
+      "NT": 12
+     },
+     "E": {
+      "S": 6,
+      "H": 6,
+      "D": 6,
+      "C": 0,
+      "NT": 1
+     },
+     "S": {
+      "S": 7,
+      "H": 6,
+      "D": 7,
+      "C": 12,
+      "NT": 12
+     },
+     "W": {
+      "S": 6,
+      "H": 6,
+      "D": 6,
+      "C": 0,
+      "NT": 1
+     }
+    },
+    "par": {
+     "nsScore": 1440,
+     "contracts": [
+      {
+       "contract": "6NT",
+       "declarer": "N",
+       "tricks": 12
+      },
+      {
+       "contract": "6NT",
+       "declarer": "S",
+       "tricks": 12
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 8,
+   "dealer": "W",
+   "vul": "None",
+   "hands": {
+    "N": "Q8.98.KT9.AQJT52",
+    "E": "AKT765.42.853.K3",
+    "S": "J932.A7.A742.986",
+    "W": "4.KQJT653.QJ6.74"
+   },
+   "field": [
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 50
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 25
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 18
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 17
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 9
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 9
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 8
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "1NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 6
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 5
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 5
+    },
+    {
+     "contract": "2H",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 4
+    },
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 4
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 4
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "1NT",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "1H",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3SX",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "1D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "1D",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "1D",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3D",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3NTX",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4NTX",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1H",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3NTX",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1NT",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 6,
+      "H": 4,
+      "D": 8,
+      "C": 9,
+      "NT": 8
+     },
+     "E": {
+      "S": 7,
+      "H": 9,
+      "D": 5,
+      "C": 4,
+      "NT": 4
+     },
+     "S": {
+      "S": 6,
+      "H": 4,
+      "D": 8,
+      "C": 9,
+      "NT": 8
+     },
+     "W": {
+      "S": 7,
+      "H": 9,
+      "D": 5,
+      "C": 4,
+      "NT": 4
+     }
+    },
+    "par": {
+     "nsScore": -100,
+     "contracts": [
+      {
+       "contract": "3NTX",
+       "declarer": "N",
+       "tricks": 8
+      },
+      {
+       "contract": "3NTX",
+       "declarer": "S",
+       "tricks": 8
+      },
+      {
+       "contract": "4CX",
+       "declarer": "N",
+       "tricks": 9
+      },
+      {
+       "contract": "4CX",
+       "declarer": "S",
+       "tricks": 9
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 9,
+   "dealer": "N",
+   "vul": "EW",
+   "hands": {
+    "N": "A53.4.AKJT983.32",
+    "E": "KT6.9.Q754.JT954",
+    "S": "97.AQJ8632.6.AQ8",
+    "W": "QJ842.KT75.2.K76"
+   },
+   "field": [
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 51
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 36
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 25
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 22
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 21
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 13
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 10
+    },
+    {
+     "contract": "2C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 10
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 9
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 8
+    },
+    {
+     "contract": "1D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 6
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "2D",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "2C",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "4HX",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "2C",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "2C",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "1D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "1C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1C",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1C",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2SX",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 5,
+      "H": 9,
+      "D": 9,
+      "C": 5,
+      "NT": 7
+     },
+     "E": {
+      "S": 7,
+      "H": 4,
+      "D": 3,
+      "C": 8,
+      "NT": 4
+     },
+     "S": {
+      "S": 6,
+      "H": 9,
+      "D": 9,
+      "C": 5,
+      "NT": 7
+     },
+     "W": {
+      "S": 7,
+      "H": 4,
+      "D": 3,
+      "C": 8,
+      "NT": 4
+     }
+    },
+    "par": {
+     "nsScore": 140,
+     "contracts": [
+      {
+       "contract": "2H",
+       "declarer": "N",
+       "tricks": 9
+      },
+      {
+       "contract": "2H",
+       "declarer": "S",
+       "tricks": 9
+      }
+     ]
+    }
+   },
+   "commentary": "Made-up commentary for the demo, not real expert analysis.\n\nNorth–South hold 25 high-card points to East–West's 15.\nDouble dummy, par is +140 for North–South: 2♥ by North or 2♥ by South.\n118 of the 293 tables (40%) bid 2♥.\nThe most common result was 2♥ by North, +1 (51 tables).\nA part-score battle: neither side has a game, so the fight is over the 2- and 3-level. Compete to the level of your fit (eight trumps, the 2-level; nine, the 3-level)."
+  },
+  {
+   "number": 10,
+   "dealer": "E",
+   "vul": "Both",
+   "hands": {
+    "N": "AKJT6.87.AT6.K62",
+    "E": "9.JT62.J82.AQ973",
+    "S": "83.KQ953.Q9754.8",
+    "W": "Q7542.A4.K3.JT54"
+   },
+   "field": [
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 58
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 18
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 16
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 15
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 15
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 15
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 10
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 10
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 10
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 10
+    },
+    {
+     "contract": "1D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 9
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 8
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 8
+    },
+    {
+     "contract": "2C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 7
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 7
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 5
+    },
+    {
+     "contract": "1C",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 5
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "1C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 4
+    },
+    {
+     "contract": "2C",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "2C",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 4
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "2D",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "1D",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3C",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "3C",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2C",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2NT",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "1C",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1NT",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "1NT",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1C",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1NT",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 7,
+      "H": 9,
+      "D": 9,
+      "C": 5,
+      "NT": 6
+     },
+     "E": {
+      "S": 5,
+      "H": 4,
+      "D": 3,
+      "C": 8,
+      "NT": 6
+     },
+     "S": {
+      "S": 7,
+      "H": 8,
+      "D": 9,
+      "C": 5,
+      "NT": 6
+     },
+     "W": {
+      "S": 5,
+      "H": 4,
+      "D": 3,
+      "C": 8,
+      "NT": 7
+     }
+    },
+    "par": {
+     "nsScore": 140,
+     "contracts": [
+      {
+       "contract": "2H",
+       "declarer": "N",
+       "tricks": 9
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 11,
+   "dealer": "S",
+   "vul": "None",
+   "hands": {
+    "N": "A8.JT9.KQT6.J742",
+    "E": "KQJ63.AQ853.75.6",
+    "S": "72.72.A98432.AKQ",
+    "W": "T954.K64.J.T9853"
+   },
+   "field": [
+    {
+     "contract": "5D",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 55
+    },
+    {
+     "contract": "5D",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 17
+    },
+    {
+     "contract": "5D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 13
+    },
+    {
+     "contract": "6D",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 9
+    },
+    {
+     "contract": "4D",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 8
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 6
+    },
+    {
+     "contract": "4D",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "5D",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 6
+    },
+    {
+     "contract": "5NTX",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "4D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 5
+    },
+    {
+     "contract": "4S",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "5D",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 4
+    },
+    {
+     "contract": "6DX",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 4
+    },
+    {
+     "contract": "5DX",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "6D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "6DX",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "5NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "6D",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "5NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "6NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "6D",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 2
+    },
+    {
+     "contract": "6NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "4H",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "4D",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 2
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "5D",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "4HX",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4HX",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "6NTX",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "5NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "5DX",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "4SX",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "5H",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "6NT",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "4NTX",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4NTX",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 3,
+      "H": 3,
+      "D": 11,
+      "C": 7,
+      "NT": 8
+     },
+     "E": {
+      "S": 10,
+      "H": 9,
+      "D": 2,
+      "C": 6,
+      "NT": 2
+     },
+     "S": {
+      "S": 3,
+      "H": 3,
+      "D": 11,
+      "C": 7,
+      "NT": 8
+     },
+     "W": {
+      "S": 10,
+      "H": 9,
+      "D": 2,
+      "C": 6,
+      "NT": 2
+     }
+    },
+    "par": {
+     "nsScore": 100,
+     "contracts": [
+      {
+       "contract": "5SX",
+       "declarer": "E",
+       "tricks": 10
+      },
+      {
+       "contract": "5SX",
+       "declarer": "W",
+       "tricks": 10
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 12,
+   "dealer": "W",
+   "vul": "NS",
+   "hands": {
+    "N": "KQ652.KJ842.4.Q2",
+    "E": "A983.QT763.A3.76",
+    "S": "JT4.5.KQJT97.T53",
+    "W": "7.A9.8652.AKJ984"
+   },
+   "field": [
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 62
+    },
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 16
+    },
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 14
+    },
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 12
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 11
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 11
+    },
+    {
+     "contract": "4NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 10
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 9
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 7
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 6
+    },
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "2SX",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 4
+    },
+    {
+     "contract": "4NT",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 4
+    },
+    {
+     "contract": "4NT",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "2NT",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 5,
+     "count": 3
+    },
+    {
+     "contract": "4NT",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "2SX",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 2
+    },
+    {
+     "contract": "2SX",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4NTX",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 6,
+      "H": 3,
+      "D": 5,
+      "C": 2,
+      "NT": 3
+     },
+     "E": {
+      "S": 7,
+      "H": 9,
+      "D": 8,
+      "C": 10,
+      "NT": 10
+     },
+     "S": {
+      "S": 6,
+      "H": 3,
+      "D": 5,
+      "C": 2,
+      "NT": 3
+     },
+     "W": {
+      "S": 7,
+      "H": 9,
+      "D": 8,
+      "C": 10,
+      "NT": 10
+     }
+    },
+    "par": {
+     "nsScore": -430,
+     "contracts": [
+      {
+       "contract": "3NT",
+       "declarer": "E",
+       "tricks": 10
+      },
+      {
+       "contract": "3NT",
+       "declarer": "W",
+       "tricks": 10
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 13,
+   "dealer": "N",
+   "vul": "Both",
+   "hands": {
+    "N": "AK.J942.97632.97",
+    "E": "QT42.AQT.AQ84.53",
+    "S": "6.K7653.T5.AKT64",
+    "W": "J98753.8.KJ.QJ82"
+   },
+   "field": [
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 50
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 29
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 17
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 15
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 14
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 12
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 11
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 10
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 7
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 7
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 6
+    },
+    {
+     "contract": "3S",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 5
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 4
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "2DX",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "4S",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "3DX",
+     "declarer": "W",
+     "tricks": 5,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "1D",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "3D",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3DX",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4DX",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4SX",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3HX",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3DX",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2DX",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4SX",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4SX",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1DX",
+     "declarer": "W",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "2DX",
+     "declarer": "W",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "W",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 4,
+      "H": 8,
+      "D": 7,
+      "C": 7,
+      "NT": 5
+     },
+     "E": {
+      "S": 9,
+      "H": 4,
+      "D": 6,
+      "C": 5,
+      "NT": 6
+     },
+     "S": {
+      "S": 4,
+      "H": 8,
+      "D": 7,
+      "C": 7,
+      "NT": 5
+     },
+     "W": {
+      "S": 9,
+      "H": 4,
+      "D": 6,
+      "C": 5,
+      "NT": 6
+     }
+    },
+    "par": {
+     "nsScore": -140,
+     "contracts": [
+      {
+       "contract": "2S",
+       "declarer": "E",
+       "tricks": 9
+      },
+      {
+       "contract": "2S",
+       "declarer": "W",
+       "tricks": 9
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 14,
+   "dealer": "E",
+   "vul": "None",
+   "hands": {
+    "N": "AKQ6.73.97.AT432",
+    "E": "JT8432.T.KJT5.Q7",
+    "S": "95.AJ942.AQ63.KJ",
+    "W": "7.KQ865.842.9865"
+   },
+   "field": [
+    {
+     "contract": "6NT",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 69
+    },
+    {
+     "contract": "6NT",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 25
+    },
+    {
+     "contract": "6NT",
+     "declarer": "S",
+     "tricks": 13,
+     "count": 21
+    },
+    {
+     "contract": "6NT",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 19
+    },
+    {
+     "contract": "7NT",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 17
+    },
+    {
+     "contract": "5NT",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 14
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 4,
+     "count": 13
+    },
+    {
+     "contract": "2SX",
+     "declarer": "E",
+     "tricks": 4,
+     "count": 9
+    },
+    {
+     "contract": "5NT",
+     "declarer": "S",
+     "tricks": 13,
+     "count": 8
+    },
+    {
+     "contract": "6NTX",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "5NT",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 3,
+     "count": 6
+    },
+    {
+     "contract": "7NT",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 5
+    },
+    {
+     "contract": "7NT",
+     "declarer": "S",
+     "tricks": 13,
+     "count": 5
+    },
+    {
+     "contract": "6NTX",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "5NT",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 4
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 3,
+     "count": 4
+    },
+    {
+     "contract": "2SX",
+     "declarer": "E",
+     "tricks": 3,
+     "count": 4
+    },
+    {
+     "contract": "7NT",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 4
+    },
+    {
+     "contract": "6NT",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "6NT",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 4
+    },
+    {
+     "contract": "6NTX",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 4
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 3
+    },
+    {
+     "contract": "7NTX",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "7NTX",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "7NT",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 2,
+     "count": 1
+    },
+    {
+     "contract": "7NT",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "2SX",
+     "declarer": "W",
+     "tricks": 2,
+     "count": 1
+    },
+    {
+     "contract": "5NT",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "2SX",
+     "declarer": "W",
+     "tricks": 3,
+     "count": 1
+    },
+    {
+     "contract": "2SX",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 9,
+      "H": 10,
+      "D": 10,
+      "C": 11,
+      "NT": 11
+     },
+     "E": {
+      "S": 4,
+      "H": 3,
+      "D": 2,
+      "C": 1,
+      "NT": 1
+     },
+     "S": {
+      "S": 9,
+      "H": 10,
+      "D": 10,
+      "C": 12,
+      "NT": 12
+     },
+     "W": {
+      "S": 3,
+      "H": 3,
+      "D": 2,
+      "C": 1,
+      "NT": 1
+     }
+    },
+    "par": {
+     "nsScore": 990,
+     "contracts": [
+      {
+       "contract": "6NT",
+       "declarer": "S",
+       "tricks": 12
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 15,
+   "dealer": "S",
+   "vul": "NS",
+   "hands": {
+    "N": "JT83.642.KQJ8.K9",
+    "E": "AQ6.AT9.T6542.42",
+    "S": "942.KQJ3.97.AQ85",
+    "W": "K75.875.A3.JT763"
+   },
+   "field": [
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 34
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 13
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 9
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 7
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 7
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 6
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 5
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 5
+    },
+    {
+     "contract": "1S",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 5
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "1NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 4
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 4
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "4NTX",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "1NT",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "4NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "1NT",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "3NTX",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2SX",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3SX",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3SX",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2DX",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4NTX",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2DX",
+     "declarer": "W",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2DX",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3SX",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 7,
+      "H": 7,
+      "D": 7,
+      "C": 6,
+      "NT": 8
+     },
+     "E": {
+      "S": 5,
+      "H": 5,
+      "D": 6,
+      "C": 6,
+      "NT": 5
+     },
+     "S": {
+      "S": 7,
+      "H": 7,
+      "D": 7,
+      "C": 6,
+      "NT": 8
+     },
+     "W": {
+      "S": 5,
+      "H": 5,
+      "D": 6,
+      "C": 6,
+      "NT": 5
+     }
+    },
+    "par": {
+     "nsScore": 120,
+     "contracts": [
+      {
+       "contract": "1NT",
+       "declarer": "N",
+       "tricks": 8
+      },
+      {
+       "contract": "1NT",
+       "declarer": "S",
+       "tricks": 8
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 16,
+   "dealer": "W",
+   "vul": "EW",
+   "hands": {
+    "N": "9642.J72.T932.J5",
+    "E": "A73.AQ83.A.AKT86",
+    "S": "JT85.T95.Q5.9432",
+    "W": "KQ.K64.KJ8764.Q7"
+   },
+   "field": [
+    {
+     "contract": "7NT",
+     "declarer": "E",
+     "tricks": 13,
+     "count": 79
+    },
+    {
+     "contract": "7NT",
+     "declarer": "W",
+     "tricks": 13,
+     "count": 32
+    },
+    {
+     "contract": "7NT",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 23
+    },
+    {
+     "contract": "6NT",
+     "declarer": "E",
+     "tricks": 13,
+     "count": 20
+    },
+    {
+     "contract": "7C",
+     "declarer": "E",
+     "tricks": 13,
+     "count": 14
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 2,
+     "count": 12
+    },
+    {
+     "contract": "7NT",
+     "declarer": "W",
+     "tricks": 12,
+     "count": 11
+    },
+    {
+     "contract": "7C",
+     "declarer": "W",
+     "tricks": 13,
+     "count": 9
+    },
+    {
+     "contract": "6NT",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 8
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 1,
+     "count": 5
+    },
+    {
+     "contract": "7NTX",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 5
+    },
+    {
+     "contract": "2SX",
+     "declarer": "N",
+     "tricks": 2,
+     "count": 5
+    },
+    {
+     "contract": "6NT",
+     "declarer": "W",
+     "tricks": 13,
+     "count": 4
+    },
+    {
+     "contract": "6C",
+     "declarer": "E",
+     "tricks": 13,
+     "count": 4
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 2,
+     "count": 3
+    },
+    {
+     "contract": "2SX",
+     "declarer": "S",
+     "tricks": 2,
+     "count": 3
+    },
+    {
+     "contract": "2SX",
+     "declarer": "N",
+     "tricks": 1,
+     "count": 2
+    },
+    {
+     "contract": "2SX",
+     "declarer": "S",
+     "tricks": 3,
+     "count": 2
+    },
+    {
+     "contract": "7CX",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 1,
+     "count": 1
+    },
+    {
+     "contract": "2SX",
+     "declarer": "S",
+     "tricks": 1,
+     "count": 1
+    },
+    {
+     "contract": "6NT",
+     "declarer": "W",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "7C",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "6C",
+     "declarer": "W",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "6C",
+     "declarer": "W",
+     "tricks": 13,
+     "count": 1
+    },
+    {
+     "contract": "2SX",
+     "declarer": "N",
+     "tricks": 3,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 2,
+      "H": 0,
+      "D": 1,
+      "C": 0,
+      "NT": 0
+     },
+     "E": {
+      "S": 11,
+      "H": 13,
+      "D": 12,
+      "C": 13,
+      "NT": 13
+     },
+     "S": {
+      "S": 2,
+      "H": 0,
+      "D": 1,
+      "C": 0,
+      "NT": 0
+     },
+     "W": {
+      "S": 11,
+      "H": 13,
+      "D": 12,
+      "C": 13,
+      "NT": 13
+     }
+    },
+    "par": {
+     "nsScore": -2220,
+     "contracts": [
+      {
+       "contract": "7NT",
+       "declarer": "E",
+       "tricks": 13
+      },
+      {
+       "contract": "7NT",
+       "declarer": "W",
+       "tricks": 13
+      }
+     ]
+    }
+   },
+   "commentary": "Made-up commentary for the demo, not real expert analysis.\n\nNorth–South hold 5 high-card points to East–West's 35.\nDouble dummy, par is −2220 for North–South: 7NT by East or 7NT by West.\n150 of the 249 tables (60%) bid 7NT.\nThe most common result was 7NT by East, made (79 tables).\nWith this many points between them, the question isn't whether to bid a slam but which one: count your top tricks before choosing between a small slam and a grand slam."
+  },
+  {
+   "number": 17,
+   "dealer": "N",
+   "vul": "None",
+   "hands": {
+    "N": "J43.QJ974.T73.87",
+    "E": "86.K85.KQ6.T9542",
+    "S": "AKQT92.AT.95.KQ6",
+    "W": "75.632.AJ842.AJ3"
+   },
+   "field": [
+    {
+     "contract": "4S",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 52
+    },
+    {
+     "contract": "4S",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 24
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 19
+    },
+    {
+     "contract": "4S",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 14
+    },
+    {
+     "contract": "4S",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 12
+    },
+    {
+     "contract": "4HX",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 8
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "5S",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "4S",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "5S",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "5S",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 5
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "1D",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "4S",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "3S",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "1D",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "3S",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "5S",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "3S",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "5S",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "4SX",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "5H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "4HX",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "4SX",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "5SX",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "5SX",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "4HX",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "1C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1C",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4HX",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "5H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "5SX",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "5HX",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "5HX",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3CX",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 10,
+      "H": 8,
+      "D": 5,
+      "C": 5,
+      "NT": 7
+     },
+     "E": {
+      "S": 3,
+      "H": 5,
+      "D": 8,
+      "C": 8,
+      "NT": 5
+     },
+     "S": {
+      "S": 10,
+      "H": 8,
+      "D": 5,
+      "C": 5,
+      "NT": 7
+     },
+     "W": {
+      "S": 2,
+      "H": 5,
+      "D": 7,
+      "C": 7,
+      "NT": 5
+     }
+    },
+    "par": {
+     "nsScore": 420,
+     "contracts": [
+      {
+       "contract": "4S",
+       "declarer": "N",
+       "tricks": 10
+      },
+      {
+       "contract": "4S",
+       "declarer": "S",
+       "tricks": 10
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 18,
+   "dealer": "E",
+   "vul": "NS",
+   "hands": {
+    "N": "Q97.T852.Q976.97",
+    "E": "K53.J76.KT8.KJ42",
+    "S": "JT862.4.J5.AQ853",
+    "W": "A4.AKQ93.A432.T6"
+   },
+   "field": [
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 69
+    },
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 40
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 31
+    },
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 18
+    },
+    {
+     "contract": "4NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 17
+    },
+    {
+     "contract": "3D",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 14
+    },
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 13
+    },
+    {
+     "contract": "4NT",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 10
+    },
+    {
+     "contract": "3D",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 8
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 8
+    },
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 8
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 6
+    },
+    {
+     "contract": "4NT",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "2SX",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 6
+    },
+    {
+     "contract": "4NT",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 5
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 5
+    },
+    {
+     "contract": "2NT",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "3D",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 4
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 4
+    },
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "3D",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "4NT",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "4D",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "2NT",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 2
+    },
+    {
+     "contract": "2SX",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "4NTX",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "4DX",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 6,
+      "H": 2,
+      "D": 3,
+      "C": 5,
+      "NT": 2
+     },
+     "E": {
+      "S": 7,
+      "H": 10,
+      "D": 10,
+      "C": 8,
+      "NT": 10
+     },
+     "S": {
+      "S": 6,
+      "H": 2,
+      "D": 3,
+      "C": 5,
+      "NT": 2
+     },
+     "W": {
+      "S": 6,
+      "H": 10,
+      "D": 9,
+      "C": 8,
+      "NT": 10
+     }
+    },
+    "par": {
+     "nsScore": -430,
+     "contracts": [
+      {
+       "contract": "3NT",
+       "declarer": "E",
+       "tricks": 10
+      },
+      {
+       "contract": "3NT",
+       "declarer": "W",
+       "tricks": 10
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 19,
+   "dealer": "S",
+   "vul": "EW",
+   "hands": {
+    "N": "T.AT32.KJ764.J94",
+    "E": "Q8.J954.AQ2.AK86",
+    "S": "A97543.K8.T3.T52",
+    "W": "KJ62.Q76.985.Q73"
+   },
+   "field": [
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 51
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 23
+    },
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 16
+    },
+    {
+     "contract": "4NT",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 16
+    },
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 13
+    },
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 12
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 9
+    },
+    {
+     "contract": "2DX",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 8
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 8
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 5
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 5
+    },
+    {
+     "contract": "4NT",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 4
+    },
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "2NT",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "4NT",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "3SX",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "3S",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "4NT",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "4SX",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "3S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "4NT",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4NTX",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2DX",
+     "declarer": "N",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "S",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "4SX",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2DX",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2DX",
+     "declarer": "S",
+     "tricks": 5,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 5,
+      "H": 4,
+      "D": 6,
+      "C": 4,
+      "NT": 3
+     },
+     "E": {
+      "S": 8,
+      "H": 8,
+      "D": 6,
+      "C": 8,
+      "NT": 9
+     },
+     "S": {
+      "S": 5,
+      "H": 4,
+      "D": 6,
+      "C": 4,
+      "NT": 3
+     },
+     "W": {
+      "S": 8,
+      "H": 8,
+      "D": 6,
+      "C": 8,
+      "NT": 9
+     }
+    },
+    "par": {
+     "nsScore": -600,
+     "contracts": [
+      {
+       "contract": "3NT",
+       "declarer": "E",
+       "tricks": 9
+      },
+      {
+       "contract": "3NT",
+       "declarer": "W",
+       "tricks": 9
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 20,
+   "dealer": "W",
+   "vul": "Both",
+   "hands": {
+    "N": "972.A9.T95.AQJ65",
+    "E": "KJ85.JT3.63.T843",
+    "S": "T4.754.AK872.K92",
+    "W": "AQ63.KQ862.QJ4.7"
+   },
+   "field": [
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 54
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 29
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 27
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 18
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 16
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 14
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 12
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 10
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 10
+    },
+    {
+     "contract": "1NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 9
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 8
+    },
+    {
+     "contract": "4NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 6
+    },
+    {
+     "contract": "1C",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 5
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 5
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 5
+    },
+    {
+     "contract": "1NT",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3NTX",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "2C",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "3C",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "1NT",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1C",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1H",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "4NTX",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "4SX",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1C",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 4,
+      "H": 4,
+      "D": 9,
+      "C": 9,
+      "NT": 8
+     },
+     "E": {
+      "S": 9,
+      "H": 9,
+      "D": 3,
+      "C": 3,
+      "NT": 5
+     },
+     "S": {
+      "S": 4,
+      "H": 4,
+      "D": 9,
+      "C": 9,
+      "NT": 8
+     },
+     "W": {
+      "S": 9,
+      "H": 9,
+      "D": 3,
+      "C": 3,
+      "NT": 5
+     }
+    },
+    "par": {
+     "nsScore": -140,
+     "contracts": [
+      {
+       "contract": "3S",
+       "declarer": "E",
+       "tricks": 9
+      },
+      {
+       "contract": "3S",
+       "declarer": "W",
+       "tricks": 9
+      },
+      {
+       "contract": "3H",
+       "declarer": "E",
+       "tricks": 9
+      },
+      {
+       "contract": "3H",
+       "declarer": "W",
+       "tricks": 9
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 21,
+   "dealer": "N",
+   "vul": "NS",
+   "hands": {
+    "N": "T94.QJ874.T93.J8",
+    "E": "Q63.A93.AQ74.KT9",
+    "S": "K72.KT52.5.A7543",
+    "W": "AJ85.6.KJ862.Q62"
+   },
+   "field": [
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 92
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 34
+    },
+    {
+     "contract": "4S",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 30
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 22
+    },
+    {
+     "contract": "5S",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 21
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 21
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 10
+    },
+    {
+     "contract": "4S",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 7
+    },
+    {
+     "contract": "5S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "4S",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "3S",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 6
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "5SX",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 6
+    },
+    {
+     "contract": "5S",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 4
+    },
+    {
+     "contract": "4SX",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "3S",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "5SX",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "5S",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "4SX",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "5S",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "5S",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "5SX",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "1CX",
+     "declarer": "N",
+     "tricks": 4,
+     "count": 1
+    },
+    {
+     "contract": "2HX",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4HX",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3HX",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "N",
+     "tricks": 4,
+     "count": 1
+    },
+    {
+     "contract": "4HX",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 3,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "4HX",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 4,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "S",
+     "tricks": 3,
+     "count": 1
+    },
+    {
+     "contract": "2HX",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 2,
+      "H": 7,
+      "D": 2,
+      "C": 4,
+      "NT": 3
+     },
+     "E": {
+      "S": 10,
+      "H": 6,
+      "D": 11,
+      "C": 8,
+      "NT": 8
+     },
+     "S": {
+      "S": 2,
+      "H": 7,
+      "D": 2,
+      "C": 4,
+      "NT": 3
+     },
+     "W": {
+      "S": 10,
+      "H": 6,
+      "D": 11,
+      "C": 8,
+      "NT": 8
+     }
+    },
+    "par": {
+     "nsScore": -420,
+     "contracts": [
+      {
+       "contract": "4S",
+       "declarer": "E",
+       "tricks": 10
+      },
+      {
+       "contract": "4S",
+       "declarer": "W",
+       "tricks": 10
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 22,
+   "dealer": "E",
+   "vul": "EW",
+   "hands": {
+    "N": "Q843.KQ973.53.T6",
+    "E": "KJ7.T64.KQ86.AQ5",
+    "S": "52.AJ8.JT4.KJ742",
+    "W": "AT96.52.A972.983"
+   },
+   "field": [
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 44
+    },
+    {
+     "contract": "1NT",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 24
+    },
+    {
+     "contract": "2NT",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 18
+    },
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 18
+    },
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 11
+    },
+    {
+     "contract": "1NT",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 9
+    },
+    {
+     "contract": "2NT",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 9
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 8
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 8
+    },
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 7
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 6
+    },
+    {
+     "contract": "1NT",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 6
+    },
+    {
+     "contract": "1NT",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "1NT",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "2NT",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 5
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "3NTX",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "1C",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 3
+    },
+    {
+     "contract": "4NTX",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3NT",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 3
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2HX",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3CX",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3SX",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3CX",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4C",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4NTX",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3NT",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1NT",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 5,
+      "H": 7,
+      "D": 3,
+      "C": 6,
+      "NT": 4
+     },
+     "E": {
+      "S": 8,
+      "H": 6,
+      "D": 9,
+      "C": 6,
+      "NT": 8
+     },
+     "S": {
+      "S": 4,
+      "H": 7,
+      "D": 3,
+      "C": 6,
+      "NT": 4
+     },
+     "W": {
+      "S": 8,
+      "H": 5,
+      "D": 9,
+      "C": 6,
+      "NT": 8
+     }
+    },
+    "par": {
+     "nsScore": -120,
+     "contracts": [
+      {
+       "contract": "2NT",
+       "declarer": "E",
+       "tricks": 8
+      },
+      {
+       "contract": "2NT",
+       "declarer": "W",
+       "tricks": 8
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 23,
+   "dealer": "S",
+   "vul": "Both",
+   "hands": {
+    "N": "J983.A4.QJ32.KT4",
+    "E": "Q742.QT532.KT84.",
+    "S": "AT.KJ.A9765.AQ87",
+    "W": "K65.9876..J96532"
+   },
+   "field": [
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 83
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 21
+    },
+    {
+     "contract": "4NT",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 15
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 15
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 14
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 13
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 11
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 10
+    },
+    {
+     "contract": "4NT",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 8
+    },
+    {
+     "contract": "3D",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 7
+    },
+    {
+     "contract": "1H",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 6
+    },
+    {
+     "contract": "4NT",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 6
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 5
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 5
+    },
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 5
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 5
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 5
+    },
+    {
+     "contract": "3D",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "4NT",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "2H",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "4D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "4NT",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "1H",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3CX",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2H",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1H",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "4C",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 7,
+      "H": 5,
+      "D": 10,
+      "C": 8,
+      "NT": 10
+     },
+     "E": {
+      "S": 4,
+      "H": 8,
+      "D": 2,
+      "C": 5,
+      "NT": 2
+     },
+     "S": {
+      "S": 6,
+      "H": 5,
+      "D": 10,
+      "C": 8,
+      "NT": 11
+     },
+     "W": {
+      "S": 4,
+      "H": 8,
+      "D": 2,
+      "C": 5,
+      "NT": 2
+     }
+    },
+    "par": {
+     "nsScore": 660,
+     "contracts": [
+      {
+       "contract": "4NT",
+       "declarer": "S",
+       "tricks": 11
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 24,
+   "dealer": "W",
+   "vul": "None",
+   "hands": {
+    "N": "72.KQJT73.52.T85",
+    "E": "KQJ93.6.J86.KQ43",
+    "S": "A86.9542.AKT.J92",
+    "W": "T54.A8.Q9743.A76"
+   },
+   "field": [
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 25
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 16
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 15
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 12
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 9
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 9
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 8
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 7
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 6
+    },
+    {
+     "contract": "3S",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "3S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "2D",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "1D",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3D",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "1D",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "3D",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1SX",
+     "declarer": "S",
+     "tricks": 4,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 4,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2SX",
+     "declarer": "N",
+     "tricks": 3,
+     "count": 1
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 4,
+      "H": 8,
+      "D": 3,
+      "C": 4,
+      "NT": 4
+     },
+     "E": {
+      "S": 9,
+      "H": 5,
+      "D": 9,
+      "C": 9,
+      "NT": 5
+     },
+     "S": {
+      "S": 4,
+      "H": 8,
+      "D": 3,
+      "C": 4,
+      "NT": 4
+     },
+     "W": {
+      "S": 9,
+      "H": 5,
+      "D": 9,
+      "C": 9,
+      "NT": 5
+     }
+    },
+    "par": {
+     "nsScore": -140,
+     "contracts": [
+      {
+       "contract": "3S",
+       "declarer": "E",
+       "tricks": 9
+      },
+      {
+       "contract": "3S",
+       "declarer": "W",
+       "tricks": 9
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 25,
+   "dealer": "N",
+   "vul": "EW",
+   "hands": {
+    "N": "AT4.3.9654.KJT85",
+    "E": "8753.AJT62.72.62",
+    "S": "Q962.K8754.AKT.9",
+    "W": "KJ.Q9.QJ83.AQ743"
+   },
+   "field": [
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 37
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 23
+    },
+    {
+     "contract": "1NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 23
+    },
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 16
+    },
+    {
+     "contract": "2HX",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 13
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 12
+    },
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 10
+    },
+    {
+     "contract": "2H",
+     "declarer": "W",
+     "tricks": 5,
+     "count": 8
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 8
+    },
+    {
+     "contract": "2HX",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 7
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 7
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 7
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 7
+    },
+    {
+     "contract": "2H",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 6
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 5
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 5
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 5
+    },
+    {
+     "contract": "2HX",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 5
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 4
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 4
+    },
+    {
+     "contract": "1NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 4
+    },
+    {
+     "contract": "1D",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3NTX",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "1D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "2H",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "4NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "2HX",
+     "declarer": "W",
+     "tricks": 5,
+     "count": 2
+    },
+    {
+     "contract": "1NT",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2NTX",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "1D",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3NTX",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 8,
+      "H": 7,
+      "D": 8,
+      "C": 8,
+      "NT": 7
+     },
+     "E": {
+      "S": 4,
+      "H": 6,
+      "D": 5,
+      "C": 5,
+      "NT": 5
+     },
+     "S": {
+      "S": 8,
+      "H": 7,
+      "D": 8,
+      "C": 8,
+      "NT": 8
+     },
+     "W": {
+      "S": 4,
+      "H": 6,
+      "D": 5,
+      "C": 5,
+      "NT": 5
+     }
+    },
+    "par": {
+     "nsScore": 120,
+     "contracts": [
+      {
+       "contract": "1NT",
+       "declarer": "S",
+       "tricks": 8
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 26,
+   "dealer": "E",
+   "vul": "Both",
+   "hands": {
+    "N": "86.AKJ965.K42.J3",
+    "E": "JT9432.32.A87.74",
+    "S": "A7.T7.JT95.AT862",
+    "W": "KQ5.Q84.Q63.KQ95"
+   },
+   "field": [
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 73
+    },
+    {
+     "contract": "4H",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 29
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 21
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 21
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 19
+    },
+    {
+     "contract": "5H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 16
+    },
+    {
+     "contract": "4D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 10
+    },
+    {
+     "contract": "4H",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 7
+    },
+    {
+     "contract": "5H",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 7
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "4D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 6
+    },
+    {
+     "contract": "4H",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "4D",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 4
+    },
+    {
+     "contract": "5HX",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 4
+    },
+    {
+     "contract": "4HX",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "5H",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "4DX",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2SX",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "4D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "4HX",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "5D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "5H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "3C",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4SX",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "5H",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "5DX",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1C",
+     "declarer": "E",
+     "tricks": 4,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4DX",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2SX",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3SX",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "5D",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "4DX",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "5HX",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "5HX",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "4SX",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 6,
+      "H": 10,
+      "D": 9,
+      "C": 8,
+      "NT": 8
+     },
+     "E": {
+      "S": 7,
+      "H": 2,
+      "D": 2,
+      "C": 4,
+      "NT": 2
+     },
+     "S": {
+      "S": 6,
+      "H": 10,
+      "D": 9,
+      "C": 8,
+      "NT": 8
+     },
+     "W": {
+      "S": 7,
+      "H": 3,
+      "D": 2,
+      "C": 4,
+      "NT": 3
+     }
+    },
+    "par": {
+     "nsScore": 620,
+     "contracts": [
+      {
+       "contract": "4H",
+       "declarer": "N",
+       "tricks": 10
+      },
+      {
+       "contract": "4H",
+       "declarer": "S",
+       "tricks": 10
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 27,
+   "dealer": "S",
+   "vul": "None",
+   "hands": {
+    "N": "AQT63.KT.763.A64",
+    "E": "42.AJ654.42.T972",
+    "S": ".Q98732.QJ8.QJ53",
+    "W": "KJ9875..AKT95.K8"
+   },
+   "field": [
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 30
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 12
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 12
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 12
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 8
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 6
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 6
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 5
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 4
+    },
+    {
+     "contract": "3C",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "1C",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 3
+    },
+    {
+     "contract": "2H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2C",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2CX",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "1C",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "1H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2H",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "1S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1C",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1C",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3CX",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3CX",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3CX",
+     "declarer": "S",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "1H",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "4HX",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3HX",
+     "declarer": "S",
+     "tricks": 7,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 5,
+      "H": 8,
+      "D": 6,
+      "C": 7,
+      "NT": 7
+     },
+     "E": {
+      "S": 8,
+      "H": 5,
+      "D": 7,
+      "C": 6,
+      "NT": 6
+     },
+     "S": {
+      "S": 5,
+      "H": 8,
+      "D": 6,
+      "C": 7,
+      "NT": 7
+     },
+     "W": {
+      "S": 8,
+      "H": 5,
+      "D": 7,
+      "C": 6,
+      "NT": 6
+     }
+    },
+    "par": {
+     "nsScore": -100,
+     "contracts": [
+      {
+       "contract": "2NTX",
+       "declarer": "N",
+       "tricks": 7
+      },
+      {
+       "contract": "2NTX",
+       "declarer": "S",
+       "tricks": 7
+      },
+      {
+       "contract": "3HX",
+       "declarer": "N",
+       "tricks": 8
+      },
+      {
+       "contract": "3HX",
+       "declarer": "S",
+       "tricks": 8
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 28,
+   "dealer": "W",
+   "vul": "NS",
+   "hands": {
+    "N": "T84.AJ6.AJ84.J63",
+    "E": "AJ53.98.97652.A4",
+    "S": "K76.QT43.KQ3.KQ2",
+    "W": "Q92.K752.T.T9875"
+   },
+   "field": [
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 82
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 27
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 26
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 18
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 15
+    },
+    {
+     "contract": "4NT",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 12
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 10
+    },
+    {
+     "contract": "2C",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 9
+    },
+    {
+     "contract": "3D",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "4NT",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 6
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 4
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 4
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 4
+    },
+    {
+     "contract": "4NT",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "4NTX",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3D",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "4D",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "4NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "4D",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2CX",
+     "declarer": "W",
+     "tricks": 5,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "2C",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "2CX",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "2C",
+     "declarer": "W",
+     "tricks": 5,
+     "count": 2
+    },
+    {
+     "contract": "2CX",
+     "declarer": "W",
+     "tricks": 4,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "E",
+     "tricks": 4,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4DX",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4D",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3D",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4DX",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2CX",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "2CX",
+     "declarer": "E",
+     "tricks": 4,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 8,
+      "H": 9,
+      "D": 9,
+      "C": 8,
+      "NT": 9
+     },
+     "E": {
+      "S": 4,
+      "H": 4,
+      "D": 4,
+      "C": 5,
+      "NT": 3
+     },
+     "S": {
+      "S": 8,
+      "H": 9,
+      "D": 9,
+      "C": 8,
+      "NT": 9
+     },
+     "W": {
+      "S": 4,
+      "H": 4,
+      "D": 4,
+      "C": 5,
+      "NT": 3
+     }
+    },
+    "par": {
+     "nsScore": 600,
+     "contracts": [
+      {
+       "contract": "3NT",
+       "declarer": "N",
+       "tricks": 9
+      },
+      {
+       "contract": "3NT",
+       "declarer": "S",
+       "tricks": 9
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 29,
+   "dealer": "N",
+   "vul": "Both",
+   "hands": {
+    "N": ".Q964.J43.AKT962",
+    "E": "JT4.J873.AT952.3",
+    "S": "AK9865.KT.K87.84",
+    "W": "Q732.A52.Q6.QJ75"
+   },
+   "field": [
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 32
+    },
+    {
+     "contract": "1C",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 21
+    },
+    {
+     "contract": "1C",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 7
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 5,
+     "count": 7
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 7
+    },
+    {
+     "contract": "3C",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 6
+    },
+    {
+     "contract": "3C",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 6
+    },
+    {
+     "contract": "3C",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 6
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "1C",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 6
+    },
+    {
+     "contract": "3C",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 5
+    },
+    {
+     "contract": "2C",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 5
+    },
+    {
+     "contract": "1C",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "2SX",
+     "declarer": "W",
+     "tricks": 5,
+     "count": 3
+    },
+    {
+     "contract": "1C",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "3C",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 3
+    },
+    {
+     "contract": "2C",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "1C",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "4C",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "4C",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "W",
+     "tricks": 4,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "S",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4C",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2SX",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "2SX",
+     "declarer": "E",
+     "tricks": 4,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 8,
+      "H": 8,
+      "D": 7,
+      "C": 10,
+      "NT": 8
+     },
+     "E": {
+      "S": 4,
+      "H": 5,
+      "D": 5,
+      "C": 3,
+      "NT": 5
+     },
+     "S": {
+      "S": 8,
+      "H": 8,
+      "D": 7,
+      "C": 10,
+      "NT": 8
+     },
+     "W": {
+      "S": 5,
+      "H": 5,
+      "D": 5,
+      "C": 3,
+      "NT": 5
+     }
+    },
+    "par": {
+     "nsScore": 130,
+     "contracts": [
+      {
+       "contract": "1C",
+       "declarer": "N",
+       "tricks": 10
+      },
+      {
+       "contract": "1C",
+       "declarer": "S",
+       "tricks": 10
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 30,
+   "dealer": "E",
+   "vul": "None",
+   "hands": {
+    "N": "J84.AJ954.T862.9",
+    "E": "QT7.8.A973.KJT75",
+    "S": "AK92.KQT63.J5.A2",
+    "W": "653.72.KQ4.Q8643"
+   },
+   "field": [
+    {
+     "contract": "4S",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 50
+    },
+    {
+     "contract": "4S",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 21
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 18
+    },
+    {
+     "contract": "4S",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 14
+    },
+    {
+     "contract": "4S",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 13
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 11
+    },
+    {
+     "contract": "5S",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 9
+    },
+    {
+     "contract": "4S",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 9
+    },
+    {
+     "contract": "2C",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 7
+    },
+    {
+     "contract": "3S",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 6
+    },
+    {
+     "contract": "4S",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 5
+    },
+    {
+     "contract": "1C",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 5
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "5S",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "5S",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 3
+    },
+    {
+     "contract": "5H",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 3
+    },
+    {
+     "contract": "2C",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 3
+    },
+    {
+     "contract": "4H",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 2
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 2
+    },
+    {
+     "contract": "5SX",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "3S",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "4H",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "W",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3DX",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "1C",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "1C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3DX",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "5S",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3DX",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 11,
+      "H": 11,
+      "D": 7,
+      "C": 4,
+      "NT": 9
+     },
+     "E": {
+      "S": 2,
+      "H": 2,
+      "D": 6,
+      "C": 9,
+      "NT": 3
+     },
+     "S": {
+      "S": 11,
+      "H": 11,
+      "D": 7,
+      "C": 4,
+      "NT": 9
+     },
+     "W": {
+      "S": 2,
+      "H": 2,
+      "D": 6,
+      "C": 8,
+      "NT": 3
+     }
+    },
+    "par": {
+     "nsScore": 450,
+     "contracts": [
+      {
+       "contract": "5S",
+       "declarer": "N",
+       "tricks": 11
+      },
+      {
+       "contract": "5S",
+       "declarer": "S",
+       "tricks": 11
+      },
+      {
+       "contract": "5H",
+       "declarer": "N",
+       "tricks": 11
+      },
+      {
+       "contract": "5H",
+       "declarer": "S",
+       "tricks": 11
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 31,
+   "dealer": "S",
+   "vul": "NS",
+   "hands": {
+    "N": "AJT97.AKJ.98.T98",
+    "E": "83.Q7642.Q7.7653",
+    "S": "62.85.AJ432.AKQ4",
+    "W": "KQ54.T93.KT65.J2"
+   },
+   "field": [
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 31
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 9
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 9
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 7
+    },
+    {
+     "contract": "4NT",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 5
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 5
+    },
+    {
+     "contract": "4NT",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 4
+    },
+    {
+     "contract": "2HX",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 3
+    },
+    {
+     "contract": "2NT",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 3
+    },
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 2
+    },
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 4,
+     "count": 2
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 2
+    },
+    {
+     "contract": "2H",
+     "declarer": "E",
+     "tricks": 5,
+     "count": 2
+    },
+    {
+     "contract": "2H",
+     "declarer": "W",
+     "tricks": 4,
+     "count": 1
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2HX",
+     "declarer": "W",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4NT",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "2H",
+     "declarer": "W",
+     "tricks": 5,
+     "count": 1
+    },
+    {
+     "contract": "2NT",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 11,
+      "H": 8,
+      "D": 9,
+      "C": 10,
+      "NT": 11
+     },
+     "E": {
+      "S": 2,
+      "H": 5,
+      "D": 4,
+      "C": 2,
+      "NT": 2
+     },
+     "S": {
+      "S": 11,
+      "H": 8,
+      "D": 9,
+      "C": 10,
+      "NT": 11
+     },
+     "W": {
+      "S": 2,
+      "H": 5,
+      "D": 4,
+      "C": 2,
+      "NT": 2
+     }
+    },
+    "par": {
+     "nsScore": 660,
+     "contracts": [
+      {
+       "contract": "3NT",
+       "declarer": "N",
+       "tricks": 11
+      },
+      {
+       "contract": "3NT",
+       "declarer": "S",
+       "tricks": 11
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 32,
+   "dealer": "W",
+   "vul": "EW",
+   "hands": {
+    "N": "A85.KJ54.2.A8653",
+    "E": "J73.6.T8743.KQJ9",
+    "S": "Q96.AQT8.AK65.72",
+    "W": "KT42.9732.QJ9.T4"
+   },
+   "field": [
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 17
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 4
+    },
+    {
+     "contract": "5H",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 4
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 4
+    },
+    {
+     "contract": "4C",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 4
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 3
+    },
+    {
+     "contract": "4H",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 3
+    },
+    {
+     "contract": "3H",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 2
+    },
+    {
+     "contract": "4H",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "5H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 2
+    },
+    {
+     "contract": "5H",
+     "declarer": "N",
+     "tricks": 12,
+     "count": 2
+    },
+    {
+     "contract": "4CX",
+     "declarer": "S",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "4C",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3C",
+     "declarer": "N",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "5C",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 1
+    },
+    {
+     "contract": "2DX",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "S",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "5CX",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 8,
+      "H": 11,
+      "D": 6,
+      "C": 9,
+      "NT": 9
+     },
+     "E": {
+      "S": 4,
+      "H": 2,
+      "D": 6,
+      "C": 4,
+      "NT": 4
+     },
+     "S": {
+      "S": 8,
+      "H": 11,
+      "D": 7,
+      "C": 9,
+      "NT": 9
+     },
+     "W": {
+      "S": 4,
+      "H": 2,
+      "D": 6,
+      "C": 4,
+      "NT": 4
+     }
+    },
+    "par": {
+     "nsScore": 450,
+     "contracts": [
+      {
+       "contract": "4H",
+       "declarer": "N",
+       "tricks": 11
+      },
+      {
+       "contract": "4H",
+       "declarer": "S",
+       "tricks": 11
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 33,
+   "dealer": "N",
+   "vul": "None",
+   "hands": {
+    "N": "A4.T973.8.KQ9743",
+    "E": "Q83.AK82.AK64.86",
+    "S": "J7652.6.J7532.JT",
+    "W": "KT9.QJ54.QT9.A52"
+   },
+   "field": [
+    {
+     "contract": "4H",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 7
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 5
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 4
+    },
+    {
+     "contract": "4H",
+     "declarer": "W",
+     "tricks": 12,
+     "count": 2
+    },
+    {
+     "contract": "4H",
+     "declarer": "E",
+     "tricks": 12,
+     "count": 2
+    },
+    {
+     "contract": "5S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4SX",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "3H",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "5S",
+     "declarer": "W",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "W",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "5H",
+     "declarer": "E",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "2CX",
+     "declarer": "N",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "E",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "4S",
+     "declarer": "E",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "2C",
+     "declarer": "N",
+     "tricks": 7,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 4,
+      "H": 2,
+      "D": 4,
+      "C": 6,
+      "NT": 2
+     },
+     "E": {
+      "S": 9,
+      "H": 11,
+      "D": 9,
+      "C": 7,
+      "NT": 9
+     },
+     "S": {
+      "S": 4,
+      "H": 2,
+      "D": 4,
+      "C": 6,
+      "NT": 2
+     },
+     "W": {
+      "S": 9,
+      "H": 11,
+      "D": 9,
+      "C": 7,
+      "NT": 9
+     }
+    },
+    "par": {
+     "nsScore": -450,
+     "contracts": [
+      {
+       "contract": "4H",
+       "declarer": "E",
+       "tricks": 11
+      },
+      {
+       "contract": "4H",
+       "declarer": "W",
+       "tricks": 11
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 34,
+   "dealer": "E",
+   "vul": "NS",
+   "hands": {
+    "N": "T942.AK92.872.KT",
+    "E": "KQ83.Q6.QT96.J86",
+    "S": "AJ.T8754.5.97432",
+    "W": "765.J3.AKJ43.AQ5"
+   },
+   "field": [
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "2D",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 2
+    },
+    {
+     "contract": "1D",
+     "declarer": "E",
+     "tricks": 8,
+     "count": 2
+    },
+    {
+     "contract": "5H",
+     "declarer": "N",
+     "tricks": 9,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "4H",
+     "declarer": "N",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "1S",
+     "declarer": "W",
+     "tricks": 8,
+     "count": 1
+    },
+    {
+     "contract": "5H",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "1D",
+     "declarer": "E",
+     "tricks": 7,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 5,
+      "H": 10,
+      "D": 5,
+      "C": 8,
+      "NT": 6
+     },
+     "E": {
+      "S": 7,
+      "H": 3,
+      "D": 8,
+      "C": 4,
+      "NT": 6
+     },
+     "S": {
+      "S": 5,
+      "H": 10,
+      "D": 5,
+      "C": 8,
+      "NT": 6
+     },
+     "W": {
+      "S": 7,
+      "H": 3,
+      "D": 8,
+      "C": 5,
+      "NT": 6
+     }
+    },
+    "par": {
+     "nsScore": 500,
+     "contracts": [
+      {
+       "contract": "4SX",
+       "declarer": "E",
+       "tricks": 7
+      },
+      {
+       "contract": "4SX",
+       "declarer": "W",
+       "tricks": 7
+      },
+      {
+       "contract": "5DX",
+       "declarer": "E",
+       "tricks": 8
+      },
+      {
+       "contract": "5DX",
+       "declarer": "W",
+       "tricks": 8
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 35,
+   "dealer": "S",
+   "vul": "EW",
+   "hands": {
+    "N": "62.Q5.K9864.KQ76",
+    "E": "9873.J94.T.J9843",
+    "S": "AKJ.AKT8.QJ532.2",
+    "W": "QT54.7632.A7.AT5"
+   },
+   "field": [
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 10,
+     "count": 1
+    },
+    {
+     "contract": "2S",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3NT",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "2SX",
+     "declarer": "E",
+     "tricks": 6,
+     "count": 1
+    },
+    {
+     "contract": "3NT",
+     "declarer": "S",
+     "tricks": 12,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 7,
+      "H": 10,
+      "D": 11,
+      "C": 8,
+      "NT": 11
+     },
+     "E": {
+      "S": 5,
+      "H": 2,
+      "D": 2,
+      "C": 5,
+      "NT": 2
+     },
+     "S": {
+      "S": 7,
+      "H": 10,
+      "D": 11,
+      "C": 8,
+      "NT": 11
+     },
+     "W": {
+      "S": 5,
+      "H": 2,
+      "D": 2,
+      "C": 5,
+      "NT": 2
+     }
+    },
+    "par": {
+     "nsScore": 460,
+     "contracts": [
+      {
+       "contract": "3NT",
+       "declarer": "N",
+       "tricks": 11
+      },
+      {
+       "contract": "3NT",
+       "declarer": "S",
+       "tricks": 11
+      }
+     ]
+    }
+   }
+  },
+  {
+   "number": 36,
+   "dealer": "W",
+   "vul": "Both",
+   "hands": {
+    "N": "AQ.AJT64.QJ64.32",
+    "E": "K98.K832.T9.AK65",
+    "S": "T65.5.AK873.QJT8",
+    "W": "J7432.Q97.52.974"
+   },
+   "field": [
+    {
+     "contract": "5D",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 1
+    },
+    {
+     "contract": "6D",
+     "declarer": "N",
+     "tricks": 11,
+     "count": 1
+    }
+   ],
+   "doubleDummy": {
+    "tricks": {
+     "N": {
+      "S": 7,
+      "H": 9,
+      "D": 11,
+      "C": 9,
+      "NT": 8
+     },
+     "E": {
+      "S": 6,
+      "H": 4,
+      "D": 2,
+      "C": 3,
+      "NT": 3
+     },
+     "S": {
+      "S": 6,
+      "H": 7,
+      "D": 10,
+      "C": 8,
+      "NT": 7
+     },
+     "W": {
+      "S": 6,
+      "H": 4,
+      "D": 2,
+      "C": 3,
+      "NT": 3
+     }
+    },
+    "par": {
+     "nsScore": 600,
+     "contracts": [
+      {
+       "contract": "5D",
+       "declarer": "N",
+       "tricks": 11
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

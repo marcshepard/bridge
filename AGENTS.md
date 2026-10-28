@@ -83,7 +83,8 @@ In `backend/`: `npm test` (API tests), `npm run typecheck`, `npm run smoke` (end
 against a running `npm run dev`), and `npm run deploy` (build and publish to Cloudflare; Marc runs
 it, see "Deploying" in README.md).
 
-From the repo root: `python scripts/make_sample_game.py` regenerates the sample game, after
+From the repo root: `python scripts/make_sample_game.py` regenerates the sample game (`--demo`: the
+demo game in `backend/src/demo/`), after
 `pip install -r scripts/requirements.txt`.
 
 ### When to run tests

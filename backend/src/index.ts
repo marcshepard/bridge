@@ -25,6 +25,7 @@ import type {
 import * as db from "./db";
 import type { Env } from "./env";
 import { newJoinCode, newPlayerId, normaliseJoinCode } from "./ids";
+import demoGame from "./demo/demo-game.json";
 import { assignSeats } from "./seats";
 
 export { EventHub } from "./hub";
@@ -33,6 +34,8 @@ const MAX_PLAYERS = 4;
 const EVENT_LIFETIME_DAYS = 30;
 const MAX_NAME_LENGTH = 30;
 const MAX_GAME_BYTES = 512 * 1024;
+/** Demo games start part-way through, to show that a game needn't start at board 1. */
+const DEMO_START_BOARD = 9;
 /** A seat request nobody answers lapses after this long. */
 const REQUEST_LIFETIME_MINUTES = 10;
 /** At most this many seat requests can wait at once in a game, so nobody can flood the table. */
@@ -113,15 +116,30 @@ function nextFreeSlot(players: db.PlayerRow[]): number | null {
 app.post("/events", async (c) => {
   if (Number(c.req.header("Content-Length") ?? 0) > MAX_GAME_BYTES) throw new HttpError(413, "Game file too large");
   const req = await body<CreateEventRequest>(c);
-  const name = cleanName(req.name);
+  return c.json<JoinedResponse>(await createEvent(c, cleanName(req.name), req.game, req.startBoard), 201);
+});
 
+/**
+ * A demo game, for trying the app alone: the built-in synthetic game (made-up results), starting at
+ * board 9 to show a game needn't start at 1, with the other three places filled by bots. You land
+ * in the lobby to pick partners. Bots are allowed here in the live app because the game is ours.
+ */
+app.post("/events/demo", async (c) => {
+  const req = await body<JoinRequest>(c);
+  const joined = await createEvent(c, cleanName(req.name), demoGame as unknown as GameFileV1, DEMO_START_BOARD);
+  await addBots(c, joined.code);
+  return c.json<JoinedResponse>(joined, 201);
+});
+
+/** Validates the game file, then creates the game with you as its first player. */
+async function createEvent(c: Ctx, name: string, file: GameFileV1, start: number | undefined): Promise<JoinedResponse> {
   let game;
   try {
-    game = parseGameFile(req.game);
+    game = parseGameFile(file);
   } catch (e) {
     throw new HttpError(400, `That game file can't be used: ${(e as Error).message}`);
   }
-  const startBoard = Number(req.startBoard ?? game.boards[0]!.number);
+  const startBoard = Number(start ?? game.boards[0]!.number);
   if (!game.boards.some((b) => b.number === startBoard)) throw new HttpError(400, `Board ${startBoard} isn't in this game`);
 
   const now = new Date();
@@ -138,7 +156,7 @@ app.post("/events", async (c) => {
         {
           code,
           title: game.summary.title,
-          game_json: JSON.stringify(req.game),
+          game_json: JSON.stringify(file),
           start_board: startBoard,
           status: "lobby",
           created_at: now.toISOString(),
@@ -147,13 +165,13 @@ app.post("/events", async (c) => {
         creator,
         now.toISOString(),
       );
-      return c.json<JoinedResponse>({ code, playerId, slot: 1 }, 201);
+      return { code, playerId, slot: 1 };
     } catch (e) {
       if (!String(e).includes("UNIQUE")) throw e;
     }
   }
   throw new Error("Couldn't allocate a join code");
-});
+}
 
 /** Everything about a game. Anyone with the code can see it (it's how the lobby works). */
 app.get("/events/:code", async (c) => {
@@ -452,17 +470,23 @@ app.post("/events/:code/test-players", async (c) => {
   if (c.env.ALLOW_TEST_PLAYERS !== "true") throw new HttpError(404, "Not found");
   const event = await loadEvent(c);
   if (event.status !== "lobby") throw new HttpError(409, "This game has already started");
-  const players = await db.getPlayers(c.env.DB, event.code);
-  const added: number[] = [];
-  for (let slot = nextFreeSlot(players); slot !== null; slot = nextFreeSlot(players)) {
-    const row = { player_id: newPlayerId(), slot, name: `Bot ${slot}`, is_creator: 0, seat: null };
-    await db.insertPlayer(c.env.DB, event.code, row, nowIso());
-    players.push(row);
-    added.push(slot);
-  }
+  const added = await addBots(c, event.code);
   if (added.length) await push(c, event.code, { type: "players" });
   return c.json({ added });
 });
+
+/** Fills a game's empty places with bots ("Bot 2"…: the number is the place). Returns the places filled. */
+async function addBots(c: Ctx, code: string): Promise<number[]> {
+  const players = await db.getPlayers(c.env.DB, code);
+  const added: number[] = [];
+  for (let slot = nextFreeSlot(players); slot !== null; slot = nextFreeSlot(players)) {
+    const row = { player_id: newPlayerId(), slot, name: `Bot ${slot}`, is_creator: 0, seat: null };
+    await db.insertPlayer(c.env.DB, code, row, nowIso());
+    players.push(row);
+    added.push(slot);
+  }
+  return added;
+}
 
 app.all("*", (c) => c.json({ error: "Not found" }, 404));
 

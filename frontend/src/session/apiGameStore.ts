@@ -6,6 +6,7 @@ import type {
   CreateEventRequest,
   EventSnapshot,
   JoinedResponse,
+  JoinRequest,
   LiveTicketResponse,
   PartnershipsRequest,
   ResultDto,
@@ -79,6 +80,11 @@ export class ApiGameStore implements GameStore {
   async create(name: string, game: GameFileV1, startBoard: number): Promise<string> {
     const req: CreateEventRequest = { name, game, startBoard };
     return this.remember(await this.request<JoinedResponse>("POST", "/events", undefined, req));
+  }
+
+  async createDemo(name: string): Promise<string> {
+    const req: JoinRequest = { name };
+    return this.remember(await this.request<JoinedResponse>("POST", "/events/demo", undefined, req));
   }
 
   async join(code: string, name: string): Promise<string> {

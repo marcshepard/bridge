@@ -1,5 +1,5 @@
-// The first screen. On first use it asks for your display name; then it offers Start a game and
-// Join a game.
+// The first screen. On first use it asks for your display name; then it offers Start a game, Join a
+// game, and Start demo game (on your own, with bots, on a made-up game).
 
 import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import { Alert, Button, IconButton, Stack, TextField, Typography } from "@mui/material";
@@ -15,13 +15,17 @@ interface Props {
   onName: (name: string) => void;
   onStart: () => void;
   onJoin: () => void;
+  /** Start a demo game and go into it. Rejects with a message to show if that fails. */
+  onDemo: () => Promise<void>;
   onHelp: () => void;
   /** Something to tell you on arrival, e.g. "That game was cancelled". */
   notice?: string | null;
 }
 
-export function Home({ name, onName, onStart, onJoin, onHelp, notice }: Props) {
+export function Home({ name, onName, onStart, onJoin, onDemo, onHelp, notice }: Props) {
   const [editing, setEditing] = useState(!name);
+  const [demoBusy, setDemoBusy] = useState(false);
+  const [demoError, setDemoError] = useState<string | null>(null);
   const [draft, setDraft] = useState(name);
   const clean = draft.trim().replace(/\s+/g, " ");
 
@@ -95,7 +99,28 @@ export function Home({ name, onName, onStart, onJoin, onHelp, notice }: Props) {
             <Button variant="outlined" size="large" fullWidth onClick={onJoin}>
               Join a game
             </Button>
+            <Button
+              variant="outlined"
+              size="large"
+              fullWidth
+              disabled={demoBusy}
+              onClick={() => {
+                setDemoBusy(true);
+                setDemoError(null);
+                onDemo().catch((e: Error) => {
+                  setDemoError(e.message);
+                  setDemoBusy(false);
+                });
+              }}
+            >
+              {demoBusy ? "Starting the demo…" : "Start demo game"}
+            </Button>
           </Stack>
+          {demoError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              Couldn't start the demo: {demoError}
+            </Alert>
+          )}
         </>
       )}
     </Screen>

@@ -38,6 +38,13 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           (or lets the app choose at random). Each screen then shows where everyone sits.
         </li>
         <li>
+          <strong>Start demo game</strong> to see how it works on your own. You get a made-up game (the deals
+          are real, but the other results and the commentary are invented), with three bots at the table
+          (Bot 2, Bot 3 and Bot 4). Pick a partner, then deal yourself each board and enter any contract and
+          result you like. It starts at board 9 of 36, to show that a game can start part-way through and
+          wrap round.
+        </li>
+        <li>
           <strong>Deal:</strong> use one deck per player. Each of you takes your own 13 cards from your deck, as
           your screen shows them, so nobody sees the other hands.
         </li>

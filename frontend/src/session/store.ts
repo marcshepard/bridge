@@ -32,6 +32,11 @@ export type LiveMessage = PushMessage | { type: "disconnected" } | { type: "reco
 export interface GameStore {
   /** Create a game from a game file. You join it as the first player; returns its join code. */
   create(name: string, game: GameFileV1, startBoard: number): Promise<string>;
+  /**
+   * Start a demo game: the built-in made-up game from board 9, with bots in the other three places.
+   * You join it as the first player; returns its join code.
+   */
+  createDemo(name: string): Promise<string>;
   /** Join a game that hasn't started; returns its normalised join code. */
   join(code: string, name: string): Promise<string>;
   /** Everything about a game, including `you` when this device is one of its players. */

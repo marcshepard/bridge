@@ -110,8 +110,7 @@ function Partnerships({ code, players, mySlot }: { code: string; players: Public
   }
 
   return (
-    <Section title="Choose partnerships" id="partnerships">
-      <Typography>Everyone's here. Who's your partner?</Typography>
+    <Section title="Choose your partner" id="partnerships">
       <ChoiceGroup<number | "random">
         value={choice}
         onChange={setChoice}

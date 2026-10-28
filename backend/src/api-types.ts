@@ -64,6 +64,7 @@ export interface CreateEventRequest {
   game: GameFileV1;
   startBoard: number;
 }
+/** Joining a game (POST /events/:code/players), or starting a demo game (POST /events/demo). */
 export interface JoinRequest {
   name: string;
 }

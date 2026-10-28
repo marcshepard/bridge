@@ -120,6 +120,7 @@ the seed or board count, run these from the repo root:
 ```bash
 python3 -m pip install -r scripts/requirements.txt   # on Windows: python, not python3
 python3 scripts/make_sample_game.py           # --seed 123 --boards 16 to vary it
+python3 scripts/make_sample_game.py --demo    # the demo game, in backend/src/demo/
 ```
 
 VS Code tasks: **Install sample-data tools (Python)**, then **Generate sample game**.

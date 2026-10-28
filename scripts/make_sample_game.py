@@ -8,7 +8,12 @@ enough to exercise the app, but they are not real results from any game.
 Usage (from the repo root):
 
     pip install endplay
-    python scripts/make_sample_game.py
+    python scripts/make_sample_game.py           # the small sample game, used by tests
+    python scripts/make_sample_game.py --demo    # the demo game, built into the backend
+
+The demo game is sized like a Common Game: 36 boards, a few hundred made-up tables on most boards
+and far fewer on the last ones, and made-up commentary on two boards (9, where demo games start,
+and the biggest swing).
 
 or run the VS Code task "Generate sample game".
 
@@ -126,7 +131,7 @@ def simulate_table(rng: random.Random, dd: dict, hands: dict, vul_name: str):
     return f"{level}{strain}{doubling}", declarer, tricks
 
 
-def board_entry(rng: random.Random, number: int, deal, field_size: int) -> dict:
+def board_entry(rng: random.Random, number: int, deal, field_size: int, auto_note: bool = True) -> dict:
     hands = {}
     for seat, player in PLAYERS.items():
         hands[seat] = deal[player].to_pbn()
@@ -164,7 +169,7 @@ def board_entry(rng: random.Random, number: int, deal, field_size: int) -> dict:
             "par": {"nsScore": par_list.score, "contracts": par_contracts},
         },
     }
-    if abs(par_list.score) >= 980:
+    if auto_note and abs(par_list.score) >= 980:
         entry["commentary"] = (
             "Sample note (auto-generated, not expert analysis): double dummy, this deal "
             f"has a slam for the side with the high cards; par is {par_list.score:+d} for North–South."
@@ -172,12 +177,115 @@ def board_entry(rng: random.Random, number: int, deal, field_size: int) -> dict:
     return entry
 
 
+SUIT_TEXT = {"S": "♠", "H": "♥", "D": "♦", "C": "♣", "NT": "NT"}
+SEAT_TEXT = {"N": "North", "E": "East", "S": "South", "W": "West"}
+
+
+def contract_text(contract: str) -> str:
+    """"4SX" -> "4♠×"."""
+    level, rest = contract[0], contract[1:]
+    doubling = rest.count("X")
+    strain = rest.replace("X", "")
+    return f"{level}{SUIT_TEXT[strain]}{'×' * doubling}"
+
+
+def demo_commentary(entry: dict) -> str:
+    """Made-up commentary in the style of an expert write-up, built from the board's own numbers."""
+    hands = entry["hands"]
+    ns = hcp(hands["N"]) + hcp(hands["S"])
+    par_info = entry["doubleDummy"]["par"]
+    pars = par_info["contracts"]
+    field = entry["field"]
+    total = sum(f["count"] for f in field)
+
+    lines = [
+        "Made-up commentary for the demo, not real expert analysis.",
+        "",
+        f"North–South hold {ns} high-card points to East–West's {40 - ns}.",
+    ]
+    if pars:
+        names = " or ".join(f"{contract_text(c['contract'])} by {SEAT_TEXT[c['declarer']]}" for c in pars)
+        score = par_info["nsScore"]
+        signed = f"+{score}" if score >= 0 else f"−{-score}"
+        lines.append(f"Double dummy, par is {signed} for North–South: {names}.")
+        # How many tables bid the par contract (same level and strain, either partner declaring).
+        side = SIDES["NS"] if pars[0]["declarer"] in SIDES["NS"] else SIDES["EW"]
+        target = pars[0]["contract"].replace("X", "")
+        reached = sum(f["count"] for f in field if f["contract"].replace("X", "") == target and f["declarer"] in side)
+        lines.append(
+            f"{reached} of the {total} tables ({round(100 * reached / total)}%) bid {contract_text(target)}."
+        )
+    top = field[0]
+    made = top["tricks"] - (int(top["contract"][0]) + 6)
+    result = "made" if made == 0 else (f"+{made}" if made > 0 else f"−{-made}")
+    lines.append(
+        f"The most common result was {contract_text(top['contract'])} by {SEAT_TEXT[top['declarer']]}, {result} "
+        f"({top['count']} tables)."
+    )
+    level = int(pars[0]["contract"][0]) if pars else 0
+    if level >= 6:
+        lesson = (
+            "With this many points between them, the question isn't whether to bid a slam but which one: "
+            "count your top tricks before choosing between a small slam and a grand slam."
+        )
+    elif level >= 3 and trick_points(level, pars[0]["contract"][1:].replace("X", "")) >= 100:
+        lesson = "Game was there for the taking: with a fit and the values, bid it rather than stopping in a part score."
+    else:
+        lesson = (
+            "A part-score battle: neither side has a game, so the fight is over the 2- and 3-level. "
+            "Compete to the level of your fit (eight trumps, the 2-level; nine, the 3-level)."
+        )
+    lines.append(lesson)
+    return "\n".join(lines)
+
+
+def make_demo(out: Path, seed: int) -> None:
+    rng = random.Random(seed)
+    boards = []
+    tail = [90, 55, 30, 12, 5, 2]  # the last boards are played by far fewer tables
+    for n in range(1, 37):
+        deal = generate_deal(seed=rng.randrange(2**31))
+        size = rng.randint(150, 320) if n <= 30 else tail[n - 31]
+        boards.append(board_entry(rng, n, deal, field_size=size, auto_note=False))
+
+    biggest = max((b for b in boards if b["number"] != 9), key=lambda b: abs(b["doubleDummy"]["par"]["nsScore"]))
+    for b in boards:
+        if b["number"] in (9, biggest["number"]):
+            b["commentary"] = demo_commentary(b)
+
+    game = {
+        "schemaVersion": 1,
+        "id": "demo-synthetic-36",
+        "title": "Demo game (made-up results)",
+        "date": "2026-10-28",
+        "session": "Demo",
+        "source": {
+            "name": "Synthetic demo",
+            "attribution": (
+                "Random deals with real double-dummy analysis; field results and commentary are made "
+                "up by scripts/make_sample_game.py --demo. Not real results from any game."
+            ),
+        },
+        "boards": boards,
+    }
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / "demo-game.json"
+    path.write_text(json.dumps(game, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    tables = sum(f["count"] for b in boards for f in b["field"])
+    print(f"Wrote {path} (36 boards, {tables} made-up tables; commentary on boards 9 and {biggest['number']})")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--seed", type=int, default=20211203)
     parser.add_argument("--boards", type=int, default=24)
     parser.add_argument("--out", type=Path, default=Path(__file__).resolve().parent.parent / "frontend" / "public" / "games")
+    parser.add_argument("--demo", action="store_true", help="make the demo game (backend/src/demo/) instead")
     args = parser.parse_args()
+
+    if args.demo:
+        make_demo(Path(__file__).resolve().parent.parent / "backend" / "src" / "demo", seed=20261028)
+        return
 
     rng = random.Random(args.seed)
     boards = []

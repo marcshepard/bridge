@@ -194,6 +194,7 @@ export function App() {
         }}
         onStart={() => setDialog("start")}
         onJoin={() => setDialog("join")}
+        onDemo={async () => enter(await games.createDemo(name))}
         onHelp={() => setDialog("help")}
       />
     );

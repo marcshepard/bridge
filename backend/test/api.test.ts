@@ -390,4 +390,15 @@ describe("deleting and test players", () => {
     const snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
     expect(snap.players.map((p) => p.name)).toEqual(["Marc", "Bot 2", "Bot 3", "Bot 4"]);
   });
+
+  it("starts a demo game at board 9 with three bots (allowed in the live app too)", async () => {
+    const res = await api<JoinedResponse>("POST", "/events/demo", { name: "Marc" });
+    expect(res.status).toBe(201);
+    const snap = (await api<EventSnapshot>("GET", `/events/${res.json.code}`, undefined, res.json.playerId)).json;
+    expect(snap.title).toBe("Demo game (made-up results)");
+    expect(snap.startBoard).toBe(9);
+    expect(snap.status).toBe("lobby");
+    expect(snap.you?.isCreator).toBe(true);
+    expect(snap.players.map((p) => p.name)).toEqual(["Marc", "Bot 2", "Bot 3", "Bot 4"]);
+  });
 });
