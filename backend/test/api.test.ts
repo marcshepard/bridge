@@ -1,4 +1,4 @@
-import { SELF } from "cloudflare:test";
+import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type {
   EventSnapshot,
@@ -9,6 +9,7 @@ import type {
   SeatRequestCreated,
   SeatRequestState,
 } from "../src/api-types";
+import { cleanUp } from "../src/index";
 import { assignSeats } from "../src/seats";
 import game from "./fixtures/game.json";
 
@@ -348,6 +349,27 @@ describe("seat requests", () => {
     const { code } = await lobbyOfFour();
     expect((await ask(code, "Dana", 9)).status).toBe(400);
     expect((await ask(code, "Dana", 2)).status).toBe(201); // a full lobby works too
+  });
+});
+
+// ---- Nightly clean-up ------------------------------------------------------------------------------
+
+describe("nightly clean-up", () => {
+  it("deletes expired games and everything in them, and nothing else", async () => {
+    const old = await gameInPlay();
+    await api("PUT", `/events/${old.code}/boards/1`, { contract: "3NT", declarer: "N", tricks: 9 }, old.creator.playerId);
+    await api("POST", `/events/${old.code}/requests`, { name: "Dana", slot: 2 });
+    const current = await gameInPlay();
+    await env.DB.prepare("UPDATE events SET expires_at = ? WHERE code = ?").bind("2000-01-01T00:00:00.000Z", old.code).run();
+
+    expect(await cleanUp(env)).toEqual([old.code]);
+    const count = async (table: string, code: string) =>
+      (await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE ${table === "events" ? "code" : "event_code"} = ?`)
+        .bind(code)
+        .first<{ n: number }>())!.n;
+    for (const table of ["events", "players", "results", "seat_requests"]) expect(await count(table, old.code)).toBe(0);
+    expect(await count("players", current.code)).toBe(4);
+    expect(await cleanUp(env)).toEqual([]); // nothing left to do
   });
 });
 

@@ -423,12 +423,12 @@ state.**
 ### Security
 
 - Join codes are 8 characters from a 31-symbol alphabet (~40 bits), so they can't be found by
-  guessing. (Rate-limiting failed lookups is planned for stage 5.)
+  guessing. (Rate-limiting failed lookups is planned for stage 9.)
 - A player's `playerId` is a random UUID, never shown to other players; it's the only way to act as
   that player.
 - Only the creator can choose partnerships or delete the game. During play all players are equal.
-- Events and their results expire after 30 days (expired games are treated as not found; the
-  scheduled clean-up is stage 5).
+- Events and their results expire 30 days after creation: expired games are treated as not found
+  at once, and the nightly clean-up deletes them (stage 5c).
 - Data stored: display names chosen by players, and bridge results. No emails, no accounts.
 - The dev-only test-players endpoint is off unless `ALLOW_TEST_PLAYERS` is `true` (only
   `npm run dev` turns it on).
@@ -592,8 +592,8 @@ game after a dropped connection, and test players are off in the live app.
 ### Stage 5: presence, reconnecting and security (in progress)
 
 Work happens on the `dev` branch from here on; `main` is what's deployed. Feedback from the bridge
-group is slated as its own work when it arrives, not as a stage. Built in three slices, each
-tested by hand and committed on its own:
+group is slated as its own work when it arrives, not as a stage. Built in slices, each tested by
+hand and committed on its own:
 
 - **5a. Presence and connection status** (**done**; frontend, the backend already pushes presence):
   disconnected players greyed out with "(away)" in the lobby and on the compass; a "Reconnecting…"
@@ -621,11 +621,13 @@ tested by hand and committed on its own:
     seat-request news).
   - A simpler field dialog: "Most common: −100 EW", "Your result" on your row, and no "Contract not
     known" on score-only rows (the Common Game page has no contracts; PBN travellers can).
-- **5c. Limits and housekeeping** (backend): rate limits on wrong join codes and on game creation
-  (Cloudflare's rate limiting binding if the free plan has it, else a counter in D1); a nightly
-  cron trigger that deletes games past `expires_at`.
+- **5c. Nightly clean-up** (backend; built, awaiting Marc's test): a cron trigger at 03:00 UTC
+  (`triggers` in `wrangler.jsonc`) runs `cleanUp` in `src/index.ts`, which deletes games past
+  `expires_at` (30 days after creation) with their players, results and seat requests. Each run
+  logs how many games it deleted, and their codes, to the Worker's logs. Rate limiting moved to
+  stage 9.
 
-Stages 6, 7 and 8 are separate pieces of work; their order is still to be decided.
+Stages 6, 7, 8 and 9 are separate pieces of work; their order is still to be decided.
 
 ### Stage 6: starting a game from a phone
 
@@ -668,6 +670,21 @@ Also accept `ScoreTable` rows with a score but no contract, if real files have t
 format already supports score-only results from stage 2).
 
 - *Review:* each sample imports with the expected boards, field and warnings.
+
+### Stage 9: rate limiting
+
+Backend only. Limits per device address, to stop code guessing and runaway clients (the free plan
+caps the Worker at 100,000 requests a day):
+
+- Joining or asking for a seat with a code (wrong codes especially): about 20 a minute.
+- Creating games: about 5 a minute.
+- Use Workers' rate limiting binding (`ratelimits` in `wrangler.jsonc`; generally available since
+  September 2025, a loose limit rather than an exact count). It keeps its own counts, so no schema
+  change. Check first that it's on the free plan; if not, fall back to a counter table in D1 (that
+  needs a migration).
+- The dashboard's WAF rate limiting rules work per domain you own, so they don't cover the
+  `workers.dev` address; they'd be an option after moving to a custom domain.
+- Seat requests already have their own limit (5 waiting per game, stage 5b).
 
 ### Later, depending on feedback
 

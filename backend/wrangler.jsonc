@@ -46,6 +46,12 @@
 			]
 		}
 	],
+	// Nightly clean-up (cleanUp in src/index.ts): deletes games past their expiry, at 03:00 UTC.
+	"triggers": {
+		"crons": [
+			"0 3 * * *"
+		]
+	},
 	// Dev-only test players are off unless turned on (npm run dev turns them on).
 	"vars": {
 		"ALLOW_TEST_PLAYERS": "false"

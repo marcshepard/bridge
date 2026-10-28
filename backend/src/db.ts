@@ -194,6 +194,26 @@ export async function replacePlayer(db: D1Database, code: string, slot: number, 
     .run();
 }
 
+/**
+ * Delete every game whose `expires_at` has passed, with its players, results and seat requests.
+ * Returns the deleted games' codes.
+ */
+export async function deleteExpiredEvents(db: D1Database, now: string): Promise<string[]> {
+  const { results } = await db
+    .prepare("SELECT code FROM events WHERE expires_at <= ?")
+    .bind(now)
+    .all<{ code: string }>();
+  if (results.length === 0) return [];
+  const expired = "SELECT code FROM events WHERE expires_at <= ?";
+  await db.batch([
+    db.prepare(`DELETE FROM seat_requests WHERE event_code IN (${expired})`).bind(now),
+    db.prepare(`DELETE FROM results WHERE event_code IN (${expired})`).bind(now),
+    db.prepare(`DELETE FROM players WHERE event_code IN (${expired})`).bind(now),
+    db.prepare("DELETE FROM events WHERE expires_at <= ?").bind(now),
+  ]);
+  return results.map((r) => r.code);
+}
+
 export async function deleteEvent(db: D1Database, code: string) {
   await db.batch([
     db.prepare("DELETE FROM seat_requests WHERE event_code = ?").bind(code),

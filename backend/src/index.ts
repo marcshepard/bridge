@@ -465,4 +465,29 @@ app.post("/events/:code/test-players", async (c) => {
 
 app.all("*", (c) => c.json({ error: "Not found" }, 404));
 
-export default app;
+// ---- Nightly clean-up -----------------------------------------------------------------------------
+
+/**
+ * Delete games past their expiry (30 days after creation) and everything in them. Expired games
+ * are already unreachable (loadEvent ignores them); this removes them from the database. Run by
+ * the cron trigger in wrangler.jsonc; each run is logged, so it shows in the Worker's logs.
+ */
+export async function cleanUp(env: Env, now = new Date()): Promise<string[]> {
+  const deleted = await db.deleteExpiredEvents(env.DB, now.toISOString());
+  console.log(
+    `Nightly clean-up: deleted ${deleted.length} expired ${deleted.length === 1 ? "game" : "games"}` +
+      (deleted.length ? ` (${deleted.join(", ")})` : ""),
+  );
+  return deleted;
+}
+
+export default {
+  fetch: app.fetch,
+  async scheduled(_controller, env, ctx) {
+    ctx.waitUntil(
+      cleanUp(env).catch((e) => {
+        console.error("Nightly clean-up failed", e);
+      }),
+    );
+  },
+} satisfies ExportedHandler<Env>;
