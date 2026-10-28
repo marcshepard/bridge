@@ -116,7 +116,7 @@ export function PlayBoard(p: Props) {
     <Screen>
       <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 2 }}>
         <Typography variant="body1" color="text.secondary" sx={{ flex: 1 }}>
-          Code <strong className="num">{formatJoinCode(p.code)}</strong>
+          Join code <strong className="num">{formatJoinCode(p.code)}</strong>
         </Typography>
         <ScoreChip label={p.tally.label} tone={p.tally.tone} onClick={p.onTally} ariaLabel={p.tally.ariaLabel} />
       </Stack>
