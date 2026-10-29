@@ -273,9 +273,28 @@ shows where to sit physically: "You're North, opposite Bob, with Ann on your lef
   the best result double dummy, and the commentary.
 - **Next board.** Each device moves on by itself; nobody waits for one person to advance the table.
 
-**Playing the cards on devices (being tried out):** instead of real cards, a board's cards can be
-played on the devices. For now the creator turns it on board by board (**Play**, beside **Enter
-the result**, once the contract is in); one board at a time, and every device jumps to it.
+**Playing online, on the devices (being tried out):** instead of real cards and bidding boxes, a
+board can be bid and played on the devices. For now the creator turns it on board by board (**Play
+online**, beside the contract); one board at a time, and every device jumps to it. When the
+contract was already entered by hand (bid at the table), it starts at the card play.
+
+- **The auction** (`ui/screens/BidHand.tsx`): the same status strip as the play table
+  (`TurnStrip`: "Bidding" and the dealer, whose turn it is, who's vulnerable), then the auction in
+  four columns, West North East South, with the players' names (red when vulnerable), the first
+  call under the dealer and the next place to call marked. Below it a bidding box: levels 1–7,
+  the five strains, Pass, X and XX, greyed out when not your turn or not allowed (`canCall` in
+  `core/auction.ts`). Tap a level then a strain (or Pass, X, XX), and the call shows at the bottom
+  with one contained button to make it ("Submit 3♥", "Submit Pass"); no undo. Your hand is below.
+- **Ending the auction:** three passes after a bid put the contract and declarer in the result
+  (the backend works them out with `auctionResult`), and the play table takes over. Four passes
+  save the board as passed out; the finished auction stays on screen for 3 seconds, like the play
+  table at the end. During the play, the contract in the status strip opens the auction.
+- **Bots don't bid:** the creator's device bids for them, showing the bot's hand while it does
+  ("Bid for North"). It's for testing with one device and for demo games; real games have no bots.
+- **Stored as:** the board's result row with `on_devices` set and an empty contract while it's
+  being bid, and a `calls` row per call (migration 0007). The calls stay with the board's cards
+  through the play; the snapshot sends them only for the board being played.
+- No alerts or explanations yet (see "Convention cards and alerts" in the backlog).
 
 - The board screen becomes the play table: the join code and tally on top, then a status strip
   (the contract, whose turn it is, and tricks for each side, with a line below for why a card
@@ -444,7 +463,8 @@ the player with `isCreator`; there's no separate host key.
 | `GET /api/events/:code/requests/:id` | The requester (its `playerId`) | `{ status }`: pending, allowed, denied, cancelled or expired (10 minutes) |
 | `DELETE /api/events/:code/requests/:id` | The requester | Withdraw the request |
 | `POST /api/events/:code/requests/:id/answer` | A player | `{ allow }`. First answer wins. Allowing gives the seat (and its results) the requester's key and name; the old key stops working and the old device is disconnected |
-| `POST /api/events/:code/boards/:board/play` | Creator | Start playing the board's cards on the devices (its contract must be in; one board at a time) |
+| `POST /api/events/:code/boards/:board/play` | Creator | Play the board online: its auction, or its cards when the contract is already in (one board at a time) |
+| `POST /api/events/:code/boards/:board/calls` | The player whose turn it is (the creator for a bot) | `{ seq, call }`: make a call ("1H", "3NT", "PASS", "X", "XX"). `seq` is its number in the auction, so a double tap can't call twice. Checked with `core/auction.ts`; the last pass saves the contract (or the passed-out result) |
 | `POST /api/events/:code/boards/:board/cards` | The player whose turn it is (declarer for dummy) | `{ seq, card }`: play a card. `seq` is its number on the board, so a double tap can't play twice. Checked with `core/play.ts` |
 | `POST /api/events/:code/boards/:board/claim` | A player, not dummy | `{ tricks }`: claim that many of the tricks left. Play stops until it's answered |
 | `POST /api/events/:code/boards/:board/claim/answer` | The claimer's opponents, not dummy | `{ accept }`. A refusal ends the claim |

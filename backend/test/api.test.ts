@@ -1,6 +1,7 @@
 import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import type {
+  CallDto,
   ClaimDto,
   EventSnapshot,
   JoinedResponse,
@@ -259,14 +260,19 @@ describe("playing the cards on devices", () => {
   const play = (code: string, seq: number, card: string, id: string) =>
     api<PlayDto>("POST", `/events/${code}/boards/1/cards`, { seq, card }, id);
 
-  it("only the creator starts it, and only once the contract is in", async () => {
+  it("only the creator starts it; with the contract entered, it starts at the cards", async () => {
     const g = await gameInPlay();
-    expect((await start(g.code, g.creator.playerId)).status).toBe(409);
     await api("PUT", `/events/${g.code}/boards/1`, { contract: "3NT", declarer: "S", tricks: null }, g.creator.playerId);
     expect((await start(g.code, g.others[0]!.playerId)).status).toBe(403);
     const started = await start(g.code, g.creator.playerId);
     expect(started.status).toBe(200);
     expect(started.json).toMatchObject({ board: 1, contract: "3NT", tricks: null, onDevices: true });
+  });
+
+  it("won't start a board that already has a result", async () => {
+    const g = await gameInPlay();
+    await api("PUT", `/events/${g.code}/boards/1`, { contract: "3NT", declarer: "S", tricks: 9 }, g.creator.playerId);
+    expect((await start(g.code, g.creator.playerId)).status).toBe(409);
   });
 
   it("takes cards in turn, following suit, with declarer playing dummy's", async () => {
@@ -426,6 +432,100 @@ describe("playing the cards on devices", () => {
 });
 
 // ---- Live updates -------------------------------------------------------------------------------
+
+// ---- Bidding on devices ---------------------------------------------------------------------------
+
+describe("bidding on devices", () => {
+  const hands = Object.fromEntries(Object.entries(game.boards[0]!.hands).map(([s, h]) => [s, parseHand(h)])) as Record<
+    Seat,
+    ReturnType<typeof parseHand>
+  >;
+
+  /** A game in play with board 1 (North deals) started online, and each seat's player ID. */
+  async function bidding() {
+    const g = await gameInPlay();
+    const started = await api<ResultDto>("POST", `/events/${g.code}/boards/1/play`, {}, g.creator.playerId);
+    const snap = (await api<EventSnapshot>("GET", `/events/${g.code}`)).json;
+    const ids = [g.creator, ...g.others];
+    const idOf = Object.fromEntries(snap.players.map((p) => [p.seat, ids.find((j) => j.slot === p.slot)!.playerId])) as Record<Seat, string>;
+    return { ...g, idOf, started: started.json };
+  }
+  const call = (code: string, seq: number, text: string, id: string) =>
+    api<CallDto>("POST", `/events/${code}/boards/1/calls`, { seq, call: text }, id);
+  const board1 = async (code: string) => (await api<EventSnapshot>("GET", `/events/${code}`)).json.results.find((r) => r.board === 1);
+
+  it("starts with the auction when there's no contract yet", async () => {
+    const { code, idOf, started } = await bidding();
+    expect(started).toMatchObject({ board: 1, contract: "", declarer: null, tricks: null, onDevices: true });
+    // The cards wait for the auction.
+    expect((await api("POST", `/events/${code}/boards/1/cards`, { seq: 1, card: "SA" }, idOf.E)).status).toBe(409);
+  });
+
+  it("takes calls in turn, only allowed ones, then the contract goes in and play starts", async () => {
+    const { code, idOf } = await bidding();
+    expect((await call(code, 1, "1NT", idOf.E)).status).toBe(409); // North deals
+    expect((await call(code, 2, "1NT", idOf.N)).status).toBe(409); // wrong call number
+    expect((await call(code, 1, "8NT", idOf.N)).status).toBe(400);
+    expect((await call(code, 1, "X", idOf.N)).status).toBe(400); // nothing to double
+    expect((await call(code, 1, "1NT", idOf.N)).json).toEqual({ board: 1, seq: 1, seat: "N", call: "1NT" });
+    expect((await call(code, 1, "PASS", idOf.N)).status).toBe(409); // a second tap
+    expect((await call(code, 2, "1S", idOf.E)).status).toBe(400); // too low
+    // The contract can't be entered by hand meanwhile.
+    expect((await api("PUT", `/events/${code}/boards/1`, { contract: "4S", declarer: "S", tricks: null }, idOf.E)).status).toBe(409);
+    await call(code, 2, "PASS", idOf.E);
+    await call(code, 3, "3NT", idOf.S);
+    await call(code, 4, "PASS", idOf.W);
+    await call(code, 5, "PASS", idOf.N);
+    expect(await board1(code)).toMatchObject({ contract: "", tricks: null });
+    await call(code, 6, "PASS", idOf.E);
+
+    // North bid no-trumps first, so North declares 3NT, and East (on North's left) leads.
+    expect(await board1(code)).toMatchObject({ contract: "3NT", declarer: "N", tricks: null, onDevices: true });
+    expect((await call(code, 7, "PASS", idOf.S)).status).toBe(409); // the auction is over
+    const snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
+    expect(snap.calls.map((k) => k.call)).toEqual(["1NT", "PASS", "3NT", "PASS", "PASS", "PASS"]); // kept for the play
+    const lead = cardCode(chooseCard(replay(hands, "NT", "N", []), () => 0.5));
+    expect((await api("POST", `/events/${code}/boards/1/cards`, { seq: 1, card: lead }, idOf.E)).status).toBe(200);
+  });
+
+  it("saves a passed-out board as its result", async () => {
+    const { code, idOf } = await bidding();
+    for (const [i, seat] of (["N", "E", "S", "W"] as Seat[]).entries()) await call(code, i + 1, "PASS", idOf[seat]);
+    expect(await board1(code)).toMatchObject({ contract: "PASS", declarer: null, tricks: 0, onDevices: true });
+    expect((await api<EventSnapshot>("GET", `/events/${code}`)).json.calls).toEqual([]); // finished boards' calls aren't sent
+  });
+
+  it("lets the creator call for the bots", async () => {
+    const marc = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, startBoard: 1 })).json;
+    const ann = (await api<JoinedResponse>("POST", `/events/${marc.code}/players`, { name: "Ann" })).json;
+    await api("POST", `/events/${marc.code}/test-players`);
+    await api("POST", `/events/${marc.code}/partnerships`, { partnerSlot: 2 }, marc.playerId);
+    await api("POST", `/events/${marc.code}/boards/1/play`, {}, marc.playerId);
+    const players = (await api<EventSnapshot>("GET", `/events/${marc.code}`)).json.players;
+    const idAt = (seat: Seat) => {
+      const p = players.find((x) => x.seat === seat)!;
+      return p.isBot ? null : p.slot === marc.slot ? marc.playerId : ann.playerId;
+    };
+    // Go round the table from North: a bot's call is Marc's to make, and only his.
+    for (const [i, seat] of (["N", "E", "S", "W"] as Seat[]).entries()) {
+      const id = idAt(seat);
+      if (id) {
+        expect((await call(marc.code, i + 1, "PASS", id)).json).toMatchObject({ seat });
+      } else {
+        expect((await call(marc.code, i + 1, "PASS", ann.playerId)).status).toBe(409);
+        expect((await call(marc.code, i + 1, "PASS", marc.playerId)).json).toMatchObject({ seat });
+      }
+    }
+  });
+
+  it("pushes each call to everyone", async () => {
+    const { code, others, idOf } = await bidding();
+    const ann = await connect(code, others[0]!.playerId);
+    await call(code, 1, "1H", idOf.N);
+    expect(await ann.waitFor((m) => m.type === "call")).toEqual({ type: "call", call: { board: 1, seq: 1, seat: "N", call: "1H" } });
+    ann.ws.close();
+  });
+});
 
 describe("live updates", () => {
   it("pushes saved results and presence to every connected player", async () => {

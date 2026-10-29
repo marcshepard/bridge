@@ -8,23 +8,6 @@ Work happens on `dev`; `main` is what's deployed. To take an idea on: agree the 
 it, Marc tests it by hand, then commit, and take it out of this file. Feedback from the bridge
 group is handled the same way when it arrives.
 
-## Online play: what's left
-
-Card play on the devices is in, being tried out (see "Playing the cards on devices" in
-DESIGN.md): the creator starts it board by board, with claims and no undo. Still to do:
-
-- **Bidding:** the auction in a four-column table, with a bidding box below (1–7 by strain, Pass,
-  X, XX), ending where play starts today (the contract entered).
-- **Choosing how cards are played:** per game rather than the creator tapping Play on each board,
-  without putting it in settings (decided 28 Oct 2026: it's per game, and per board while trying it).
-- **Telling you it's your turn** when your phone is face down or in another app: "Your turn" in
-  the browser tab's title. Real notifications are a much bigger job. (Not vibration: Marc doesn't
-  want it.)
-- **Height on a phone:** check the play table fits held upright with dummy on top; if not, a slimmer
-  header during play.
-- **Reviewing the play** on a finished board, trick by trick (the cards are stored; the snapshot
-  only sends them for the board being played).
-
 ## Rate limiting
 
 Backend only. Limits per device address, to stop code guessing and runaway clients (the free plan
@@ -62,6 +45,11 @@ nothing secret to protect beyond the fairness of one game, and rate limiting com
   (needs pair-level results from the source).
 - Double dummy computed in the browser (DDS via WebAssembly) for sources that don't supply it.
 - More than one table, and spectators.
+- **Reviewing the play** on a finished board, trick by trick (the cards are stored; the snapshot
+  only sends them for the board being played).
+- **Convention cards and alerts,** together (an alert means little without the card behind it):
+  each pair fills in a simple convention card, and during online bidding a player can alert a call
+  and explain it from the card. Left out of the first version of online bidding.
 - **"Not played":** give up on a board partway through, on the devices or with real cards (a dead
   device, a mix-up), without replaying it. The board is scored as not played, the way a director
   gives an average when a board can't be finished (Law 12), rather than thrown away and restarted.

@@ -2,6 +2,7 @@
 // results and scores.
 
 import { Box } from "@mui/material";
+import type { Call } from "../../core/auction";
 import { formatTrickResult } from "../../core/contract";
 import { formatScore } from "../../core/scoring";
 import { type Contract, type Strain, type Suit, type TableResult, SUIT_SYMBOLS } from "../../core/types";
@@ -56,4 +57,32 @@ export function ScoreText({ score, strong = false }: { score: number; strong?: b
       {formatScore(score)}
     </Box>
   );
+}
+
+/** A call in an auction: "3♥" with a coloured suit, "Pass", "X" (double) or "XX" (redouble). */
+export function CallText({ call }: { call: Call }) {
+  switch (call.kind) {
+    case "bid":
+      return <ContractText contract={{ level: call.level, strain: call.strain, doubling: "" }} />;
+    case "pass":
+      return <>Pass</>;
+    case "double":
+      return <>X</>;
+    case "redouble":
+      return <>XX</>;
+  }
+}
+
+/** A call in words, for screen readers: "3 hearts", "Pass", "Double", "Redouble". */
+export function callWords(call: Call): string {
+  switch (call.kind) {
+    case "bid":
+      return `${call.level} ${call.strain === "NT" ? "no trumps" : SUIT_NAMES[call.strain]}`;
+    case "pass":
+      return "Pass";
+    case "double":
+      return "Double";
+    case "redouble":
+      return "Redouble";
+  }
 }

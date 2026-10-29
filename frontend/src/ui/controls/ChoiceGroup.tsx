@@ -11,6 +11,8 @@ export interface Choice<T extends string | number> {
   sub?: ReactNode;
   /** Accessible name when `label` is a symbol. */
   ariaLabel?: string;
+  /** Can't be picked right now (greyed out). */
+  disabled?: boolean;
 }
 
 interface Props<T extends string | number> {
@@ -18,9 +20,11 @@ interface Props<T extends string | number> {
   choices: Choice<T>[];
   value: T | null;
   onChange: (value: T) => void;
+  /** None can be picked right now. */
+  disabled?: boolean;
 }
 
-export function ChoiceGroup<T extends string | number>({ label, choices, value, onChange }: Props<T>) {
+export function ChoiceGroup<T extends string | number>({ label, choices, value, onChange, disabled = false }: Props<T>) {
   const id = useId();
   return (
     <Box sx={{ mt: 2 }}>
@@ -33,13 +37,20 @@ export function ChoiceGroup<T extends string | number>({ label, choices, value, 
         exclusive
         fullWidth
         value={value}
+        disabled={disabled}
         aria-labelledby={label ? id : undefined}
         onChange={(_, v: T | null) => {
           if (v !== null) onChange(v);
         }}
       >
         {choices.map((c) => (
-          <ToggleButton key={String(c.value)} value={c.value} aria-label={c.ariaLabel} sx={{ flexDirection: "column" }}>
+          <ToggleButton
+            key={String(c.value)}
+            value={c.value}
+            aria-label={c.ariaLabel}
+            disabled={disabled || c.disabled}
+            sx={{ flexDirection: "column" }}
+          >
             <Typography variant="h6" component="span">
               {c.label}
             </Typography>

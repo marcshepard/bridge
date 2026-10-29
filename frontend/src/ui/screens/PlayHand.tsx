@@ -5,9 +5,10 @@
 // the backend saves the result; a moment later every device moves on to the result screen.
 
 import { Alert, Box, Button, ButtonBase, Paper, Stack, Typography } from "@mui/material";
-import { keyframes } from "@mui/material/styles";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import type { Call } from "../../core/auction";
 import { chooseCard } from "../../core/bot";
+import { formatContract } from "../../core/contract";
 import { describeResult } from "../../core/describe";
 import {
   type Card,
@@ -31,12 +32,14 @@ import {
 import { scoreResult } from "../../core/scoring";
 import { type Contract, type Seat, SEATS, SEAT_NAMES, SUIT_SYMBOLS, directionOf } from "../../core/types";
 import type { Board } from "../../providers/types";
+import { AuctionTable } from "../components/Auction";
 import { Hand, HandTiles } from "../components/Hand";
 import { ContractText, SUIT_NAMES } from "../controls/BridgeText";
 import { Notice } from "../controls/Notice";
 import { NumberStepper } from "../controls/NumberStepper";
 import { PlayerName } from "../controls/PlayerName";
 import { SheetDialog } from "../controls/SheetDialog";
+import { TurnStrip } from "../controls/TurnStrip";
 import { relationTo } from "../labels";
 
 /** How long a finished trick stays open (face up) if you don't close it: plenty of time to look. */
@@ -44,11 +47,6 @@ const OPEN_MS = 30_000;
 /** How long a bot waits before playing, so everyone can follow the trick. */
 const BOT_DELAY_MS = 2000;
 
-/** "Your turn" pulses: its background swings between two shades of the primary colour. */
-const pulse = keyframes`
-  0%, 100% { background-color: var(--pulse-from); }
-  50% { background-color: var(--pulse-to); }
-`;
 
 interface Props {
   board: Board;
@@ -61,6 +59,8 @@ interface Props {
   bots: Seat[];
   /** This device plays the bots' cards (it's the game creator's). */
   playsForBots: boolean;
+  /** The auction, when the board was bid on the devices (empty when the contract was entered by hand). */
+  calls: Call[];
   /** The cards played so far, in order. */
   cards: Card[];
   /** The claim made on this board, if any. */
@@ -85,6 +85,7 @@ export function PlayHand(p: Props) {
   // Something on its way to the backend (a card, a claim, an answer): no more taps until it's done.
   const [busy, setBusy] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const [showAuction, setShowAuction] = useState(false);
 
   const tricks = finalTricks(state, claim);
   const over = tricks !== null;
@@ -256,56 +257,42 @@ export function PlayHand(p: Props) {
       {/* The status strip: the contract, whose turn it is and tricks for each side, then a line for
           why a card can't go, what's happening, or how the play went. The turn sits in a fixed-size
           box and the line below always takes its height, so nothing moves under your finger. */}
-      {/* Three columns, the outer two the same width, so the turn box sits in the middle. */}
-      <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 1, alignItems: "center" }}>
-        <Typography variant="h6" component="h1" sx={{ minWidth: 0, lineHeight: 1.2 }} noWrap>
-          <ContractText contract={p.contract.contract} />
-          <Typography variant="caption" component="span" color="text.secondary" sx={{ display: "block" }} noWrap>
-            by {SEAT_NAMES[declarer]}
+      <TurnStrip
+        left={
+          <Typography variant="h6" component="h1" sx={{ lineHeight: 1.2 }} noWrap>
+            {/* Bid on the devices: the contract opens the auction. */}
+            {p.calls.length > 0 ? (
+              <Button
+                onClick={() => setShowAuction(true)}
+                aria-label={`${formatContract(p.contract.contract)} by ${SEAT_NAMES[declarer]}. Show the auction`}
+                sx={{ typography: "h6", minWidth: 0, p: 0, lineHeight: 1.2 }}
+              >
+                <ContractText contract={p.contract.contract} />
+              </Button>
+            ) : (
+              <ContractText contract={p.contract.contract} />
+            )}
+            <Typography variant="caption" component="span" color="text.secondary" sx={{ display: "block" }} noWrap>
+              by {SEAT_NAMES[declarer]}
+            </Typography>
           </Typography>
-        </Typography>
-        <Typography
-          variant="body2"
-          aria-live="polite"
-          sx={(t) => ({
-            width: t.spacing(18),
-            minHeight: t.spacing(5),
-            px: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            textAlign: "center",
-            borderRadius: 1,
-            lineHeight: 1.2,
-            ...(turnLabel === ""
-              ? {}
-              : myTurn
-                ? {
-                    fontWeight: "fontWeightBold",
-                    bgcolor: "primary.main",
-                    color: "primary.contrastText",
-                    "--pulse-from": t.vars!.palette.primary.main,
-                    "--pulse-to": t.vars!.palette.primary.dark,
-                    animation: `${pulse} 1.2s ease-in-out infinite`,
-                    "@media (prefers-reduced-motion: reduce)": { animation: "none" },
-                  }
-                : { bgcolor: "action.hover", color: "text.secondary" }),
-          })}
-        >
-          {turnLabel}
-        </Typography>
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          className="num"
-          aria-label={`Tricks: you ${ourSide}, them ${theirSide}`}
-          sx={{ textAlign: "right", lineHeight: 1.3 }}
-        >
-          You {ourSide}
-          <br />
-          Them {theirSide}
-        </Typography>
-      </Box>
+        }
+        turn={turnLabel}
+        mine={myTurn}
+        right={
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            className="num"
+            aria-label={`Tricks: you ${ourSide}, them ${theirSide}`}
+            sx={{ lineHeight: 1.3 }}
+          >
+            You {ourSide}
+            <br />
+            Them {theirSide}
+          </Typography>
+        }
+      />
       <Typography variant="subtitle1" noWrap sx={{ mb: 1 }} aria-live="polite" color={hint ? "error" : undefined}>
         {hint ?? (statusText || " ")}
       </Typography>
@@ -385,6 +372,15 @@ export function PlayHand(p: Props) {
         }
         onClose={closeTrick}
       />
+
+      <SheetDialog
+        open={showAuction}
+        onClose={() => setShowAuction(false)}
+        title="The auction"
+        actions={<Button onClick={() => setShowAuction(false)}>Close</Button>}
+      >
+        <AuctionTable dealer={board.dealer} vul={board.vul} names={names} calls={p.calls} seat={seat} />
+      </SheetDialog>
 
       {claiming && (
         <ClaimDialog

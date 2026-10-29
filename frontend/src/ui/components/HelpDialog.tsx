@@ -97,15 +97,37 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
       </Box>
 
-      <Heading>Playing the cards on your devices (being tried out)</Heading>
+      <Heading>Playing online, on your devices (being tried out)</Heading>
       <Typography sx={{ mb: 1 }}>
-        Instead of dealing real cards, you can play a board's cards on your phones, tablets or computers. For
-        now, the person who started the game turns it on, one board at a time.
+        Instead of real cards and bidding boxes, you can bid and play a board on your phones, tablets or
+        computers. For now, the person who started the game turns it on, one board at a time.
       </Typography>
       <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
         <li>
-          Once the contract is in, the person who started the game taps <strong>Play</strong> next to{" "}
-          <strong>Enter the result</strong>. Everyone's screen goes to that board and shows the table: your cards
+          The person who started the game taps <strong>Play online</strong>, next to the contract. Everyone's screen
+          goes to that board and shows the auction. (If you've already bid with real cards and entered the
+          contract, it goes straight to the card play.)
+        </li>
+        <li>
+          <strong>Bidding:</strong> the auction is written in four columns, West, North, East, South, starting
+          under the dealer; a vulnerable side's names are in red. When it's your turn, tap a level (1 to 7) and
+          then a suit or NT, or tap <strong>Pass</strong>, <strong>X</strong> (double) or <strong>XX</strong>{" "}
+          (redouble). Bids you can't make are greyed out: a bid has to be higher than the last one, you can only
+          double an opponent's bid, and only redouble an opponent's double. The button at the bottom then says
+          what you picked: tap <strong>Submit 3♥</strong> (or <strong>Submit Pass</strong>, and so on) to make it. A bid
+          can't be taken back.
+        </li>
+        <li>
+          The auction ends after three passes in a row following a bid. The contract goes in for everyone, and the
+          card play starts. If all four pass first, the board is passed out and scored as that. During the play,
+          tap the contract at the top to see the auction again.
+        </li>
+        <li>
+          In a game with robot players (a demo game), the person who started it bids for the robots: their screen
+          says <strong>Bid for North</strong> and shows that robot's hand. The robots play their own cards.
+        </li>
+        <li>
+          Once the card play starts, everyone's screen shows the table: your cards
           at the bottom, the trick in the middle, and at the top the contract, whose turn it is and the tricks
           each side has won. When it's your turn, it says{" "}
           <strong>Your turn</strong> in a green box that pulses. When you're declarer and it's dummy's turn, it says{" "}

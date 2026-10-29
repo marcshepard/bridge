@@ -15,7 +15,8 @@ import {
   tally as tallyOf,
 } from "../../session/session";
 import type { Game } from "../../providers/types";
-import type { ClaimDto, EventSnapshot, PlayDto, ResultDto } from "../../session/store";
+import type { CallDto, ClaimDto, EventSnapshot, PlayDto, ResultDto } from "../../session/store";
+import { callCode, parseCall } from "../../core/auction";
 import { parseContract } from "../../core/contract";
 import { cardCode, parseCard } from "../../core/play";
 import { games } from "../../services";
@@ -40,6 +41,8 @@ interface Props {
   seat: Seat;
   /** Called with the saved result, so the screen updates without waiting for the live update. */
   onSaved: (result: ResultDto) => void;
+  /** Called with a call you made, likewise. */
+  onCalled: (call: CallDto) => void;
   /** Called with a card you played, likewise. */
   onPlayed: (play: PlayDto) => void;
   /** Called with a claim you made or answered (null: refused or taken back), likewise. */
@@ -48,7 +51,7 @@ interface Props {
   onNotice: (notice: NoticeMessage) => void;
 }
 
-export function Play({ snapshot, game, seat, onSaved, onPlayed, onClaim, onNotice }: Props) {
+export function Play({ snapshot, game, seat, onSaved, onCalled, onPlayed, onClaim, onNotice }: Props) {
   const session = useMemo(
     () => sessionFromShared(game, seat, snapshot.startBoard, snapshot.results),
     [game, seat, snapshot.startBoard, snapshot.results],
@@ -72,15 +75,16 @@ export function Play({ snapshot, game, seat, onSaved, onPlayed, onClaim, onNotic
 
   // When the play ends (the last card, or a claim accepted), the backend saves the result. The
   // finished table stays on screen for a moment, showing how it went, before the result screen.
+  // Noticed while rendering, not in an effect: an effect runs after the screen has redrawn, so the
+  // play table would be taken away for one redraw and come back as a fresh copy (with the last
+  // trick turned face down).
   const [ending, setEnding] = useState<number | null>(null);
-  const wasLive = useRef(liveBoard);
-  useEffect(() => {
-    const ended = wasLive.current;
-    wasLive.current = liveBoard;
-    if (ended === undefined || ended === liveBoard) return;
-    const r = snapshot.results.find((x) => x.board === ended);
-    if (r?.onDevices && r.tricks !== null) setEnding(ended);
-  }, [liveBoard]);
+  const [wasLive, setWasLive] = useState(liveBoard);
+  if (wasLive !== liveBoard) {
+    setWasLive(liveBoard);
+    const r = wasLive === undefined ? undefined : snapshot.results.find((x) => x.board === wasLive);
+    if (r?.onDevices && r.tricks !== null) setEnding(r.board);
+  }
   useEffect(() => {
     if (ending === null) return;
     const timer = setTimeout(() => setEnding(null), END_PAUSE_MS);
@@ -134,12 +138,24 @@ export function Play({ snapshot, game, seat, onSaved, onPlayed, onClaim, onNotic
 
   const isCreator = snapshot.you?.isCreator ?? false;
   const live = !!shared && shared.onDevices && shared.tricks === null;
+  // Being bid on the devices: the result has no contract yet. Passed out, the finished auction
+  // stays on screen for the moment after, like the play table.
+  const bidding =
+    (live && shared.contract === "") || (ending === board.number && shared?.contract === "PASS" && snapshot.calls.some((k) => k.board === board.number));
   // The contract on the play table: also for the moment after play ends, once the result is in.
   const playContract =
     contract ??
     (ending === board.number && shared?.declarer && parseContract(shared.contract)
       ? { contract: parseContract(shared.contract)!, declarer: shared.declarer }
       : null);
+  const calls = useMemo(
+    () =>
+      snapshot.calls
+        .filter((k) => k.board === board.number)
+        .sort((a, b) => a.seq - b.seq)
+        .map((k) => parseCall(k.call)!),
+    [snapshot.calls, board.number],
+  );
   const cards = useMemo(
     () =>
       snapshot.plays
@@ -200,15 +216,26 @@ export function Play({ snapshot, game, seat, onSaved, onPlayed, onClaim, onNotic
         onEnterContract={() => setDialog("contract")}
         onEnterResult={() => setDialog("result")}
         onStartPlay={
-          isCreator && contract
+          isCreator
             ? () => void act("Couldn't start playing", async () => onSaved(await games.startCardPlay(snapshot.code, board.number)))
             : undefined
         }
+        bidding={
+          bidding
+            ? {
+                bots: snapshot.players.filter((pl) => pl.isBot && pl.seat).map((pl) => pl.seat!),
+                callsForBots: isCreator,
+                calls,
+                onCall: async (seq, call) => onCalled(await games.call(snapshot.code, board.number, seq, callCode(call))),
+              }
+            : null
+        }
         play={
-          (live || ending === board.number) && playContract
+          !bidding && (live || ending === board.number) && playContract
             ? {
                 bots: snapshot.players.filter((pl) => pl.isBot && pl.seat).map((pl) => pl.seat!),
                 playsForBots: isCreator,
+                calls,
                 cards,
                 claim: snapshot.claims.find((k) => k.board === board.number) ?? null,
                 onPlay: async (seq, card) => onPlayed(await games.playCard(snapshot.code, board.number, seq, cardCode(card))),

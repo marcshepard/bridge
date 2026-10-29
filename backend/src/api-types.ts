@@ -21,7 +21,8 @@ export interface PublicPlayer {
 
 export interface ResultDto {
   board: number;
-  contract: string; // "4SX", "3NT", "PASS"
+  /** "4SX", "3NT", "PASS"; empty while the board is being bid on the devices (see `onDevices`). */
+  contract: string;
   declarer: Seat | null;
   /** null while only the contract is in (bidding over, play not finished). */
   tricks: number | null;
@@ -29,8 +30,10 @@ export interface ResultDto {
   enteredBy: number;
   updatedAt: string;
   /**
-   * The cards are being played on the players' devices: true from the start of play. While
-   * `tricks` is null the board is being played; the tricks are filled in when the last card is.
+   * The board is being played online, on the players' devices: true from the start (its auction,
+   * or its card play when the contract was entered by hand). While `contract` is empty it's being
+   * bid; once the auction ends the contract is filled in and the cards are played; the tricks are
+   * filled in when the last card is played or a claim is accepted.
    */
   onDevices: boolean;
 }
@@ -45,6 +48,16 @@ export interface ClaimDto {
   seat: Seat;
   tricks: number;
   acceptedBy: Seat[];
+}
+
+/** One call in a board's auction on the devices, in order (`seq` from 1). */
+export interface CallDto {
+  board: number;
+  seq: number;
+  /** Who made it (a bot's seat when the creator calls for it). */
+  seat: Seat;
+  /** "1H", "3NT", "PASS", "X", "XX". */
+  call: string;
 }
 
 /** One card played on a device, in order (`seq` 1–52) on its board. */
@@ -78,6 +91,8 @@ export interface EventSnapshot {
   game: GameFileV1;
   players: PublicPlayer[];
   results: ResultDto[];
+  /** The auctions on boards being played on devices right now (kept through the card play). */
+  calls: CallDto[];
   /** The cards played so far on boards being played on devices right now. */
   plays: PlayDto[];
   /** Claims made on boards being played on devices right now. */
@@ -108,6 +123,15 @@ export interface SaveResultRequest {
   contract: string;
   declarer: Seat | null;
   tricks: number | null;
+}
+
+/**
+ * Make a call in a board's auction on the devices. `seq` is which call of the auction this is
+ * (from 1), so a repeated tap, or two devices at once, can't call twice.
+ */
+export interface CallRequest {
+  seq: number;
+  call: string;
 }
 
 /**
@@ -173,6 +197,7 @@ export interface ErrorResponse {
 
 export type PushMessage =
   | { type: "result"; result: ResultDto }
+  | { type: "call"; call: CallDto } // a call in an auction on the devices
   | { type: "play"; play: PlayDto } // a card played on a device
   | { type: "claim"; board: number; claim: ClaimDto | null } // a claim made or answered; null: refused or taken back
   | { type: "players" } // someone joined, left or got a seat: refetch the snapshot

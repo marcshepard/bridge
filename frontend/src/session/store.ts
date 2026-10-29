@@ -5,6 +5,7 @@
 // (`ApiGameStore`) and the identity lives in this browser (`LocalProfileStore`).
 
 import type {
+  CallDto,
   ClaimDto,
   EventSnapshot,
   PartnershipsRequest,
@@ -17,6 +18,7 @@ import type {
 import type { GameFileV1 } from "../providers/gameFile";
 
 export type {
+  CallDto,
   ClaimDto,
   EventSnapshot,
   PlayDto,
@@ -51,8 +53,13 @@ export interface GameStore {
   choosePartnerships(code: string, choice: PartnershipsRequest): Promise<void>;
   /** Save or correct the table's result on a board. Everyone at the table sees it straight away. */
   saveResult(code: string, board: number, result: SaveResultRequest): Promise<ResultDto>;
-  /** The creator starts playing a board's cards on the devices (its contract must be in). */
+  /**
+   * The creator starts playing a board online, on the devices: its auction, or its cards when the
+   * contract was entered by hand.
+   */
   startCardPlay(code: string, board: number): Promise<ResultDto>;
+  /** Make a call ("1H", "PASS", "X") as call number `seq` in the board's auction. Rejects with the reason if refused. */
+  call(code: string, board: number, seq: number, call: string): Promise<CallDto>;
   /** Play a card ("SA") as card number `seq` (1–52) on the board. Rejects with the reason if refused. */
   playCard(code: string, board: number, seq: number, card: string): Promise<PlayDto>;
   /** Claim this many of the tricks left on the board, for your side. */

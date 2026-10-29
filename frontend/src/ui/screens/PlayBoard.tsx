@@ -9,6 +9,7 @@ import { formatScore } from "../../core/scoring";
 import { type ReactNode, useState } from "react";
 import type { BoardComparison } from "../../core/compare";
 import { hcp } from "../../core/deal";
+import type { Call } from "../../core/auction";
 import type { Card, Claim } from "../../core/play";
 import { type Contract, type Hand as HandT, type Seat, SEATS, SEAT_NAMES, directionOf, isVulnerable } from "../../core/types";
 import type { Board } from "../../providers/types";
@@ -19,6 +20,7 @@ import { PlayerName } from "../controls/PlayerName";
 import { Panel, Screen, Section } from "../controls/Layout";
 import { ScoreChip, type Tone } from "../controls/ScoreChip";
 import { formatJoinCode, netParts } from "../labels";
+import { BidHand } from "./BidHand";
 import { PlayHand } from "./PlayHand";
 
 interface Props {
@@ -47,13 +49,26 @@ interface Props {
   onBoardInfo: () => void;
   onEnterContract: () => void;
   onEnterResult: () => void;
-  /** Start playing the cards on the devices (for now the game's creator only, board by board). */
+  /**
+   * Play the board online, on the devices: the auction, then the cards (from the cards when the
+   * contract was entered by hand). For now the game's creator only, board by board.
+   */
   onStartPlay?: () => void;
+  /** While the board is being bid on the devices: the auction takes over the page. */
+  bidding: {
+    /** Seats held by bots, and whether this device bids for them. */
+    bots: Seat[];
+    callsForBots: boolean;
+    calls: Call[];
+    onCall: (seq: number, call: Call) => Promise<void>;
+  } | null;
   /** While the cards are being played on the devices: the play table takes over the page. */
   play: {
     /** Seats held by bots, and whether this device plays their cards. */
     bots: Seat[];
     playsForBots: boolean;
+    /** The auction, when the board was bid on the devices. */
+    calls: Call[];
     cards: Card[];
     claim: Claim | null;
     onPlay: (seq: number, card: Card) => Promise<void>;
@@ -137,9 +152,26 @@ export function PlayBoard(p: Props) {
     </Stack>
   );
 
-  // While the cards are played on screen (and for a moment after, showing how it went), the play
-  // table takes the place of everything below the top row, including Previous and Next board: the
-  // table plays this board together.
+  // While the board is bid or its cards are played on screen (and for a moment after, showing how
+  // it went), the auction or the play table takes the place of everything below the top row,
+  // including Previous and Next board: the table plays this board together.
+  if (p.bidding) {
+    return (
+      <Screen>
+        {top}
+        <BidHand
+          board={board}
+          seat={seat}
+          names={p.names}
+          away={p.away}
+          bots={p.bidding.bots}
+          callsForBots={p.bidding.callsForBots}
+          calls={p.bidding.calls}
+          onCall={p.bidding.onCall}
+        />
+      </Screen>
+    );
+  }
   if (p.play && p.contract) {
     return (
       <Screen>
@@ -152,6 +184,7 @@ export function PlayBoard(p: Props) {
           away={p.away}
           bots={p.play.bots}
           playsForBots={p.play.playsForBots}
+          calls={p.play.calls}
           cards={p.play.cards}
           claim={p.play.claim}
           onPlay={p.play.onPlay}
@@ -218,8 +251,11 @@ export function PlayBoard(p: Props) {
 
       {!c && (
         <>
-          {/* One thin row, so the cards stay near the top. Tap it to enter the contract, or change it. */}
-          <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: "center", justifyContent: "center", mt: 3 }}>
+          {/*
+            One thin row, so the cards stay near the top. Tap it to enter the contract, or change it;
+            or (the creator) play the board online, on the devices.
+          */}
+          <Stack direction="row" spacing={1} useFlexGap sx={{ alignItems: "center", justifyContent: "center", flexWrap: "wrap", mt: 3 }}>
             <Typography variant="h6" component="h2">
               Contract:
             </Typography>
@@ -235,6 +271,11 @@ export function PlayBoard(p: Props) {
             ) : (
               <Button onClick={p.onEnterContract} sx={{ typography: "h6", minWidth: 0 }}>
                 Tap to enter
+              </Button>
+            )}
+            {p.onStartPlay && (
+              <Button variant="outlined" onClick={p.onStartPlay}>
+                Play online
               </Button>
             )}
           </Stack>
@@ -260,16 +301,9 @@ export function PlayBoard(p: Props) {
           </Section>
           {/* The contract row enters the contract, so the main button only appears once there's one. */}
           {p.contract && (
-            <Stack direction="row" spacing={1} sx={{ mt: 3 }}>
-              {p.onStartPlay && (
-                <Button variant="outlined" size="large" onClick={p.onStartPlay}>
-                  Play
-                </Button>
-              )}
-              <Button variant="contained" size="large" fullWidth onClick={p.onEnterResult}>
-                Enter the result
-              </Button>
-            </Stack>
+            <Button variant="contained" size="large" fullWidth onClick={p.onEnterResult} sx={{ mt: 3 }}>
+              Enter the result
+            </Button>
           )}
         </>
       )}

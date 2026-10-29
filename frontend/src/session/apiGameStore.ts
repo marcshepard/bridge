@@ -4,6 +4,8 @@
 import type {
   AnswerClaimRequest,
   AnswerSeatRequest,
+  CallDto,
+  CallRequest,
   ClaimDto,
   ClaimRequest,
   CreateEventRequest,
@@ -124,6 +126,11 @@ export class ApiGameStore implements GameStore {
 
   startCardPlay(code: string, board: number): Promise<ResultDto> {
     return this.request<ResultDto>("POST", `/events/${code}/boards/${board}/play`, code, {});
+  }
+
+  call(code: string, board: number, seq: number, call: string): Promise<CallDto> {
+    const body: CallRequest = { seq, call };
+    return this.request<CallDto>("POST", `/events/${code}/boards/${board}/calls`, code, body);
   }
 
   playCard(code: string, board: number, seq: number, card: string): Promise<PlayDto> {

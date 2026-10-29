@@ -4,7 +4,8 @@
 // keeps and sends back in the X-Player-Id header. Other players only ever see a public `slot` (1–4).
 
 import { Hono, type Context } from "hono";
-import { tableResult } from "../../frontend/src/core/contract";
+import { auctionResult, callCode, canCall, parseCall, toCall } from "../../frontend/src/core/auction";
+import { contractCode, tableResult } from "../../frontend/src/core/contract";
 import {
   cardCode,
   claimAccepted,
@@ -21,6 +22,8 @@ import {
 import { parseGameFile, type GameFileV1 } from "../../frontend/src/providers/gameFile";
 import type {
   AnswerClaimRequest,
+  CallDto,
+  CallRequest,
   AnswerSeatRequest,
   ClaimDto,
   ClaimRequest,
@@ -195,9 +198,10 @@ async function createEvent(c: Ctx, name: string, file: GameFileV1, start: number
 app.get("/events/:code", async (c) => {
   const event = await loadEvent(c);
   const now = nowIso(); // taken before reading, so `since=now` can't miss a concurrent save
-  const [players, results, plays, claims, connected, requests] = await Promise.all([
+  const [players, results, calls, plays, claims, connected, requests] = await Promise.all([
     db.getPlayers(c.env.DB, event.code),
     db.getResults(c.env.DB, event.code),
+    db.getLiveCalls(c.env.DB, event.code),
     db.getLivePlays(c.env.DB, event.code),
     db.getLiveClaims(c.env.DB, event.code),
     hub(c.env, event.code).connectedSlots(),
@@ -220,6 +224,7 @@ app.get("/events/:code", async (c) => {
       connected: connected.includes(p.slot),
     })),
     results,
+    calls,
     plays,
     claims,
     requests: me ? requests.map(db.toSeatRequest) : [],
@@ -351,28 +356,77 @@ async function boardInPlay(c: Ctx, event: db.EventRow) {
 }
 
 /**
- * Start playing a board's cards on the devices, once its contract is in. For now only the game's
- * creator can, board by board, while it's being tried out. One board at a time: the table plays
- * it together, until its result is entered.
+ * Play a board online, on the devices: its auction, then its cards. When the contract was already
+ * entered by hand (the table bid with real cards), it starts at the card play. For now only the
+ * game's creator can, board by board, while it's being tried out. One board at a time: the table
+ * plays it together, until its result is in.
  */
 app.post("/events/:code/boards/:board/play", async (c) => {
   const event = await loadEvent(c);
   const me = caller(c, await db.getPlayers(c.env.DB, event.code));
   if (!me.is_creator) throw new HttpError(403, "Only the player who started the game can start playing on devices");
   const { board, result } = await boardInPlay(c, event);
-  if (!result || result.tricks !== null || !result.declarer || result.contract === "PASS") {
-    throw new HttpError(409, "Enter the contract first");
-  }
+  if (result && result.tricks !== null) throw new HttpError(409, "This board already has a result");
   const other = (await db.getResults(c.env.DB, event.code)).find(
     (r) => r.onDevices && r.tricks === null && r.board !== board.number,
   );
   if (other) throw new HttpError(409, `Board ${other.board} is being played on the devices; finish it first`);
-  if (!result.onDevices) {
-    await db.setOnDevices(c.env.DB, event.code, board.number, true, nowIso());
+  if (result?.declarer) {
+    // The contract is in: straight to the cards.
+    if (!result.onDevices) await db.setOnDevices(c.env.DB, event.code, board.number, true, nowIso());
+  } else if (!result?.onDevices) {
+    await db.startAuction(c.env.DB, event.code, board.number, me.slot, nowIso());
   }
   const started = (await db.getResult(c.env.DB, event.code, board.number))!;
   await push(c, event.code, { type: "result", result: started });
   return c.json(started);
+});
+
+/**
+ * Make a call in a board's auction on the devices. It must be your turn (the creator calls for a
+ * bot), and the call must be allowed: the same rules the devices use. When the auction ends, the
+ * contract goes into the result and the card play starts; passed out, the board is done.
+ */
+app.post("/events/:code/boards/:board/calls", async (c) => {
+  const event = await loadEvent(c);
+  const players = await db.getPlayers(c.env.DB, event.code);
+  const me = caller(c, players);
+  const { board, result } = await boardInPlay(c, event);
+  if (!result?.onDevices || result.tricks !== null || result.contract !== "") {
+    throw new HttpError(409, "This board isn't being bid on the devices");
+  }
+  const req = await body<CallRequest>(c);
+  const call = parseCall(String(req.call ?? ""));
+  if (!call) throw new HttpError(400, "That isn't a bid");
+  const made = await db.getCalls(c.env.DB, event.code, board.number);
+  if (req.seq !== made.length + 1) throw new HttpError(409, "That bid has already been made, or the bidding has moved on");
+  const calls = made.map((k) => parseCall(k.call)!);
+  const seat = toCall(board.dealer, calls);
+  const forBot = me.is_creator === 1 && players.some((p) => p.seat === seat && p.is_bot === 1);
+  if (me.seat !== seat && !forBot) throw new HttpError(409, "It isn't your turn");
+  if (!canCall(board.dealer, calls, call)) throw new HttpError(400, "That bid isn't allowed now");
+
+  const dto: CallDto = { board: board.number, seq: req.seq, seat, call: callCode(call) };
+  if (!(await db.insertCall(c.env.DB, event.code, dto, nowIso()))) {
+    throw new HttpError(409, "That bid has already been made, or the bidding has moved on");
+  }
+  await push(c, event.code, { type: "call", call: dto });
+
+  const end = auctionResult(board.dealer, [...calls, call]);
+  if (end) {
+    // Passed out is a complete result; otherwise the contract is in and the cards come next.
+    const done: ResultDto = {
+      ...result,
+      contract: contractCode(end.contract),
+      declarer: end.declarer,
+      tricks: end.contract ? null : 0,
+      enteredBy: me.slot,
+      updatedAt: nowIso(),
+    };
+    await db.upsertResult(c.env.DB, event.code, done);
+    await push(c, event.code, { type: "result", result: done });
+  }
+  return c.json(dto);
 });
 
 /**

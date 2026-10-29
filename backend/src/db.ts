@@ -1,7 +1,7 @@
 // All SQL lives here. Routes call these functions; nothing else touches D1 directly.
 
 import type { Seat } from "../../frontend/src/core/types";
-import type { ClaimDto, EventStatus, PlayDto, ResultDto, SeatRequestDto } from "./api-types";
+import type { CallDto, ClaimDto, EventStatus, PlayDto, ResultDto, SeatRequestDto } from "./api-types";
 
 export interface EventRow {
   code: string;
@@ -128,10 +128,80 @@ export async function setOnDevices(db: D1Database, code: string, board: number, 
   await db.batch([
     db.prepare("DELETE FROM plays WHERE event_code = ? AND board = ?").bind(code, board),
     db.prepare("DELETE FROM claims WHERE event_code = ? AND board = ?").bind(code, board),
+    db.prepare("DELETE FROM calls WHERE event_code = ? AND board = ?").bind(code, board),
     db
       .prepare("UPDATE results SET on_devices = ?, updated_at = ? WHERE event_code = ? AND board = ?")
       .bind(on ? 1 : 0, updatedAt, code, board),
   ]);
+}
+
+/**
+ * Starts a board online from its auction: a result row with no contract yet (`contract` empty),
+ * marked as played on the devices, and no calls, cards or claim left from before.
+ */
+export async function startAuction(db: D1Database, code: string, board: number, enteredBy: number, updatedAt: string) {
+  await db.batch([
+    db.prepare("DELETE FROM plays WHERE event_code = ? AND board = ?").bind(code, board),
+    db.prepare("DELETE FROM claims WHERE event_code = ? AND board = ?").bind(code, board),
+    db.prepare("DELETE FROM calls WHERE event_code = ? AND board = ?").bind(code, board),
+    db
+      .prepare(
+        `INSERT INTO results (event_code, table_no, board, contract, declarer, tricks, entered_by, updated_at, on_devices)
+         VALUES (?, 1, ?, '', NULL, NULL, ?, ?, 1)
+         ON CONFLICT (event_code, table_no, board) DO UPDATE SET
+           contract = '', declarer = NULL, tricks = NULL, entered_by = excluded.entered_by,
+           updated_at = excluded.updated_at, on_devices = 1`,
+      )
+      .bind(code, board, enteredBy, updatedAt),
+  ]);
+}
+
+// ---- Bidding ------------------------------------------------------------------------------------
+
+interface CallRow {
+  board: number;
+  seq: number;
+  seat: Seat;
+  call: string;
+}
+
+const toCallDto = (r: CallRow): CallDto => ({ board: r.board, seq: r.seq, seat: r.seat, call: r.call });
+
+/** A board's calls so far, in order. */
+export async function getCalls(db: D1Database, code: string, board: number): Promise<CallDto[]> {
+  const { results } = await db
+    .prepare("SELECT board, seq, seat, call FROM calls WHERE event_code = ? AND board = ? ORDER BY seq")
+    .bind(code, board)
+    .all<CallRow>();
+  return results.map(toCallDto);
+}
+
+/** The auctions on every board being played on devices right now (bidding or card play). */
+export async function getLiveCalls(db: D1Database, code: string): Promise<CallDto[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT k.board, k.seq, k.seat, k.call FROM calls k
+       JOIN results r ON r.event_code = k.event_code AND r.table_no = k.table_no AND r.board = k.board
+       WHERE k.event_code = ? AND r.on_devices = 1 AND r.tricks IS NULL
+       ORDER BY k.board, k.seq`,
+    )
+    .bind(code)
+    .all<CallRow>();
+  return results.map(toCallDto);
+}
+
+/** Records a call. False if that call number is already taken (someone else got there first). */
+export async function insertCall(db: D1Database, code: string, k: CallDto, calledAt: string): Promise<boolean> {
+  try {
+    await db
+      .prepare("INSERT INTO calls (event_code, table_no, board, seq, seat, call, called_at) VALUES (?, 1, ?, ?, ?, ?, ?)")
+      .bind(code, k.board, k.seq, k.seat, k.call, calledAt)
+      .run();
+    return true;
+  } catch (e) {
+    if (String(e).includes("UNIQUE") || String(e).includes("PRIMARY KEY")) return false;
+    throw e;
+  }
 }
 
 // ---- Card play ----------------------------------------------------------------------------------
