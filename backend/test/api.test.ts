@@ -288,7 +288,7 @@ describe("playing the cards on devices", () => {
     expect(snap.plays.map((p) => p.card)).toEqual(["HK", "HA"]);
   });
 
-  it("waits for the result to be entered after the last card", async () => {
+  it("saves the result after the last card", async () => {
     const { code, creator, idOf } = await contractIn();
     await start(code, creator.playerId);
     let state = replay(hands, "NT", "S", []);
@@ -299,16 +299,11 @@ describe("playing the cards on devices", () => {
       expect(res.status).toBe(200);
       state = playCard(state, parseCard(res.json.card)!);
     }
-    let snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
-    expect(snap.results[0]).toMatchObject({ contract: "3NT", declarer: "S", tricks: null, onDevices: true });
-    expect(snap.plays).toHaveLength(52);
-    expect((await play(code, 53, "SA", idOf.W)).status).toBe(409);
-
+    const snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
     const tricks = tricksWon(state).declarer;
-    await api("PUT", `/events/${code}/boards/1`, { contract: "3NT", declarer: "S", tricks }, idOf.E);
-    snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
-    expect(snap.results[0]).toMatchObject({ tricks, onDevices: true });
+    expect(snap.results[0]).toMatchObject({ contract: "3NT", declarer: "S", tricks, onDevices: true });
     expect(snap.plays).toEqual([]); // finished boards' cards aren't sent
+    expect((await play(code, 53, "SA", idOf.W)).status).toBe(409);
   }, 30_000); // 52 requests
 
   it("plays one board at a time", async () => {
@@ -338,10 +333,12 @@ describe("playing the cards on devices", () => {
     expect((await play(code, 1, lead, ann.playerId)).status).toBe(409); // only the creator plays for bots
     expect((await play(code, 1, lead, marc.playerId)).json).toMatchObject({ seat: toPlay(state), card: lead });
 
+    // Marc claims the 13 tricks left (none taken yet): the bots accept, and that's the result.
     const made = await api<ClaimDto>("POST", `/events/${code}/boards/1/claim`, { tricks: 13 }, marc.playerId);
     expect(made.json.acceptedBy).toHaveLength(2);
     snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
-    expect(snap.claims[0]!.acceptedBy).toHaveLength(2);
+    expect(snap.results[0]).toMatchObject({ tricks: 13, onDevices: true, enteredBy: marc.slot });
+    expect(snap.claims).toEqual([]);
   });
 
   describe("claims", () => {
@@ -378,8 +375,11 @@ describe("playing the cards on devices", () => {
 
       await claim(code, 13, idOf.S);
       await answer(code, true, idOf.E);
-      await answer(code, true, idOf.W);
-      expect(await claimsNow(code)).toEqual([{ board: 1, seat: "S", tricks: 13, acceptedBy: ["E", "W"] }]);
+      expect((await answer(code, true, idOf.W)).json).toMatchObject({ acceptedBy: ["E", "W"] });
+      // Accepted: that's the result, and the board is no longer being played.
+      const snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
+      expect(snap.results[0]).toMatchObject({ tricks: 13, onDevices: true });
+      expect(snap.claims).toEqual([]);
       expect((await withdraw(code, idOf.S)).status).toBe(409);
       expect((await answer(code, false, idOf.E)).status).toBe(409);
       expect((await play(code, 1, "HK", idOf.W)).status).toBe(409); // the hand is over
@@ -393,33 +393,23 @@ describe("playing the cards on devices", () => {
       expect((await answer(code, true, idOf.S)).json).toMatchObject({ acceptedBy: ["S"] });
     });
 
-    it("is pushed to everyone, and cleared when play stops", async () => {
+    it("is pushed to everyone", async () => {
       const { code, creator, others, idOf } = await contractIn();
       const ann = await connect(code, others[0]!.playerId);
       await start(code, creator.playerId);
       await claim(code, 13, idOf.S);
       expect(await ann.waitFor((m) => m.type === "claim")).toMatchObject({ type: "claim", board: 1, claim: { seat: "S", tricks: 13 } });
-      await api("DELETE", `/events/${code}/boards/1/play`, undefined, creator.playerId);
-      await start(code, creator.playerId);
-      expect(await claimsNow(code)).toEqual([]);
       ann.ws.close();
     });
   });
 
-  it("keeps the contract while the cards are played; a full result or stopping ends it", async () => {
-    const { code, creator, others, idOf } = await contractIn();
+  it("keeps the contract while the cards are played; a full result ends it", async () => {
+    const { code, creator, idOf } = await contractIn();
     await start(code, creator.playerId);
     await play(code, 1, "HK", idOf.W);
     const put = (body: unknown) => api<ResultDto>("PUT", `/events/${code}/boards/1`, body, creator.playerId);
     expect((await put({ contract: "4S", declarer: "S", tricks: null })).status).toBe(409);
 
-    expect((await api("DELETE", `/events/${code}/boards/1/play`, undefined, others[0]!.playerId)).status).toBe(403);
-    expect((await api("DELETE", `/events/${code}/boards/1/play`, undefined, creator.playerId)).status).toBe(204);
-    const snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
-    expect(snap.results[0]).toMatchObject({ onDevices: false, tricks: null });
-    expect(snap.plays).toEqual([]);
-
-    await start(code, creator.playerId);
     expect((await put({ contract: "3NT", declarer: "S", tricks: 9 })).json).toMatchObject({ tricks: 9, onDevices: true });
     expect((await play(code, 1, "HK", idOf.W)).status).toBe(409); // finished
   });

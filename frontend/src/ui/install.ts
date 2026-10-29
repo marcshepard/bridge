@@ -68,6 +68,10 @@ export function useInstall() {
      * computer), in a browser tab rather than the installed app.
      */
     suggest: (isTouchDevice() || devMode) && !isStandalone() && !installedThisVisit,
+    /** Not installed yet (in a browser tab), on any device: the avatar menu offers to install. */
+    canInstall: !isStandalone() && !installedThisVisit,
+    /** A phone or tablet: the banner stays until installed (or "Not now"); on a computer it can be closed. */
+    touch: isTouchDevice(),
     /** The browser offered its install prompt, so one tap installs. */
     canPrompt: deferredPrompt !== null,
     installed: installedThisVisit,

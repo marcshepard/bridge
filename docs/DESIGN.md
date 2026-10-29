@@ -278,9 +278,13 @@ played on the devices. For now the creator turns it on board by board (**Play**,
 the result**, once the contract is in); one board at a time, and every device jumps to it.
 
 - The board screen becomes the play table: the join code and tally on top, then a status strip
-  (contract, tricks for each side, whose turn it is or why a card can't go), the partner's edge on
-  top, left and right opponents beside the trick, and your hand at the bottom. Opponents show only
-  their name and card count.
+  (the contract, whose turn it is, and tricks for each side, with a line below for why a card
+  can't go, a claim, or how the play went), the partner's edge on top, left and right opponents
+  beside the trick, and your hand at the bottom. Opponents show only their name and card count.
+  Whose turn it is sits in a fixed-size box centred between the contract and the tricks ("East's
+  turn", "Your turn", "Dummy's turn"); when it's yours (your hand, or dummy's when you're declarer) the box is
+  the primary colour and pulses (it stays still if the device asks for reduced motion). The strip
+  never changes height, so your cards don't move under your finger as turns change.
 - **Dummy** goes down after the opening lead. Declarer's dummy is always partner, so it's opposite
   only when you're declarer: a short fan you tap to play from. On your left or right (you're
   defending) it's a read-only suit-per-row list, never rotated. Declarer plays dummy's cards;
@@ -289,20 +293,26 @@ the result**, once the contract is in); one board at a time, and every device ju
   meant for a neighbour can't play it. Unplayable cards are greyed out and say why when tapped. When
   only one card is legal it's picked already: one tap plays it. No undo (a card shown to partner
   can't be taken back).
-- **The trick:** a fixed-size compass in the middle. A finished trick shows face up for 1.5
-  seconds, then lies face down; anyone can tap it to see it again until the next lead (and after
-  the last trick).
+- **The trick:** a fixed-size compass in the middle. A finished trick stays open (face up) on each
+  device until it's closed there: you tap it, you lead to the next trick, or 30 seconds pass. The
+  next lead doesn't close it, so a quick leader can't cut short your look (the rules let you see
+  the last trick until your side plays to the next one). While it's open you can lead but not
+  follow ("Close trick 4 first"), and if someone else leads, a warning toast ("Trick 5 has
+  started", with **Close trick 4**) stays until you close it. Closed, it lies face down and can be
+  tapped open again until the next lead. Dummy can't ask to see a trick: dummy's stays face up
+  until the next lead, then closes by itself, and can't be tapped. The last trick stays open, and
+  anyone can tap it shut and open.
 - **Claims:** a player (not dummy) claims how many of the tricks left their side will take. Their
   hand is shown to everyone and play stops. The claimer's opponents answer, but never dummy: when a
   defender claims, declarer answers alone. One refusal ends the claim and play goes on; the
   claimer can take it back until it's accepted.
-- **The end:** after the last card or an accepted claim, the status strip shows the outcome
-  ("Game down 1: 9 tricks") and anyone taps **Enter the result**, which saves it like any result.
-  Until then the board stays in play on the devices.
-- **Stop playing** (creator) throws away the cards played on the board.
+- **The end:** the last card or an accepted claim saves the result straight away: the backend
+  works out the tricks with `core/play.ts` (`finalTricks`) and pushes it like any result, entered
+  by whoever ended the play. Each device keeps the finished table on screen for 3 seconds, with
+  the outcome in the status strip ("Game down 1: 9 tricks"), then shows the result screen. A
+  wrong result is corrected as usual.
 
-**End game:** any player can end the game (with a confirmation). A post-mortem after it is in the
-backlog.
+**End game:** any player can end the game (with a confirmation).
 
 ### Decisions made
 
@@ -312,7 +322,7 @@ backlog.
    (or random); the app assigns seats and tells people where to sit.
 2. **No owner-only powers after setup.** The creator makes the game and picks partnerships. After
    that all four players are equal: anyone can enter or correct results and anyone can end the
-   game. (While card play on devices is being tried out, only the creator starts and stops it.) A creator's device dying costs nothing, and ownership never needs transferring.
+   game. (While card play on devices is being tried out, only the creator starts it.) A creator's device dying costs nothing, and ownership never needs transferring.
 3. **Disconnected is not "left".** Phones die and lock, laptops sleep; nobody remembers to tap Leave. With push,
    the game knows who is connected and shows a disconnected player's name greyed out, with a no-signal icon.
    - **Same device:** reopening the app or link puts you back in your seat and catches up on missed
@@ -435,7 +445,6 @@ the player with `isCreator`; there's no separate host key.
 | `DELETE /api/events/:code/requests/:id` | The requester | Withdraw the request |
 | `POST /api/events/:code/requests/:id/answer` | A player | `{ allow }`. First answer wins. Allowing gives the seat (and its results) the requester's key and name; the old key stops working and the old device is disconnected |
 | `POST /api/events/:code/boards/:board/play` | Creator | Start playing the board's cards on the devices (its contract must be in; one board at a time) |
-| `DELETE /api/events/:code/boards/:board/play` | Creator | Stop: the cards played and any claim are thrown away |
 | `POST /api/events/:code/boards/:board/cards` | The player whose turn it is (declarer for dummy) | `{ seq, card }`: play a card. `seq` is its number on the board, so a double tap can't play twice. Checked with `core/play.ts` |
 | `POST /api/events/:code/boards/:board/claim` | A player, not dummy | `{ tricks }`: claim that many of the tricks left. Play stops until it's answered |
 | `POST /api/events/:code/boards/:board/claim/answer` | The claimer's opponents, not dummy | `{ accept }`. A refusal ends the claim |

@@ -60,8 +60,6 @@ interface Props {
     onClaim: (tricks: number) => Promise<void>;
     onAnswerClaim: (accept: boolean) => Promise<void>;
     onWithdrawClaim: () => Promise<void>;
-    onEnterResult: (tricks: number) => Promise<void>;
-    onStop?: () => void;
   } | null;
   onCorrect: () => void;
   onBreakdown: () => void;
@@ -139,9 +137,10 @@ export function PlayBoard(p: Props) {
     </Stack>
   );
 
-  // While the cards are played on screen, the play table takes the place of everything below the
-  // top row, including Previous and Next board: the table plays this board together.
-  if (p.play && p.contract && !c) {
+  // While the cards are played on screen (and for a moment after, showing how it went), the play
+  // table takes the place of everything below the top row, including Previous and Next board: the
+  // table plays this board together.
+  if (p.play && p.contract) {
     return (
       <Screen>
         {top}
@@ -159,8 +158,6 @@ export function PlayBoard(p: Props) {
           onClaim={p.play.onClaim}
           onAnswerClaim={p.play.onAnswerClaim}
           onWithdrawClaim={p.play.onWithdrawClaim}
-          onEnterResult={p.play.onEnterResult}
-          onStop={p.play.onStop}
         />
       </Screen>
     );

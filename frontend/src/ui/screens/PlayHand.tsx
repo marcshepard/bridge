@@ -1,11 +1,12 @@
 // Playing a board's cards on the players' devices: the board screen while the cards are played.
 // Each device shows its own hand, dummy once it's down, and the trick; the cards come from the
 // shared plays (the backend checks every card), so all four devices show the same table.
-// When the play is over (the last card, or a claim accepted) it shows how the contract went, and
-// anyone can enter the result.
+// When the play is over (the last card, or a claim accepted) it shows how the contract went, while
+// the backend saves the result; a moment later every device moves on to the result screen.
 
 import { Alert, Box, Button, ButtonBase, Paper, Stack, Typography } from "@mui/material";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { keyframes } from "@mui/material/styles";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { chooseCard } from "../../core/bot";
 import { describeResult } from "../../core/describe";
 import {
@@ -16,6 +17,7 @@ import {
   claimAnswerers,
   currentTrick,
   dummyOf,
+  isComplete,
   finalTricks,
   finishedTricks,
   legalCards,
@@ -31,15 +33,22 @@ import { type Contract, type Seat, SEATS, SEAT_NAMES, SUIT_SYMBOLS, directionOf 
 import type { Board } from "../../providers/types";
 import { Hand, HandTiles } from "../components/Hand";
 import { ContractText, SUIT_NAMES } from "../controls/BridgeText";
+import { Notice } from "../controls/Notice";
 import { NumberStepper } from "../controls/NumberStepper";
 import { PlayerName } from "../controls/PlayerName";
 import { SheetDialog } from "../controls/SheetDialog";
 import { relationTo } from "../labels";
 
-/** How long a finished trick stays face up before it's turned face down. */
-const TURN_DOWN_MS = 1500;
+/** How long a finished trick stays open (face up) if you don't close it: plenty of time to look. */
+const OPEN_MS = 30_000;
 /** How long a bot waits before playing, so everyone can follow the trick. */
 const BOT_DELAY_MS = 2000;
+
+/** "Your turn" pulses: its background swings between two shades of the primary colour. */
+const pulse = keyframes`
+  0%, 100% { background-color: var(--pulse-from); }
+  50% { background-color: var(--pulse-to); }
+`;
 
 interface Props {
   board: Board;
@@ -64,10 +73,6 @@ interface Props {
   onAnswerClaim: (accept: boolean) => Promise<void>;
   /** The claimer takes the claim back. */
   onWithdrawClaim: () => Promise<void>;
-  /** Once play is over: save the result (declarer's tricks), for everyone. */
-  onEnterResult: (tricks: number) => Promise<void>;
-  /** The game's creator can stop playing the board on the devices (the cards played are thrown away). */
-  onStop?: () => void;
 }
 
 export function PlayHand(p: Props) {
@@ -89,20 +94,42 @@ export function PlayHand(p: Props) {
   const yours = (s: Seat) => (s === seat && seat !== dummy) || (s === dummy && seat === declarer);
   const dummyShown = state.tricks[0]!.cards.length > 0;
 
-  // When you have only one card you can play, it's picked for you: one tap plays it.
-  const onlyCard = !over && !claim && yours(turn) ? legalCards(state, turn) : [];
-  const preselect = onlyCard.length === 1 ? onlyCard[0]! : null;
-
-  // A finished trick shows face up for a moment, then lies face down in the middle until the next
-  // lead. Anyone can tap it to see it again ("peek") meanwhile, and after the last trick too.
+  // A finished trick stays open (face up) on this device, even after the next lead, until it's
+  // closed: you tap it, you lead to the next trick, or OPEN_MS passes. Until you close it you can't
+  // follow to the next trick (you haven't seen its cards). Closed, you can tap it open again until
+  // the next lead. Dummy has no reason to look back (the rules don't let dummy ask to see a trick):
+  // dummy's closes by itself at the next lead and can't be tapped. The last trick stays open, and
+  // anyone can tap it shut and open again.
   const finished = finishedTricks(state).length;
-  const [lastTrick, setLastTrick] = useState<"just-won" | "peek" | null>(null);
+  const allPlayed = isComplete(state);
+  const nextStarted = finished > 0 && !allPlayed && currentTrick(state).cards.length > 0;
+  const [openTrick, setOpenTrick] = useState<number | null>(null);
+  const isOpen = finished > 0 && openTrick === finished;
+  // Each trick opens as it's won (not on arriving mid-board, e.g. after a reload).
+  const seen = useRef(finished);
   useEffect(() => {
-    if (finished === 0) return;
-    setLastTrick("just-won");
-    const timer = setTimeout(() => setLastTrick((v) => (v === "just-won" ? null : v)), TURN_DOWN_MS);
-    return () => clearTimeout(timer);
+    if (finished > seen.current) setOpenTrick(finished);
+    seen.current = finished;
   }, [finished]);
+  useEffect(() => {
+    if (!isOpen || allPlayed || seat === dummy) return;
+    const timer = setTimeout(() => setOpenTrick(null), OPEN_MS);
+    return () => clearTimeout(timer);
+  }, [isOpen, allPlayed, seat, dummy, openTrick]);
+  useEffect(() => {
+    if (seat === dummy && nextStarted) setOpenTrick(null);
+  }, [seat, dummy, nextStarted]);
+  const canToggle = finished > 0 && (allPlayed || (seat !== dummy && (isOpen || !nextStarted)));
+  const closeTrick = () => {
+    setOpenTrick(null);
+    setHint(null); // e.g. "Close trick 4 first"
+  };
+  // Someone else has led to the next trick while yours is still open: close it before you follow.
+  const mustClose = isOpen && nextStarted && seat !== dummy;
+
+  // When you have only one card you can play, it's picked for you: one tap plays it.
+  const onlyCard = !over && !claim && !mustClose && yours(turn) ? legalCards(state, turn) : [];
+  const preselect = onlyCard.length === 1 ? onlyCard[0]! : null;
 
   /** Runs one action against the backend, showing why if it's refused. */
   async function act(what: string, run: () => Promise<void>) {
@@ -121,10 +148,18 @@ export function PlayHand(p: Props) {
   const playFor = (s: Seat) =>
     !over && !claim && busy === null && turn === s && yours(s)
       ? {
-          canPlay: (card: Card) => legalCards(state, s).some((c) => sameCard(c, card)),
-          onPlay: (card: Card) => void act("Playing your card…", () => p.onPlay(cards.length + 1, card)),
+          canPlay: (card: Card) => !mustClose && legalCards(state, s).some((c) => sameCard(c, card)),
+          onPlay: (card: Card) => {
+            // Leading to the next trick closes the last one.
+            closeTrick();
+            void act("Playing your card…", () => p.onPlay(cards.length + 1, card));
+          },
           preselect,
           onBlocked: () => {
+            if (mustClose) {
+              setHint(`Close trick ${finished} first: tap it`);
+              return;
+            }
             const led = currentTrick(state).cards[0]!.card.suit;
             setHint(`Follow suit: play a ${SUIT_NAMES[led].slice(0, -1)} ${SUIT_SYMBOLS[led]}`);
           },
@@ -158,19 +193,29 @@ export function PlayHand(p: Props) {
     tricks === null
       ? ""
       : `${describeResult(scoreResult({ contract: p.contract.contract, declarer, tricks }, board.vul))}: ${tricks} ${tricks === 1 ? "trick" : "tricks"}`;
-  const turnText = over
+  // Whose turn it is, in the middle of the contract row: "Your turn", "Dummy's turn" or "East's
+  // turn". When it's yours (your hand, or dummy's when you're declarer) it's in the primary colour,
+  // pulsing. Nothing once play stops.
+  const myTurn = !over && !claim && yours(turn);
+  const awayNote = away[waitingFor] && !p.bots.includes(waitingFor) ? " (away)" : "";
+  const turnLabel =
+    over || claim
+      ? ""
+      : turn === dummy
+        ? `Dummy's turn${myTurn ? "" : awayNote}`
+        : myTurn
+          ? "Your turn"
+          : `${SEAT_NAMES[turn]}'s turn${awayNote}`;
+  // The line below: why a card can't go, what's happening, or how the play went.
+  const statusText = over
     ? resultText
     : busy
       ? busy
       : claim
         ? `${claimText}: waiting for ${waitingOn.map((s) => SEAT_NAMES[s]).join(" and ")}`
         : preselect
-          ? "Your only card to play is picked: tap it to play"
-          : yours(turn)
-            ? turn === dummy
-              ? "Your turn: play from dummy"
-              : "Your turn"
-            : `${SEAT_NAMES[waitingFor]} to play${turn === dummy ? " from dummy" : ""}${away[waitingFor] && !p.bots.includes(waitingFor) ? " (away)" : "…"}`;
+          ? "Only one card can go: tap it to play"
+          : "";
 
   /** A seat you can't see into: who's there, how many cards, and a highlight when it's their turn. */
   const closed = (s: Seat) => (
@@ -208,32 +253,62 @@ export function PlayHand(p: Props) {
 
   return (
     <Box component="section" aria-label="Card play">
-      {/* The status strip: the contract and tricks for each side, then whose turn it is (or why a card can't go). */}
-      <Stack direction="row" spacing={1} sx={{ alignItems: "baseline" }}>
-        <Typography variant="h6" component="h1" sx={{ flex: 1 }} noWrap>
-          <ContractText contract={p.contract.contract} /> by {SEAT_NAMES[declarer]}
+      {/* The status strip: the contract, whose turn it is and tricks for each side, then a line for
+          why a card can't go, what's happening, or how the play went. The turn sits in a fixed-size
+          box and the line below always takes its height, so nothing moves under your finger. */}
+      {/* Three columns, the outer two the same width, so the turn box sits in the middle. */}
+      <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 1, alignItems: "center" }}>
+        <Typography variant="h6" component="h1" sx={{ minWidth: 0, lineHeight: 1.2 }} noWrap>
+          <ContractText contract={p.contract.contract} />
+          <Typography variant="caption" component="span" color="text.secondary" sx={{ display: "block" }} noWrap>
+            by {SEAT_NAMES[declarer]}
+          </Typography>
         </Typography>
-        <Typography variant="body2" color="text.secondary" className="num" noWrap>
-          Tricks: you {ourSide}, them {theirSide}
-        </Typography>
-      </Stack>
-      <Typography variant="subtitle1" noWrap sx={{ mb: 1 }} aria-live="polite" color={hint ? "error" : undefined}>
-        {hint ?? turnText}
-      </Typography>
-
-      {/* The play is over: how it went, and one tap to enter it for everyone. */}
-      {over && (
-        <Button
-          variant="contained"
-          size="large"
-          fullWidth
-          disabled={busy !== null}
-          onClick={() => void act("Saving the result…", () => p.onEnterResult(tricks))}
-          sx={{ mb: 1 }}
+        <Typography
+          variant="body2"
+          aria-live="polite"
+          sx={(t) => ({
+            width: t.spacing(18),
+            minHeight: t.spacing(5),
+            px: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            borderRadius: 1,
+            lineHeight: 1.2,
+            ...(turnLabel === ""
+              ? {}
+              : myTurn
+                ? {
+                    fontWeight: "fontWeightBold",
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                    "--pulse-from": t.vars!.palette.primary.main,
+                    "--pulse-to": t.vars!.palette.primary.dark,
+                    animation: `${pulse} 1.2s ease-in-out infinite`,
+                    "@media (prefers-reduced-motion: reduce)": { animation: "none" },
+                  }
+                : { bgcolor: "action.hover", color: "text.secondary" }),
+          })}
         >
-          Enter the result
-        </Button>
-      )}
+          {turnLabel}
+        </Typography>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          className="num"
+          aria-label={`Tricks: you ${ourSide}, them ${theirSide}`}
+          sx={{ textAlign: "right", lineHeight: 1.3 }}
+        >
+          You {ourSide}
+          <br />
+          Them {theirSide}
+        </Typography>
+      </Box>
+      <Typography variant="subtitle1" noWrap sx={{ mb: 1 }} aria-live="polite" color={hint ? "error" : undefined}>
+        {hint ?? (statusText || " ")}
+      </Typography>
 
       {/* A claim waiting for answers: what it is, and what you can do about it. */}
       {claimPending && claim && (
@@ -275,8 +350,8 @@ export function PlayHand(p: Props) {
           <TrickView
             state={state}
             seat={seat}
-            lastTrick={lastTrick}
-            onToggleLast={() => setLastTrick((v) => (v ? null : "peek"))}
+            open={isOpen}
+            onToggle={canToggle ? () => (isOpen ? closeTrick() : setOpenTrick(finished)) : undefined}
           />
           {edge(at("rho"))}
         </Box>
@@ -292,13 +367,24 @@ export function PlayHand(p: Props) {
               Claim
             </Button>
           )}
-          {p.onStop && (
-            <Button variant="outlined" onClick={p.onStop}>
-              Stop playing
-            </Button>
-          )}
         </Stack>
       </Stack>
+
+      {/* Someone has led to the next trick while yours is still open: it stays until you close it. */}
+      <Notice
+        notice={
+          mustClose
+            ? {
+                key: `trick-${finished}`,
+                text: `Trick ${finished + 1} has started`,
+                severity: "warning",
+                persistent: true,
+                action: { label: `Close trick ${finished}`, onClick: closeTrick },
+              }
+            : null
+        }
+        onClose={closeTrick}
+      />
 
       {claiming && (
         <ClaimDialog
@@ -371,28 +457,33 @@ function SeatBox({ title, active, children }: { title: string; active: boolean; 
 }
 
 /**
- * The trick in the middle, each card on its player's side. Between tricks the last one lies face
- * down until the next lead; tap it to turn it face up (and again to turn it back).
+ * The trick in the middle, each card on its player's side. The last finished trick shows while it's
+ * open (face up), even after the next lead; closed, it lies face down until the next lead. Tap it
+ * to close it, or to open it again (when `onToggle` is given).
  */
 function TrickView({
   state,
   seat,
-  lastTrick,
-  onToggleLast,
+  open,
+  onToggle,
 }: {
   state: PlayState;
   seat: Seat;
-  lastTrick: "just-won" | "peek" | null;
-  onToggleLast: () => void;
+  /** The last finished trick is open (face up) on this device. */
+  open: boolean;
+  /** Present when you can close or open it. */
+  onToggle?: () => void;
 }) {
   const now = currentTrick(state);
   const last = finishedTricks(state).at(-1);
   // Between tricks, and once the last trick is in: the trick just won.
   const between = (now.cards.length === 0 || now.cards.length === 4) && !!last;
-  const trick: Trick = between ? last : now;
+  // The last trick shows while it's open, or face down between tricks.
+  const showingLast = !!last && (open || between);
+  const trick: Trick = showingLast ? last : now;
   const number = state.tricks.indexOf(trick) + 1;
   const winner = trick.cards.length === 4 ? trickWinner(trick, state.trump)!.seat : null;
-  const faceUp = !between || lastTrick !== null;
+  const faceUp = !showingLast || open;
   const AREA = {
     partner: "top",
     lho: "left",
@@ -430,17 +521,17 @@ function TrickView({
     </Box>
   );
 
-  const caption = between
-    ? `Trick ${number}: ${SEAT_NAMES[winner!]} won it · ${faceUp ? "tap to turn over" : "tap to see it"}`
+  const caption = showingLast
+    ? `Trick ${number}: ${SEAT_NAMES[winner!]} won it${onToggle ? ` · ${faceUp ? "tap to close" : "tap to see it"}` : ""}`
     : `Trick ${number}${trick.cards.length > 0 ? ` · ${SEAT_NAMES[trick.leader]} led` : ""}`;
 
   return (
     <Box sx={{ textAlign: "center" }}>
-      {between ? (
+      {showingLast && onToggle ? (
         <ButtonBase
-          onClick={onToggleLast}
+          onClick={onToggle}
           aria-label={
-            faceUp ? `Trick ${number}, won by ${SEAT_NAMES[winner!]}. Turn it face down` : `Trick ${number}, face down. Show it`
+            faceUp ? `Trick ${number}, won by ${SEAT_NAMES[winner!]}. Close it` : `Trick ${number}, face down. Show it`
           }
           sx={{
             display: "block",

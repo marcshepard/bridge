@@ -15,6 +15,10 @@ export interface NoticeMessage {
   text: ReactNode;
   /** An optional follow-up, e.g. "Show board". */
   action?: { label: string; onClick: () => void };
+  /** "warning" for something you need to do (default "info": news). */
+  severity?: "info" | "warning";
+  /** Stays until closed (or until the message is taken away), instead of going after a few seconds. */
+  persistent?: boolean;
 }
 
 interface Props {
@@ -28,7 +32,7 @@ export function Notice({ notice, onClose }: Props) {
       key={notice?.key}
       open={notice !== null}
       // Long enough to read twice; the timer pauses while it's touched, hovered or focused.
-      autoHideDuration={AUTO_HIDE_MS}
+      autoHideDuration={notice?.persistent ? null : AUTO_HIDE_MS}
       onClose={(_, reason) => {
         // Taps elsewhere on the screen don't dismiss it early.
         if (reason !== "clickaway") onClose();
@@ -36,7 +40,7 @@ export function Notice({ notice, onClose }: Props) {
       anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
     >
       <Alert
-        severity="info"
+        severity={notice?.severity ?? "info"}
         variant="filled"
         // An Alert drops its own close button when given an action, so both are here.
         action={

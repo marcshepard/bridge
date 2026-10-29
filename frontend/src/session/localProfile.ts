@@ -9,6 +9,7 @@ interface Profile {
   name: string;
   playerIds: Record<string, string>;
   currentGame: string | null;
+  installBannerClosed: boolean;
 }
 
 export class LocalProfileStore implements ProfileStore {
@@ -29,12 +30,17 @@ export class LocalProfileStore implements ProfileStore {
       const raw = localStorage.getItem(this.key);
       if (raw) {
         const p = JSON.parse(raw) as Partial<Profile>;
-        return { name: p.name ?? "", playerIds: p.playerIds ?? {}, currentGame: p.currentGame ?? null };
+        return {
+          name: p.name ?? "",
+          playerIds: p.playerIds ?? {},
+          currentGame: p.currentGame ?? null,
+          installBannerClosed: p.installBannerClosed ?? false,
+        };
       }
     } catch {
       // Unreadable or unavailable: start fresh.
     }
-    return { name: "", playerIds: {}, currentGame: null };
+    return { name: "", playerIds: {}, currentGame: null, installBannerClosed: false };
   }
 
   private write(): void {
@@ -75,6 +81,15 @@ export class LocalProfileStore implements ProfileStore {
 
   setCurrentGame(code: string | null): void {
     this.profile.currentGame = code;
+    this.write();
+  }
+
+  installBannerClosed(): boolean {
+    return this.profile.installBannerClosed;
+  }
+
+  setInstallBannerClosed(): void {
+    this.profile.installBannerClosed = true;
     this.write();
   }
 }

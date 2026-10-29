@@ -1,5 +1,5 @@
 // The bar at the top of every screen: app icon and name, help, and your avatar. The avatar menu
-// holds the Dark mode switch and "Leave game".
+// holds the Dark mode switch, "Leave game", and "Install to home screen" until the app is installed.
 
 import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import {
@@ -24,9 +24,11 @@ interface Props {
   onHelp: () => void;
   /** Present only while you're in a game. */
   onLeaveGame?: () => void;
+  /** Present only while the app isn't installed (it's in a browser tab). */
+  onInstall?: () => void;
 }
 
-export function AppHeader({ name, onHelp, onLeaveGame }: Props) {
+export function AppHeader({ name, onHelp, onLeaveGame, onInstall }: Props) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const { mode, setMode } = useColorScheme();
   const dark = mode === "dark";
@@ -84,6 +86,16 @@ export function AppHeader({ name, onHelp, onLeaveGame }: Props) {
         >
           <ListItemText>Leave game</ListItemText>
         </MenuItem>
+        {onInstall && (
+          <MenuItem
+            onClick={() => {
+              setAnchor(null);
+              onInstall();
+            }}
+          >
+            <ListItemText>Install to home screen</ListItemText>
+          </MenuItem>
+        )}
       </Menu>
     </AppBar>
   );

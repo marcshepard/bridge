@@ -53,8 +53,6 @@ export interface GameStore {
   saveResult(code: string, board: number, result: SaveResultRequest): Promise<ResultDto>;
   /** The creator starts playing a board's cards on the devices (its contract must be in). */
   startCardPlay(code: string, board: number): Promise<ResultDto>;
-  /** The creator stops playing a board on the devices; the cards played are thrown away. */
-  stopCardPlay(code: string, board: number): Promise<void>;
   /** Play a card ("SA") as card number `seq` (1–52) on the board. Rejects with the reason if refused. */
   playCard(code: string, board: number, seq: number, card: string): Promise<PlayDto>;
   /** Claim this many of the tricks left on the board, for your side. */
@@ -91,4 +89,7 @@ export interface ProfileStore {
   /** The game this device is in right now, so a reload goes straight back to it. */
   currentGame(): string | null;
   setCurrentGame(code: string | null): void;
+  /** The install banner was closed on this computer: don't show it again. */
+  installBannerClosed(): boolean;
+  setInstallBannerClosed(): void;
 }

@@ -16,6 +16,7 @@ import { Notice, type NoticeMessage } from "./controls/Notice";
 import { SheetDialog } from "./controls/SheetDialog";
 import { HelpDialog } from "./components/HelpDialog";
 import { InstallBanner } from "./components/InstallBanner";
+import { useInstall } from "./install";
 import { ReconnectingBanner } from "./components/ReconnectingBanner";
 import { SeatRequestDialog } from "./components/SeatRequestDialog";
 import { formatJoinCode, sameName, seatRequestNews } from "./labels";
@@ -25,7 +26,7 @@ import { Lobby } from "./screens/Lobby";
 import { Play } from "./screens/Play";
 import { StartGame } from "./screens/StartGame";
 
-type Dialog = "start" | "join" | "help" | "leave" | null;
+type Dialog = "start" | "join" | "help" | "leave" | "install" | null;
 
 /** A code from a shared link, removed from the address bar once read (other options, like dev mode's `?as=`, stay). */
 function takeJoinCodeFromUrl(): string | null {
@@ -58,14 +59,14 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
 
   /**
    * A result saved here or pushed from another device: replace that board's result. A board's
-   * cards and claim are kept only while it's still being played on the devices (a fresh start has
-   * none).
+   * cards and claim are kept while it's being played on the devices, and when that play has just
+   * ended (the finished table stays on screen for a moment); a fresh start has none.
    */
   const mergeResult = useCallback((result: ResultDto) => {
     setSnapshot((s) => {
       if (!s) return s;
       const before = s.results.find((r) => r.board === result.board);
-      const keepPlays = isLive(result) && !!before && isLive(before);
+      const keepPlays = result.onDevices && !!before && isLive(before);
       return {
         ...s,
         results: [...s.results.filter((r) => r.board !== result.board), result],
@@ -159,6 +160,7 @@ export function App() {
   const [linkCode] = useState(takeJoinCodeFromUrl);
   const [code, setCode] = useState<string | null>(() => profile.currentGame());
   const [dialog, setDialog] = useState<Dialog>(() => (linkCode !== null && profile.name() ? "join" : null));
+  const install = useInstall();
   const [notice, setNotice] = useState<string | null>(null);
   const [leaveError, setLeaveError] = useState<string | null>(null);
 
@@ -264,9 +266,10 @@ export function App() {
         name={name}
         onHelp={() => setDialog("help")}
         onLeaveGame={code && snapshot ? () => setDialog("leave") : undefined}
+        onInstall={install.canInstall ? () => setDialog("install") : undefined}
       />
       {code && !online && <ReconnectingBanner />}
-      <InstallBanner />
+      <InstallBanner open={dialog === "install"} onOpen={() => setDialog("install")} onClose={() => setDialog(null)} />
       {page}
 
       <StartGame open={dialog === "start"} name={name} onClose={() => setDialog(null)} onCreated={enter} />

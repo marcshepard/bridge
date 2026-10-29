@@ -126,10 +126,6 @@ export class ApiGameStore implements GameStore {
     return this.request<ResultDto>("POST", `/events/${code}/boards/${board}/play`, code, {});
   }
 
-  async stopCardPlay(code: string, board: number): Promise<void> {
-    await this.request<void>("DELETE", `/events/${code}/boards/${board}/play`, code);
-  }
-
   playCard(code: string, board: number, seq: number, card: string): Promise<PlayDto> {
     const body: PlayCardRequest = { seq, card };
     return this.request<PlayDto>("POST", `/events/${code}/boards/${board}/cards`, code, body);

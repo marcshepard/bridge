@@ -10,6 +10,7 @@ import {
   claimAccepted,
   claimAnswerers,
   dummyOf,
+  finalTricks,
   isComplete,
   parseCard,
   playCard,
@@ -374,18 +375,6 @@ app.post("/events/:code/boards/:board/play", async (c) => {
   return c.json(started);
 });
 
-/** Stop playing a board on the devices: the cards played so far are thrown away. Creator only. */
-app.delete("/events/:code/boards/:board/play", async (c) => {
-  const event = await loadEvent(c);
-  const me = caller(c, await db.getPlayers(c.env.DB, event.code));
-  if (!me.is_creator) throw new HttpError(403, "Only the player who started the game can stop playing on devices");
-  const { board, result } = await boardInPlay(c, event);
-  if (!result?.onDevices) return c.body(null, 204);
-  await db.setOnDevices(c.env.DB, event.code, board.number, false, nowIso());
-  await push(c, event.code, { type: "result", result: (await db.getResult(c.env.DB, event.code, board.number))! });
-  return c.body(null, 204);
-});
-
 /**
  * A board being played on the devices, as it stands: the position after the cards so far, and
  * any claim. Throws unless the board is being played (started, and its result not yet entered).
@@ -401,19 +390,28 @@ async function liveBoard(c: Ctx, event: db.EventRow) {
     db.getClaim(c.env.DB, event.code, board.number),
   ]);
   const state = replay(board.hands, contract.strain, result.declarer, plays.map((p) => parseCard(p.card)!));
-  return { board, declarer: result.declarer, plays, claim, state };
+  return { board, result, declarer: result.declarer, plays, claim, state };
+}
+
+/**
+ * Play is over (the last card, or a claim accepted): save the result for everyone, worked out
+ * with the same rules the devices use. `by` is the slot of whoever ended it.
+ */
+async function finishBoard(c: Ctx, code: string, result: ResultDto, tricks: number, by: number) {
+  const done: ResultDto = { ...result, tricks, enteredBy: by, updatedAt: nowIso() };
+  await db.upsertResult(c.env.DB, code, done);
+  await push(c, code, { type: "result", result: done });
 }
 
 /**
  * Play a card. It must be your turn (declarer also plays dummy's cards), and the card must be
- * legal: the same rules the devices use. After the last card the board waits for someone to enter
- * the result (the devices work it out from the tricks).
+ * legal: the same rules the devices use. The last card saves the board's result.
  */
 app.post("/events/:code/boards/:board/cards", async (c) => {
   const event = await loadEvent(c);
   const players = await db.getPlayers(c.env.DB, event.code);
   const me = caller(c, players);
-  const { board, declarer, plays, claim, state } = await liveBoard(c, event);
+  const { board, result, declarer, plays, claim, state } = await liveBoard(c, event);
   if (claim) throw new HttpError(409, "There's a claim to answer first");
   const req = await body<PlayCardRequest>(c);
   const card = parseCard(String(req.card ?? ""));
@@ -426,8 +424,9 @@ app.post("/events/:code/boards/:board/cards", async (c) => {
   const player = seat === dummyOf(declarer) ? declarer : seat;
   const forBot = me.is_creator === 1 && players.some((p) => p.seat === player && p.is_bot === 1);
   if (me.seat !== player && !forBot) throw new HttpError(409, "It isn't your turn");
+  let after;
   try {
-    playCard(state, card);
+    after = playCard(state, card);
   } catch (e) {
     throw new HttpError(400, (e as Error).message);
   }
@@ -437,6 +436,7 @@ app.post("/events/:code/boards/:board/cards", async (c) => {
     throw new HttpError(409, "That card has already been played, or play has moved on");
   }
   await push(c, event.code, { type: "play", play });
+  if (isComplete(after)) await finishBoard(c, event.code, result, finalTricks(after, null)!, me.slot);
   return c.json(play);
 });
 
@@ -448,7 +448,7 @@ app.post("/events/:code/boards/:board/claim", async (c) => {
   const event = await loadEvent(c);
   const players = await db.getPlayers(c.env.DB, event.code);
   const me = caller(c, players);
-  const { board, declarer, claim, state } = await liveBoard(c, event);
+  const { board, result, declarer, claim, state } = await liveBoard(c, event);
   if (!me.seat || me.seat === dummyOf(declarer)) throw new HttpError(403, "Dummy can't claim");
   if (claim) throw new HttpError(409, "There's already a claim");
   if (isComplete(state)) throw new HttpError(409, "All the cards have been played");
@@ -463,18 +463,20 @@ app.post("/events/:code/boards/:board/claim", async (c) => {
   await db.insertClaim(c.env.DB, event.code, made, nowIso());
   if (bots.length) await db.setClaimAccepted(c.env.DB, event.code, board.number, bots);
   await push(c, event.code, { type: "claim", board: board.number, claim: made });
+  // Against bots alone, the claim is accepted at once: that's the result.
+  if (claimAccepted(made, declarer)) await finishBoard(c, event.code, result, finalTricks(state, made)!, me.slot);
   return c.json(made);
 });
 
 /**
  * Accept or refuse a claim. The claimer's opponents answer (declarer alone, when a defender
  * claims: dummy doesn't). One refusal ends the claim and play goes on; when everyone who answers
- * has accepted, the board waits for its result to be entered.
+ * has accepted, the board's result is saved.
  */
 app.post("/events/:code/boards/:board/claim/answer", async (c) => {
   const event = await loadEvent(c);
   const me = caller(c, await db.getPlayers(c.env.DB, event.code));
-  const { board, declarer, claim } = await liveBoard(c, event);
+  const { board, result, declarer, claim, state } = await liveBoard(c, event);
   if (!claim) throw new HttpError(409, "There's no claim to answer");
   if (claimAccepted(claim, declarer)) throw new HttpError(409, "The claim has already been accepted");
   if (!me.seat || !claimAnswerers(claim.seat, declarer).includes(me.seat)) {
@@ -489,6 +491,7 @@ app.post("/events/:code/boards/:board/claim/answer", async (c) => {
   const answered: ClaimDto = { ...claim, acceptedBy: [...new Set([...claim.acceptedBy, me.seat])] };
   await db.setClaimAccepted(c.env.DB, event.code, board.number, answered.acceptedBy);
   await push(c, event.code, { type: "claim", board: board.number, claim: answered });
+  if (claimAccepted(answered, declarer)) await finishBoard(c, event.code, result, finalTricks(state, answered)!, me.slot);
   return c.json(answered);
 });
 

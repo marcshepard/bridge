@@ -17,27 +17,13 @@ DESIGN.md): the creator starts it board by board, with claims and no undo. Still
   X, XX), ending where play starts today (the contract entered).
 - **Choosing how cards are played:** per game rather than the creator tapping Play on each board,
   without putting it in settings (decided 28 Oct 2026: it's per game, and per board while trying it).
-- **Confirm "Stop playing"** (it throws away every card played), with `ConfirmButton`.
-- **Telling you it's your turn** when your phone is face down or in another app: a vibration, or
-  "Your turn" in the browser tab's title. Real notifications are a much bigger job.
+- **Telling you it's your turn** when your phone is face down or in another app: "Your turn" in
+  the browser tab's title. Real notifications are a much bigger job. (Not vibration: Marc doesn't
+  want it.)
 - **Height on a phone:** check the play table fits held upright with dummy on top; if not, a slimmer
   header during play.
 - **Reviewing the play** on a finished board, trick by trick (the cards are stored; the snapshot
   only sends them for the board being played).
-
-## Hide the other hands from each device
-
-Every device gets the whole game file in the snapshot (`GET /events/:code`): all boards, all four
-hands, double dummy, par and commentary. Anyone can read the other hands with the browser's
-developer tools. Fine among friends, but it needs fixing before play on devices goes beyond them.
-
-- **What a device needs:** its own hand; dummy after the opening lead; a claimer's hand during a
-  claim; all four hands (and double dummy, par, commentary) once the board has a result.
-- **The full fix:** the backend trims the snapshot per player and hands out cards as each board
-  goes on. Every screen that reads `board.hands` then copes with hands it doesn't have yet. Decide
-  whether games played with real cards keep today's "everything up front".
-- **A cheap middle step:** leave the hands out of the snapshot and fetch them on a separate request
-  when a board starts. That stops casual peeking, not a determined player.
 
 ## Rate limiting
 
@@ -54,11 +40,21 @@ caps the Worker at 100,000 requests a day):
   `workers.dev` address; they'd be an option after moving to a custom domain.
 - Seat requests already have their own limit (5 waiting per game).
 
-## End of game
+## Hide the other hands from each device
 
-A post-mortem when someone ends the game: a celebration or commiseration depending on the side,
-then the final tally grid, where each board opens its final state (hands, result, analysis).
-Depending on feedback.
+Every device gets the whole game file in the snapshot (`GET /events/:code`): all boards, all four
+hands, double dummy, par and commentary. Anyone can read the other hands with the browser's
+developer tools. Fine among friends, but it needs fixing before play on devices goes beyond them.
+Not urgent: every game is a replay of a deal already published with its results, so there's
+nothing secret to protect beyond the fairness of one game, and rate limiting comes first.
+
+- **What a device needs:** its own hand; dummy after the opening lead; a claimer's hand during a
+  claim; all four hands (and double dummy, par, commentary) once the board has a result.
+- **The full fix:** the backend trims the snapshot per player and hands out cards as each board
+  goes on. Every screen that reads `board.hands` then copes with hands it doesn't have yet. Decide
+  whether games played with real cards keep today's "everything up front".
+- **A cheap middle step:** leave the hands out of the snapshot and fetch them on a separate request
+  when a board starts. That stops casual peeking, not a determined player.
 
 ## Ideas, not planned
 
@@ -66,6 +62,11 @@ Depending on feedback.
   (needs pair-level results from the source).
 - Double dummy computed in the browser (DDS via WebAssembly) for sources that don't supply it.
 - More than one table, and spectators.
+- **"Not played":** give up on a board partway through, on the devices or with real cards (a dead
+  device, a mix-up), without replaying it. The board is scored as not played, the way a director
+  gives an average when a board can't be finished (Law 12), rather than thrown away and restarted.
+  Anyone can do it, with a confirmation. (Replaces the old creator-only "Stop playing", which threw
+  the cards away so the board could be played again.)
 - A custom domain (a subdomain of `navia-apps.com`, or a new name), attached in the Cloudflare
   dashboard without code changes.
 

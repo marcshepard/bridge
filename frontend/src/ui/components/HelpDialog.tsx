@@ -106,7 +106,10 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         <li>
           Once the contract is in, the person who started the game taps <strong>Play</strong> next to{" "}
           <strong>Enter the result</strong>. Everyone's screen goes to that board and shows the table: your cards
-          at the bottom, the trick in the middle, and the line above it says whose turn it is.
+          at the bottom, the trick in the middle, and at the top the contract, whose turn it is and the tricks
+          each side has won. When it's your turn, it says{" "}
+          <strong>Your turn</strong> in a green box that pulses. When you're declarer and it's dummy's turn, it says{" "}
+          <strong>Dummy's turn</strong> in the same green box: play a card from dummy.
         </li>
         <li>
           To play a card, tap it once to pick it (it lifts up), then tap it again to play it. Cards you can't
@@ -118,8 +121,11 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           their own; dummy just watches.
         </li>
         <li>
-          When a trick is complete, it stays face up for a moment, then turns face down in the middle. Anyone can
-          tap it to see that trick again, until the next card is led.
+          When a trick is complete, it stays face up in the middle so you can look at it as long as you need (up
+          to 30 seconds). Tap it to close it when you're done; leading to the next trick closes it too. If
+          someone else leads first, a message at the bottom says the next trick has started: close the old
+          trick to see the new one and play to it. Until the next card is led, you can tap a closed trick to
+          see it again. Dummy's screen closes the trick by itself when the next card is led.
         </li>
         <li>
           <strong>Claim:</strong> when you know how the rest will go, tap <strong>Claim</strong> and say how many
@@ -129,8 +135,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
         <li>
           When the last card is played, or a claim is accepted, the line above the table says how it went, for
-          example <strong>Game down 1: 9 tricks</strong>. Anyone taps <strong>Enter the result</strong> to save it,
-          and everyone sees the result and the four hands as usual.
+          example <strong>Game down 1: 9 tricks</strong>. The result is saved for everyone straight away, and a
+          few seconds later every screen shows the result and the four hands as usual.
         </li>
       </Box>
 
@@ -211,7 +217,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
 
       <Heading>Put it on your home screen</Heading>
       <Typography sx={{ mb: 1 }}>
-        Install the app and it opens like any other app, full screen, from its own icon.
+        Install the app and it opens like any other app, full screen, from its own icon. Until you do, your
+        avatar menu (top right) has <strong>Install to home screen</strong>, which shows you how.
       </Typography>
       <Box component="ul" sx={{ m: 0, pl: 2.5, display: "grid", gap: 0.5 }}>
         <li>

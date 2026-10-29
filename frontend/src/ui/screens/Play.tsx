@@ -16,6 +16,7 @@ import {
 } from "../../session/session";
 import type { Game } from "../../providers/types";
 import type { ClaimDto, EventSnapshot, PlayDto, ResultDto } from "../../session/store";
+import { parseContract } from "../../core/contract";
 import { cardCode, parseCard } from "../../core/play";
 import { games } from "../../services";
 import { AnalysisDialog, BoardInfoDialog, BreakdownDialog, FieldDialog } from "../components/BoardDialogs";
@@ -27,6 +28,9 @@ import { toneOf } from "../controls/ScoreChip";
 import { formatMargin, isAway } from "../labels";
 import { EnterResultDialog, type EntryStep } from "./EnterResult";
 import { PlayBoard } from "./PlayBoard";
+
+/** How long the finished table stays on screen after the play ends, before the result screen. */
+const END_PAUSE_MS = 3000;
 
 type Dialog = EntryStep | "tally" | "info" | "breakdown" | "field" | "analysis" | null;
 
@@ -65,6 +69,23 @@ export function Play({ snapshot, game, seat, onSaved, onPlayed, onClaim, onNotic
   useEffect(() => {
     if (liveBoard !== undefined) setCurrent(liveBoard);
   }, [liveBoard]);
+
+  // When the play ends (the last card, or a claim accepted), the backend saves the result. The
+  // finished table stays on screen for a moment, showing how it went, before the result screen.
+  const [ending, setEnding] = useState<number | null>(null);
+  const wasLive = useRef(liveBoard);
+  useEffect(() => {
+    const ended = wasLive.current;
+    wasLive.current = liveBoard;
+    if (ended === undefined || ended === liveBoard) return;
+    const r = snapshot.results.find((x) => x.board === ended);
+    if (r?.onDevices && r.tricks !== null) setEnding(ended);
+  }, [liveBoard]);
+  useEffect(() => {
+    if (ending === null) return;
+    const timer = setTimeout(() => setEnding(null), END_PAUSE_MS);
+    return () => clearTimeout(timer);
+  }, [ending]);
 
   // Tell this device when someone else corrects a finished board: it may be one you've moved on
   // from, and it changes the tally.
@@ -113,6 +134,12 @@ export function Play({ snapshot, game, seat, onSaved, onPlayed, onClaim, onNotic
 
   const isCreator = snapshot.you?.isCreator ?? false;
   const live = !!shared && shared.onDevices && shared.tricks === null;
+  // The contract on the play table: also for the moment after play ends, once the result is in.
+  const playContract =
+    contract ??
+    (ending === board.number && shared?.declarer && parseContract(shared.contract)
+      ? { contract: parseContract(shared.contract)!, declarer: shared.declarer }
+      : null);
   const cards = useMemo(
     () =>
       snapshot.plays
@@ -166,7 +193,7 @@ export function Play({ snapshot, game, seat, onSaved, onPlayed, onClaim, onNotic
           ariaLabel: `Running tally: ${tallyLabel}. Show board by board.`,
         }}
         comparison={comparison}
-        contract={contract}
+        contract={playContract}
         enteredBy={enteredBy}
         onTally={() => setDialog("tally")}
         onBoardInfo={() => setDialog("info")}
@@ -178,7 +205,7 @@ export function Play({ snapshot, game, seat, onSaved, onPlayed, onClaim, onNotic
             : undefined
         }
         play={
-          live && contract
+          (live || ending === board.number) && playContract
             ? {
                 bots: snapshot.players.filter((pl) => pl.isBot && pl.seat).map((pl) => pl.seat!),
                 playsForBots: isCreator,
@@ -191,11 +218,6 @@ export function Play({ snapshot, game, seat, onSaved, onPlayed, onClaim, onNotic
                   await games.withdrawClaim(snapshot.code, board.number);
                   onClaim(board.number, null);
                 },
-                onEnterResult: async (tricks) =>
-                  onSaved(await games.saveResult(snapshot.code, board.number, { contract: shared!.contract, declarer: contract.declarer, tricks })),
-                onStop: isCreator
-                  ? () => void act("Couldn't stop playing", () => games.stopCardPlay(snapshot.code, board.number))
-                  : undefined,
               }
             : null
         }
