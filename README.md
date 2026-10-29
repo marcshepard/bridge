@@ -73,7 +73,8 @@ example to restart one without the other:
 | Backend only (:8787) | **Start backend** | `npm run dev` in `backend/` |
 | Both | **start bridge app** (Ctrl+Shift+B) | `npm run dev` in `frontend/` |
 
-The VS Code **start bridge app** task runs the other two side by side, each in its own terminal.
+The VS Code **start bridge app** task runs the other two side by side, each in its own terminal,
+starting the frontend once the backend is ready.
 
 **Using it from other devices at the table.** The frontend's dev server also listens on your local
 network. The terminal prints a `Network:` address such as `http://192.168.1.20:5185`. Open that on

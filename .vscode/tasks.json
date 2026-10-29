@@ -59,9 +59,11 @@
     },
     {
       "label": "start bridge app",
-      "detail": "Backend and frontend together, each in its own terminal",
+      "detail": "Backend and frontend together, each in its own terminal (the frontend once the backend is ready)",
       "dependsOn": ["Start backend", "Start frontend"],
-      "dependsOrder": "parallel",
+      // In sequence: the frontend starts once the backend says "Ready on", so open browser tabs
+      // don't hit a backend that isn't listening yet.
+      "dependsOrder": "sequence",
       "problemMatcher": [],
       "group": { "kind": "build", "isDefault": true }
     },
