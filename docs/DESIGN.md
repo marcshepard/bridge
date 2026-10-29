@@ -249,7 +249,8 @@ shows where to sit physically: "You're North, opposite Bob, with Ann on your lef
   for your side, e.g. "NS +140". Tapping the tally opens a dialog with the board-by-board grid.
 - A compass with the players' names, **you at the bottom**, and Dealer / Vulnerable chips under
   the names (no separate dealer and vulnerability sentence). A player who isn't connected is
-  greyed out with a small no-signal icon; tap it for "Away".
+  greyed out with a small no-signal icon; tap it for "Away". Only once they've been gone 5 seconds
+  (`useSteadyPresence` in App.tsx), so a dropped connection that comes straight back shows nothing.
 - The **board number** in the middle of the compass counts from 1 in the order you play (a game
   started at original board 9 shows 1 there). Tap it for board details: the game's title, the
   original board number "of" the game's boards, and how many field results it's scored against.

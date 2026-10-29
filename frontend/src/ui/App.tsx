@@ -44,6 +44,33 @@ const isLive = (r: ResultDto) => r.onDevices && r.tricks === null;
 const OFFLINE_CHECK_MS = 10_000;
 /** How long the live connection is down before the header says "Reconnecting". */
 const RECONNECTING_AFTER_MS = 5_000;
+/** How long another player's device has been gone before they show as away. */
+const AWAY_AFTER_MS = 5_000;
+
+/**
+ * The snapshot as the screens show it: another player shows as away only once their device has
+ * been gone a few seconds, so a blip (a background window's connection dropping and coming
+ * straight back) shows nothing on anyone's screen. Coming back shows at once, and players who are
+ * already away when the game opens (bots, say) show as away straight away.
+ */
+function useSteadyPresence(snapshot: EventSnapshot | null): EventSnapshot | null {
+  const down = snapshot?.players.filter((p) => !p.connected).map((p) => p.slot).join(",") ?? null;
+  // The away list once it has held for AWAY_AFTER_MS (null: no game yet, so the first list counts).
+  const [settled, setSettled] = useState<string | null>(null);
+  useEffect(() => {
+    if (down === null) {
+      setSettled(null);
+      return;
+    }
+    const timer = setTimeout(() => setSettled(down), settled === null ? 0 : AWAY_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [down]);
+  return useMemo(() => {
+    if (!snapshot) return snapshot;
+    const away = new Set((settled ?? down ?? "").split(",").filter(Boolean).map(Number));
+    return { ...snapshot, players: snapshot.players.map((p) => ({ ...p, connected: p.connected || !away.has(p.slot) })) };
+  }, [snapshot, settled, down]);
+}
 
 /**
  * The game you're in: its snapshot, kept current by live updates, and whether this device's live
@@ -196,7 +223,9 @@ export function App() {
   const onNews = useCallback((text: string) => setNews({ key: Date.now(), text }), []);
   const [laterRequests, setLaterRequests] = useState<string[]>([]);
 
-  const { snapshot, error, mergeResult, mergeCall, mergePlay, mergeClaim, online } = useGame(code, onGone, onNews);
+  const live = useGame(code, onGone, onNews);
+  const { error, mergeResult, mergeCall, mergePlay, mergeClaim, online } = live;
+  const snapshot = useSteadyPresence(live.snapshot);
   // Say "Reconnecting" only once the connection has been down a while: a blip that's back within
   // a few seconds (the usual case) shows nothing.
   const [reconnecting, setReconnecting] = useState(false);
