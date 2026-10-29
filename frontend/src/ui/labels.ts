@@ -126,7 +126,7 @@ function showTenth(n: number): string {
 
 /**
  * A player with no live connection right now (asleep, closed the app, lost signal). You're never
- * shown as away on your own screen: if your connection is down, the reconnecting banner says so.
+ * shown as away on your own screen: if your connection is down, the header's "Reconnecting" icon says so.
  */
 export function isAway(p: { connected: boolean; slot: number }, mySlot: number | null): boolean {
   return !p.connected && p.slot !== mySlot;

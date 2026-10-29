@@ -221,8 +221,9 @@ export class ApiGameStore implements GameStore {
       let ticket: string;
       try {
         ({ ticket } = await this.request<LiveTicketResponse>("POST", `/events/${code}/live-ticket`, code));
-      } catch {
+      } catch (e) {
         connecting = false;
+        console.info(`Live connection couldn't open: ${(e as Error).message}, tab ${document.visibilityState}`);
         lost();
         return;
       }
@@ -247,8 +248,15 @@ export class ApiGameStore implements GameStore {
           // Not a message we understand; ignore it.
         }
       };
-      ws.onclose = () => {
+      ws.onclose = (e) => {
         clearInterval(ping);
+        // Why the link dropped, for working out where drops come from (open the browser console):
+        // 1006 with the tab hidden is usually the browser putting a background tab to sleep.
+        if (!stopped) {
+          console.info(
+            `Live connection closed: code ${e.code}${e.reason ? ` (${e.reason})` : ""}, tab ${document.visibilityState}`,
+          );
+        }
         lost();
       };
     };

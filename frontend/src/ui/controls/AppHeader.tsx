@@ -1,6 +1,9 @@
 // The bar at the top of every screen: app icon and name, help, and your avatar. The avatar menu
 // holds the Dark mode switch, "Leave game", and "Install to home screen" until the app is installed.
+// While this device's live connection to the game is down, a small no-signal icon ("Reconnecting")
+// sits beside Help: in the bar, so it never moves the page or covers anything.
 
+import CloudOffIcon from "@mui/icons-material/CloudOff";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import {
   AppBar,
@@ -26,9 +29,11 @@ interface Props {
   onLeaveGame?: () => void;
   /** Present only while the app isn't installed (it's in a browser tab). */
   onInstall?: () => void;
+  /** This device's live connection to the game has been down for a few seconds. */
+  reconnecting?: boolean;
 }
 
-export function AppHeader({ name, onHelp, onLeaveGame, onInstall }: Props) {
+export function AppHeader({ name, onHelp, onLeaveGame, onInstall, reconnecting = false }: Props) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const { mode, setMode } = useColorScheme();
   const dark = mode === "dark";
@@ -48,6 +53,28 @@ export function AppHeader({ name, onHelp, onLeaveGame, onInstall }: Props) {
         <Typography variant="h6" component="p" noWrap sx={{ flex: 1, minWidth: 0 }}>
           Bridge Replay
         </Typography>
+        {/* The same no-signal icon as an away player's; the word too where there's room. */}
+        <Box role="status" aria-live="polite">
+          {reconnecting && (
+            <Tooltip
+              title="Reconnecting. You'll catch up on anything you missed as soon as it's back."
+              enterTouchDelay={0}
+              leaveTouchDelay={3000}
+              arrow
+            >
+              <Box
+                tabIndex={0}
+                aria-label="Reconnecting"
+                sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, cursor: "help" }}
+              >
+                <CloudOffIcon />
+                <Typography variant="body2" component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                  Reconnecting
+                </Typography>
+              </Box>
+            </Tooltip>
+          )}
+        </Box>
         <Tooltip title="Help">
           <IconButton color="inherit" aria-label="Help" onClick={onHelp} size="large">
             <HelpOutlineIcon />

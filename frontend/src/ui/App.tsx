@@ -17,7 +17,6 @@ import { SheetDialog } from "./controls/SheetDialog";
 import { HelpDialog } from "./components/HelpDialog";
 import { InstallBanner } from "./components/InstallBanner";
 import { useInstall } from "./install";
-import { ReconnectingBanner } from "./components/ReconnectingBanner";
 import { SeatRequestDialog } from "./components/SeatRequestDialog";
 import { formatJoinCode, sameName, seatRequestNews } from "./labels";
 import { Home } from "./screens/Home";
@@ -43,6 +42,8 @@ const isLive = (r: ResultDto) => r.onDevices && r.tricks === null;
 
 /** While the live connection is down, check this often whether you still have your seat. */
 const OFFLINE_CHECK_MS = 10_000;
+/** How long the live connection is down before the header says "Reconnecting". */
+const RECONNECTING_AFTER_MS = 5_000;
 
 /**
  * The game you're in: its snapshot, kept current by live updates, and whether this device's live
@@ -196,6 +197,15 @@ export function App() {
   const [laterRequests, setLaterRequests] = useState<string[]>([]);
 
   const { snapshot, error, mergeResult, mergeCall, mergePlay, mergeClaim, online } = useGame(code, onGone, onNews);
+  // Say "Reconnecting" only once the connection has been down a while: a blip that's back within
+  // a few seconds (the usual case) shows nothing.
+  const [reconnecting, setReconnecting] = useState(false);
+  useEffect(() => {
+    setReconnecting(false);
+    if (online || !code) return;
+    const timer = setTimeout(() => setReconnecting(true), RECONNECTING_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [online, code]);
   // Seat requests to answer: only once you're in the game, and not ones you've put off.
   const request = snapshot?.you ? snapshot.requests.find((r) => !laterRequests.includes(r.id)) : undefined;
   // The game file is parsed once per game, not on every live update.
@@ -288,8 +298,8 @@ export function App() {
         onHelp={() => setDialog("help")}
         onLeaveGame={code && snapshot ? () => setDialog("leave") : undefined}
         onInstall={install.canInstall ? () => setDialog("install") : undefined}
+        reconnecting={reconnecting}
       />
-      {code && !online && <ReconnectingBanner />}
       <InstallBanner open={dialog === "install"} onOpen={() => setDialog("install")} onClose={() => setDialog(null)} />
       {page}
 

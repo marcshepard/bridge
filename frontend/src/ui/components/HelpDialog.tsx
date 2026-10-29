@@ -92,7 +92,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
         <li>
           If someone's phone goes to sleep or loses signal, their name is greyed out with a small no-signal icon
-          (a cloud with a line through it) until they're back. Tap the icon to see what it means. If it's yours, a <strong>Reconnecting…</strong> strip shows at the top; the app
+          (a cloud with a line through it) until they're back. Tap the icon to see what it means. If it's yours, the same icon shows at the top, beside Help (with <strong>Reconnecting</strong> where there's room); the app
           reconnects by itself and catches up on anything you missed.
         </li>
       </Box>
