@@ -11,7 +11,8 @@ import type { Board, Game } from "../../providers/types";
 import { ResultText, ScoreText } from "../controls/BridgeText";
 import { Section } from "../controls/Layout";
 import { SheetDialog } from "../controls/SheetDialog";
-import { formatImps } from "../labels";
+import { HelpTip } from "../controls/HelpTip";
+import { formatImps, netParts } from "../labels";
 import { Breakdown } from "./Breakdown";
 import { DoubleDummyTable } from "./DoubleDummyTable";
 import { Traveller } from "./Traveller";
@@ -32,24 +33,20 @@ function perspective(c: BoardComparison, seat: Seat): string | undefined {
     : "your side defended, so this counts against declarer";
 }
 
-/** The most common score in the field, for your side by name: "−100 EW". The list below has the detail. */
+/** The most common score in the field, for your side like every score shown. The list below has the detail. */
 function MostCommon({ c }: { c: BoardComparison }) {
   const g = c.mostCommon;
   if (!g) return null;
-  return (
-    <>
-      <ScoreText score={g.score} /> {c.direction}
-    </>
-  );
+  return <ScoreText score={g.score} />;
 }
 
-/** Double-dummy par for your side, with the par contracts when the source names them. */
+/** Double-dummy par (for your side, like every score shown), with the par contracts when the source names them. */
 function Par({ board, seat }: { board: Board; seat: Seat }) {
   const par = board.doubleDummy?.par;
   if (!par) return null;
   return (
     <>
-      <ScoreText score={scoreFor(directionOf(seat), par.nsScore)} /> for your side
+      <ScoreText score={scoreFor(directionOf(seat), par.nsScore)} />
       {par.contracts.length > 0 && (
         <>
           {" ("}
@@ -62,6 +59,34 @@ function Par({ board, seat }: { board: Board; seat: Seat }) {
           {")"}
         </>
       )}
+    </>
+  );
+}
+
+/** What IMPs are, worked through for this board: the difference from the field average, then the scale. */
+function ImpsHelp({ c }: { c: BoardComparison }) {
+  const diff = c.ourScore - c.fieldDatum;
+  return (
+    <>
+      <span>
+        IMPs (International Match Points) measure by how much you beat a score, where matchpoints count how many
+        tables you beat. They're how team games are scored; here they're a second view of the same board.
+      </span>
+      <span>
+        Your <ScoreText score={c.ourScore} /> is{" "}
+        {diff === 0 ? (
+          "the same as"
+        ) : (
+          <>
+            <span className="num">{Math.abs(diff)}</span> {diff > 0 ? "more than" : "less than"}
+          </>
+        )}{" "}
+        the field average of <ScoreText score={c.fieldDatum} />, which is worth{" "}
+        <strong className="num">{formatImps(c.impsVsDatum)}</strong> IMPs.
+      </span>
+      <span>
+        The scale squeezes big swings: a difference of 20–40 points is 1 IMP, 400 points is 9, and the most is 24.
+      </span>
     </>
   );
 }
@@ -84,26 +109,54 @@ export function FieldDialog({ open, onClose, board, seat, c }: Props) {
         <Alert severity="info">This game has no results from the original field for this board.</Alert>
       ) : (
         <>
-          <Typography sx={{ mb: 2 }}>
-            You beat {c.beat} of {c.fieldSize} tables{c.tied > 0 && <>, tied with {c.tied}</>}
-            {c.lost > 0 && <>, and lost to {c.lost}</>}. Against the field average of{" "}
-            <ScoreText score={c.fieldDatum} /> that's <span className="num">{formatImps(c.impsVsDatum)}</span> IMPs.
-          </Typography>
-          <Stack component="ul" spacing={0.75} sx={{ pl: 2.5, mt: 0, mb: 2 }}>
-            <li>
-              Most common: <MostCommon c={c} />
-            </li>
-            {board.doubleDummy?.par && (
-              <li>
-                Double-dummy par: <Par board={board} seat={seat} />
-              </li>
-            )}
+          <Stack spacing={1.5} sx={{ mb: 2 }}>
+            {/* The results themselves, with their bullets spaced like lines of the same paragraph. */}
+            <Stack spacing={0.5}>
+              <Typography>
+                Out of <span className="num">{c.fieldSize}</span> {c.fieldSize === 1 ? "table" : "tables"}, you beat{" "}
+                {c.beat}, tied {c.tied} and lost to {c.lost}.
+              </Typography>
+              <Stack component="ul" spacing={0.5} sx={{ pl: 2.5, my: 0 }}>
+                <li>
+                  Your score: <ScoreText score={c.ourScore} />
+                </li>
+                <li>
+                  Most common result: <MostCommon c={c} />
+                </li>
+                {board.doubleDummy?.par && (
+                  <li>
+                    Double-dummy par: <Par board={board} seat={seat} />
+                  </li>
+                )}
+              </Stack>
+            </Stack>
+            {/* How the results are scored. */}
+            <Stack spacing={0.5}>
+              {c.mpPct !== null && (
+                <Typography>
+                  <strong>Matchpoints: {netParts(c.mpPct).pct}</strong> ={" "}
+                  <span className="num">
+                    ({c.beat} + {c.tied / 2}) ÷ {c.fieldSize}
+                  </span>
+                  . A tie counts as half.
+                </Typography>
+              )}
+              {c.mpPct !== null && (
+                <Typography>
+                  <strong>Net: {netParts(c.mpPct).net}</strong> ={" "}
+                  <span className="num">{netParts(c.mpPct).working}</span> (your matchpoints minus theirs)
+                </Typography>
+              )}
+              <Typography>
+                <strong>IMPs: {formatImps(c.impsVsDatum)}</strong> against the field average of{" "}
+                <ScoreText score={c.fieldDatum} />
+                <HelpTip label="About IMPs">
+                  <ImpsHelp c={c} />
+                </HelpTip>
+              </Typography>
+            </Stack>
           </Stack>
           <Traveller c={c} />
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Best scores for your side first. Tap a score to see the contracts behind it, when the source gives them.
-            The right-hand column is the matchpoint % that score earns.
-          </Typography>
         </>
       )}
     </SheetDialog>

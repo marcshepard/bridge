@@ -7,6 +7,7 @@ import {
   boardOrderFrom,
   corrections,
   marginFor,
+  boardNet,
   newSession,
   nextUnplayed,
   pendingContract,
@@ -41,9 +42,11 @@ describe("sessions", () => {
     expect(t.rows.map((r) => r.board)).toEqual([23, 24]);
     expect(t.averagePct).toBeGreaterThan(0);
     expect(t.averagePct).toBeLessThan(100);
-    // Margin is the sum of each board's net (ours − theirs, i.e. 2 × MP% − 100), rounded per board.
-    expect(t.margin).toBe(t.rows.reduce((n, r) => n + Math.round(2 * r.comparison.mpPct! - 100), 0));
-    expect(Number.isInteger(t.margin)).toBe(true);
+    expect(t.averageScore).toBe((t.rows[0]!.comparison.ourScore + t.rows[1]!.comparison.ourScore) / 2);
+    // Margin is the sum of each board's net as shown (ours − theirs, i.e. 2 × MP% − 100, to one decimal).
+    const shown = t.rows.reduce((n, r) => n + boardNet(r.comparison.mpPct), 0);
+    expect(t.margin).toBeCloseTo(shown, 9);
+    expect(Number.isInteger(Math.round(t.margin * 10))).toBe(true);
   });
 
   it("margin: 83% is 83 − 17 = +66, average is 0, no field counts as 0", () => {

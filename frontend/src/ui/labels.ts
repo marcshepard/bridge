@@ -60,6 +60,17 @@ export function formatPct(pct: number | null): string {
 }
 
 /**
+ * A share of the field's tables, whole like any percentage, except that only none or all of them
+ * shows as "0%" or "100%": 3 tables of 938 is "<1%" and 935 is ">99%", never "0%" or "100%".
+ */
+export function formatShare(pct: number): string {
+  const whole = Math.round(pct);
+  if (whole === 0 && pct > 0) return "<1%";
+  if (whole === 100 && pct < 100) return ">99%";
+  return `${whole}%`;
+}
+
+/**
  * Matchpoints for both sides, "83 / 17": yours rounded, theirs 100 minus that, so the pair always
  * adds up to 100 (50.5 / 49.5 shows as 51 / 49, never 51 / 50).
  */
@@ -72,11 +83,12 @@ export function formatImps(n: number): string {
   return n > 0 ? `+${n}` : n < 0 ? `−${-n}` : "0";
 }
 
-/** "+67", "−12", "0": a ± margin as a whole number. */
+/** "+67", "−12.4", "0": a ± margin (a net) to one decimal, left off when it's zero. */
 export function formatMargin(n: number): string {
-  const r = Math.round(n);
+  const r = Math.round(n * 10) / 10;
   if (r === 0) return "0";
-  return r > 0 ? `+${r}` : `−${-r}`;
+  const abs = Number.isInteger(r) ? `${Math.abs(r)}` : Math.abs(r).toFixed(1);
+  return r > 0 ? `+${abs}` : `−${abs}`;
 }
 
 /** "K7PM3QXT" → "K7PM-3QXT": easier to read out and type. */
@@ -85,22 +97,30 @@ export function formatJoinCode(code: string): string {
 }
 
 /**
- * One board's net: your matchpoint % minus theirs ("+90"), with the percentages behind it ("95 − 5").
- * Percentages are shown whole unless rounding them would make the sum look wrong: 95.4% nets +91,
- * which "95 − 5" doesn't explain, so it shows "95.4 − 4.6" instead. `pct` is the same: "95%" or "95.4%".
+ * One board's net: your matchpoint % minus theirs ("+90.8"), with the percentages behind it
+ * ("95.4 − 4.6"). All three are to one decimal, dropped when it's zero ("95%", never "95.0%"), and
+ * the net comes from the % as shown, so the working always adds up on screen.
  */
 export function netParts(pct: number): { net: string; working: string; pct: string } {
-  const exact = Math.round(2 * pct - 100);
-  const whole = Math.round(pct);
-  if (2 * whole - 100 === exact) {
-    return { net: formatMargin(exact), working: `${whole} − ${100 - whole}`, pct: `${whole}%` };
-  }
-  const tenth = Math.round(pct * 10) / 10;
+  const tenth = toTenth(pct);
   return {
-    net: formatMargin(exact),
-    working: `${tenth.toFixed(1)} − ${(100 - tenth).toFixed(1)}`,
-    pct: `${tenth.toFixed(1)}%`,
+    net: formatMargin(2 * tenth - 100),
+    working: `${showTenth(tenth)} − ${showTenth(toTenth(100 - tenth))}`,
+    pct: formatMp(pct),
   };
+}
+
+/** Your matchpoints: "96.3%", or "62%" when the decimal is zero. Every "your %" uses this. */
+export function formatMp(pct: number | null): string {
+  return pct === null ? "—" : `${showTenth(toTenth(pct))}%`;
+}
+
+function toTenth(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+function showTenth(n: number): string {
+  return Number.isInteger(n) ? `${n}` : n.toFixed(1);
 }
 
 

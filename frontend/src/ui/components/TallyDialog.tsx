@@ -1,42 +1,41 @@
 // The running tally, board by board. Opened from the tally chip on the board screen.
 
-import { Alert, Box, Button, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import { Alert, Box, Button, Table, TableBody, TableCell, TableFooter, TableHead, TableRow, Typography } from "@mui/material";
 import type { Direction } from "../../core/types";
 import type { Tally } from "../../session/session";
 import { ResultText, ScoreText } from "../controls/BridgeText";
+import { HelpTip } from "../controls/HelpTip";
 import { StatPanel } from "../controls/Layout";
 import { SheetDialog } from "../controls/SheetDialog";
-import { formatImps, formatMargin, formatPct, netParts } from "../labels";
+import { formatImps, formatMargin, formatMp, netParts } from "../labels";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   tally: Tally;
   direction: Direction;
-  total: number;
   onOpenBoard: (board: number) => void;
 }
 
-export function TallyDialog({ open, onClose, tally, direction, total, onOpenBoard }: Props) {
+export function TallyDialog({ open, onClose, tally, direction, onOpenBoard }: Props) {
   return (
     <SheetDialog open={open} onClose={onClose} title="Running tally">
       <StatPanel
         figure={`${direction} ${formatMargin(tally.margin)}`}
-        caption={`Your matchpoints minus theirs, added up over ${tally.played} of ${total} boards`}
+        caption="Your matchpoints minus theirs summed over all played boards"
         tone={tally.margin < 0 ? "error" : "primary"}
         aside={
           <Box>
             <Typography variant="h5" component="p" className="num">
-              {formatPct(tally.averagePct)}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              average matchpoints
-            </Typography>
-            <Typography variant="subtitle1" sx={{ mt: 1 }} className="num">
-              {formatImps(tally.totalImps)} IMPs
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              against the field average
+              IMPs: {formatImps(tally.totalImps)}
+              <HelpTip label="About IMPs">
+                <span>
+                  IMPs (International Match Points) measure by how much you beat the field average on each board,
+                  where matchpoints count how many tables you beat. They're how team games are scored; here
+                  they're a second view of the same boards.
+                </span>
+                <span>This adds up your IMPs over the boards played.</span>
+              </HelpTip>
             </Typography>
           </Box>
         }
@@ -54,7 +53,13 @@ export function TallyDialog({ open, onClose, tally, direction, total, onOpenBoar
               <TableCell>Result</TableCell>
               <TableCell align="right">Score</TableCell>
               <TableCell align="right">MP %</TableCell>
-              <TableCell align="right">Net</TableCell>
+              <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                Net
+                <HelpTip label="About the net column">
+                  <span>Your matchpoint % minus theirs: 95% nets 95 − 5 = +90.</span>
+                  <span>The total at the top adds up the nets.</span>
+                </HelpTip>
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -89,13 +94,21 @@ export function TallyDialog({ open, onClose, tally, direction, total, onOpenBoar
               </TableRow>
             ))}
           </TableBody>
+          <TableFooter sx={{ "& td, & th": { typography: "body2", color: "text.primary", borderBottom: 0 } }}>
+            <TableRow>
+              <TableCell component="th" scope="row" colSpan={2}>
+                Average
+              </TableCell>
+              <TableCell align="right">
+                {tally.averageScore === null ? "—" : <ScoreText score={Math.round(tally.averageScore)} />}
+              </TableCell>
+              <TableCell align="right" className="num">
+                {formatMp(tally.averagePct)}
+              </TableCell>
+              <TableCell />
+            </TableRow>
+          </TableFooter>
         </Table>
-      )}
-      {tally.rows.length > 0 && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
-          Net is your matchpoint % minus theirs: 95% nets 95 − 5 = +90. The total at the top adds up the nets.
-          A percentage shows one decimal when rounding it would hide where its net comes from (95.4% nets +91).
-        </Typography>
       )}
     </SheetDialog>
   );

@@ -219,8 +219,11 @@ tablet or computer).
 - **Self-deal only.** Players deal real cards from what their device shows and enter the contract
   and result. In-app bidding and card play ("the app deals") is a much larger project; it is
   **hidden**, not shown greyed out, until it exists.
-- Every displayed percentage and score margin is rounded to a whole number. Calculations stay
-  exact (see "Rounding" below).
+- Your matchpoint % and nets (a board's, the tally's) are shown to one decimal, left off when it's
+  zero: 96.3%, 62%, +92.6. A net comes from the % as shown, so "96.3 − 3.7" always nets +92.6, and
+  the tally adds up the nets as shown. Every other percentage (the field list's other rows) is a
+  whole number. A share of the field's tables is whole too, but never shows 0% or 100% unless it's
+  none or all of them ("<1%", ">99%"). Calculations stay exact (see "Rounding" below).
 
 ### Screens
 

@@ -1,23 +1,21 @@
 // The field as a traveller: every score the original field got on this board, best for your side
-// at the top, with how many tables got it and what they did. Your result is slotted into place.
+// at the top, with the matchpoints that score earns and how many tables got it. Your result is
+// slotted into place. Each column heading has a "?" that explains it, so the list needs no notes.
 
-import { Box, ButtonBase, Collapse, LinearProgress, List, ListItem, Typography } from "@mui/material";
-import { useState } from "react";
-import type { BoardComparison, ScoreGroup } from "../../core/compare";
+import { LinearProgress, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import { Fragment } from "react";
+import { matchpointPct, type BoardComparison, type ScoreGroup } from "../../core/compare";
+import { formatScore } from "../../core/scoring";
 import { ResultText, ScoreText } from "../controls/BridgeText";
-import { formatPct } from "../labels";
+import { HelpTip } from "../controls/HelpTip";
+import { formatPct, formatShare, netParts } from "../labels";
 
 interface Row {
   group: ScoreGroup | null; // null = our score, which no field table matched
   score: number;
 }
 
-// Column widths in theme spacing units: score | description + bar | % and table count.
-const SCORE_COL = 9;
-const PCT_COL = 8;
-
 export function Traveller({ c }: { c: BoardComparison }) {
-  const [expanded, setExpanded] = useState<number | null>(null);
   const max = Math.max(1, ...c.groups.map((g) => g.count));
 
   const rows: Row[] = c.groups.map((g) => ({ group: g, score: g.score }));
@@ -27,91 +25,126 @@ export function Traveller({ c }: { c: BoardComparison }) {
   }
 
   return (
-    <List disablePadding aria-label="Field results, best for your side first" sx={{ borderTop: 1, borderColor: "divider" }}>
-      {rows.map((row) => {
-        const g = row.group;
-        const ours = g === null || g.isOurs;
-        const open = expanded === row.score;
-        // Contracts behind this score that the row doesn't name (your row names none of the field's).
-        const others = g ? g.results.length - (ours ? 0 : 1) : 0;
-        return (
-          <ListItem
-            key={row.score}
-            disablePadding
-            sx={{
-              display: "block",
-              borderBottom: 1,
-              borderColor: "divider",
-              ...(ours && { bgcolor: "action.selected", borderLeft: 4, borderLeftColor: "primary.main" }),
-            }}
-          >
-            <ButtonBase
-              disabled={!g || g.results.length === 0}
-              aria-expanded={g ? open : undefined}
-              onClick={() => setExpanded(open ? null : row.score)}
-              sx={{
-                width: "100%",
-                display: "grid",
-                gridTemplateColumns: (t) => `${t.spacing(SCORE_COL)} 1fr ${t.spacing(PCT_COL)}`,
-                gridTemplateAreas: '"score what pct" "score bar count"',
-                columnGap: 1.5,
-                rowGap: 0.5,
-                alignItems: "center",
-                textAlign: "left",
-                py: 1,
-                px: 0.5,
-              }}
-            >
-              <Typography variant="subtitle1" component="span" sx={{ gridArea: "score", textAlign: "right" }}>
-                <ScoreText score={row.score} strong />
-              </Typography>
-              <Typography variant="body2" sx={{ gridArea: "what", minWidth: 0 }}>
-                {ours ? <strong>Your result</strong> : g!.results[0]?.description}
-                {others > 0 && !open && (
-                  <Box component="span" sx={{ color: "text.secondary" }}>
-                    {" "}
-                    (+{others} other {others === 1 ? "contract" : "contracts"})
-                  </Box>
-                )}
-              </Typography>
-              <LinearProgress variant="determinate" value={g ? (g.count / max) * 100 : 0} aria-hidden sx={{ gridArea: "bar" }} />
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                className="num"
-                sx={{ gridArea: "count", textAlign: "right", whiteSpace: "nowrap" }}
+    <Table size="small" aria-label="Field results, best for your side first" sx={{ "& td, & th": { px: 1 } }}>
+      <TableHead>
+        <TableRow>
+          <TableCell>Score</TableCell>
+          <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+            Matchpoints
+            <HelpTip label="About the matchpoints column">
+              <MatchpointsHelp c={c} />
+            </HelpTip>
+          </TableCell>
+          <TableCell sx={{ whiteSpace: "nowrap" }}>
+            Tables
+            <HelpTip label="About the tables column">
+              <span>The number and percent of tables that got this score.</span>
+              <span>
+                Note: the bar shows the percent relative to the most common result (so a full bar = the most common
+                result).
+              </span>
+            </HelpTip>
+          </TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {rows.map((row) => {
+          const g = row.group;
+          const ours = g === null || g.isOurs;
+          return (
+            <TableRow key={row.score} selected={ours}>
+              <TableCell
+                sx={{ verticalAlign: "top", ...(ours && { borderLeft: 4, borderLeftColor: "primary.main" }) }}
               >
-                {g ? `${g.count} ${g.count === 1 ? "table" : "tables"}` : "only you"}
-              </Typography>
-              <Typography
-                variant="subtitle2"
-                className="num"
-                title="Matchpoints this score earns"
-                sx={{ gridArea: "pct", textAlign: "right" }}
-              >
-                {formatPct(g ? g.mpPct : c.mpPct)}
-              </Typography>
-            </ButtonBase>
-            {g && (
-              <Collapse in={open} unmountOnExit>
-                <Box
-                  component="ul"
-                  sx={{ listStyle: "none", m: 0, pl: SCORE_COL + 2, pr: 1, pb: 1.5, display: "grid", gap: 0.5 }}
-                >
-                  {g.results.map((r, i) => (
-                    <Typography component="li" key={i} variant="body2">
-                      <span className="num">{r.count}×</span> <ResultText result={r.result} />{" "}
-                      <Box component="span" sx={{ color: "text.secondary" }}>
-                        {r.description}
-                      </Box>
-                    </Typography>
-                  ))}
-                </Box>
-              </Collapse>
-            )}
-          </ListItem>
-        );
-      })}
-    </List>
+                <Typography variant="subtitle1" component="div">
+                  <ScoreText score={row.score} strong />
+                </Typography>
+                <Contracts group={g} ours={ours} />
+              </TableCell>
+              <TableCell align="right" className="num" sx={{ verticalAlign: "top" }}>
+                <Typography variant="subtitle1" component="div" sx={ours ? { fontWeight: "fontWeightBold" } : undefined}>
+                  {/* Your row matches the summary above it, which shows a decimal when the net needs one. */}
+                  {ours || !g ? (c.mpPct === null ? "—" : netParts(c.mpPct).pct) : formatPct(g.mpPct)}
+                </Typography>
+              </TableCell>
+              <TableCell sx={{ verticalAlign: "top", width: "40%" }}>
+                <Typography variant="body2" className="num" sx={{ whiteSpace: "nowrap" }}>
+                  {g ? `${g.count} (${formatShare((g.count / c.fieldSize) * 100)})` : "Only you"}
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={g ? (g.count / max) * 100 : 0}
+                  aria-hidden
+                  sx={{ mt: 0.75 }}
+                />
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }
+
+/**
+ * Under a score: "Your result" on yours, otherwise the contracts behind it when the source gives
+ * them. One contract needs no count (the tables column has it); several each get theirs.
+ */
+function Contracts({ group, ours }: { group: ScoreGroup | null; ours: boolean }) {
+  if (ours) {
+    return (
+      <Typography variant="caption" component="div" sx={{ fontWeight: "fontWeightBold" }}>
+        Your result
+      </Typography>
+    );
+  }
+  const results = group?.results ?? [];
+  if (results.length === 0) return null;
+  return (
+    <Typography variant="caption" component="div" color="text.secondary">
+      {results.map((r, i) => (
+        <Fragment key={i}>
+          {i > 0 && "; "}
+          <ResultText result={r.result} />
+          {results.length > 1 && <span className="num"> ×{r.count}</span>}
+        </Fragment>
+      ))}
+    </Typography>
+  );
+}
+
+/**
+ * The matchpoints column, worked through for one score. Not yours (the summary above already works
+ * that out): the most common other score, so the example is one many tables share.
+ */
+function MatchpointsHelp({ c }: { c: BoardComparison }) {
+  const others = c.groups.filter((g) => !g.isOurs);
+  const example = others.reduce<ScoreGroup | null>((best, g) => (!best || g.count > best.count ? g : best), null);
+  const intro = (
+    <>
+      <span>The percent of the field beaten with the given score, with a tie counting as half a win.</span>
+      <span>
+        Scores are rounded to the nearest whole number for simplicity, but we show yours to one decimal point for
+        accuracy.
+      </span>
+    </>
+  );
+  if (!example) return intro;
+  const m = matchpointPct(example.score, c.groups);
+  const exact = (m.pct ?? 0).toFixed(1);
+  const shown = formatPct(m.pct);
+  return (
+    <>
+      {intro}
+      <span>
+        For example, with <span className="num">{formatScore(example.score)}</span> you'd beat {m.beat}, tie with{" "}
+        {m.tied} and lose to {m.lost}:{" "}
+        <span className="num">
+          ({m.beat} + {m.tied / 2}) ÷ {m.n} = {exact}%
+        </span>
+        {`${exact}%` !== shown && <>, shown as {shown} (if it's not your score)</>}.
+      </span>
+    </>
+  );
+}
+

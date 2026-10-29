@@ -224,7 +224,6 @@ export function Play({ snapshot, game, seat, onSaved, onPlayed, onClaim, onNotic
         onClose={() => setDialog(null)}
         tally={tally}
         direction={dir}
-        total={order.length}
         onOpenBoard={(b) => {
           setCurrent(b);
           setDialog(null);

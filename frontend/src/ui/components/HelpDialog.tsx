@@ -181,10 +181,26 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         <Typography variant="body2" sx={{ mt: 1 }}>
           Each board also shows a <strong>net</strong>: your % minus theirs. 70 / 30 nets +40, and 45 / 55 nets
           −10. The running tally at the top adds up the nets, so above zero means you're ahead of the field.
-          Percentages are shown as whole numbers, except when that would hide where a net comes from: 95.4%
-          nets +91, so it shows as 95.4 − 4.6 rather than 95 − 5.
+          Matchpoints and nets are shown to one decimal: 95.4% nets 95.4 − 4.6 = +90.8. A zero decimal is left
+          off, so 62.0% shows as 62%.
         </Typography>
       </Box>
+      <Typography sx={{ mb: 1 }}>
+        Tap the matchpoints on a board to see the field. At the top it works out your score: in the example,{" "}
+        <strong>Matchpoints: 70% = (60 + 10) ÷ 100</strong>, then{" "}
+        <strong>Net: +40 = 70 − 30</strong>. Below that is every score the field got, best for
+        your side first, with your result highlighted. Under each score is the contract behind it, when the game
+        file gives it. The <strong>Matchpoints</strong> column is the % you'd have got with that score, and{" "}
+        <strong>Tables</strong> is how many tables got it, with their share of the field: 20 of 100 shows as 20
+        (20%). A very small share shows as &lt;1%. Tap the ? beside a heading for a reminder.
+      </Typography>
+      <Typography sx={{ mb: 1 }}>
+        The field also shows <strong>IMPs</strong> (International Match Points), the scoring used in team games.
+        Matchpoints count how many tables you beat; IMPs measure by how much. Your score is compared with the
+        field average, and the difference goes through a fixed scale that squeezes big swings: 20–40 points is 1
+        IMP, 400 points is 9, and the most is 24. For example, if the field average for your side is −620 and you
+        score +100, that's 720 points better, worth +12 IMPs. The running tally adds up both: the nets at the top, and your IMPs over all the boards when you tap it.
+      </Typography>
       <Typography>
         New to duplicate scoring?{" "}
         <Link href={LEARN_MORE} target="_blank" rel="noopener noreferrer">

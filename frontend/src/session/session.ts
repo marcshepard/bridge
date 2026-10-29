@@ -105,10 +105,12 @@ export interface Tally {
   played: number;
   /** Average MP% over boards that had a field to compare with. */
   averagePct: number | null;
+  /** Average of our scores (from our direction's point of view), null before any board. */
+  averageScore: number | null;
   /**
-   * Sum over boards of each board's net (our MP% − their MP%, rounded to a whole number as shown):
-   * 83% on a board is 83 − 17 = +66. Rounding each board first means the total is exactly the sum
-   * of the nets on screen.
+   * Sum over boards of each board's net (our MP% − their MP%, to one decimal as shown): 83% on a
+   * board is 83 − 17 = +66. Rounding each board first means the total is exactly the sum of the
+   * nets on screen.
    */
   margin: number;
   totalImps: number;
@@ -120,6 +122,19 @@ export interface Tally {
  */
 export function marginFor(pct: number | null): number {
   return pct === null ? 0 : 2 * pct - 100;
+}
+
+/** Rounds to one decimal, the precision matchpoints and nets are shown at. */
+function toTenth(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+/**
+ * A board's net as it's shown: worked out from the matchpoint % as shown (to one decimal), so
+ * "96.3 − 3.7" always nets +92.6 on screen, and the tally adds up exactly the nets you see.
+ */
+export function boardNet(pct: number | null): number {
+  return pct === null ? 0 : toTenth(marginFor(toTenth(pct)));
 }
 
 export function compareSessionBoard(session: Session, game: Game, boardNumber: number): BoardComparison | null {
@@ -148,7 +163,8 @@ export function tally(session: Session, game: Game): Tally {
     averagePct: scored.length
       ? scored.reduce((s, r) => s + r.comparison.mpPct!, 0) / scored.length
       : null,
-    margin: rows.reduce((s, r) => s + Math.round(marginFor(r.comparison.mpPct)), 0),
+    averageScore: rows.length ? rows.reduce((s, r) => s + r.comparison.ourScore, 0) / rows.length : null,
+    margin: toTenth(rows.reduce((s, r) => s + boardNet(r.comparison.mpPct), 0)),
     totalImps: rows.reduce((s, r) => s + r.comparison.impsVsDatum, 0),
   };
 }
