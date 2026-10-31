@@ -5,12 +5,25 @@ import type { GameFileV1 } from "../../frontend/src/providers/gameFile";
 
 export type EventStatus = "lobby" | "playing" | "ended";
 
+/**
+ * How a game's boards are played, chosen when it's created: with real cards at the table (each
+ * player deals their own hand from their device and the owner enters the result), or bid and
+ * played on the devices.
+ */
+export type GameMode = "cards" | "devices";
+
 /** A player as everyone else sees them. The secret player ID is never included. */
 export interface PublicPlayer {
   /** Public handle, 1–4 in join order. */
   slot: number;
   name: string;
+  /** The game's owner: the player who started it, or whoever has since taken over their seat. */
   isCreator: boolean;
+  /**
+   * A player without the app (real-cards games only): just a name in a seat, added by the owner.
+   * They're at the table, so never shown as away.
+   */
+  noApp: boolean;
   /** A bot (demo games, dev test players): when cards are played on the devices, the creator's device plays its cards. */
   isBot: boolean;
   /** Assigned when play starts. */
@@ -87,7 +100,10 @@ export interface EventSnapshot {
   code: string;
   title: string;
   status: EventStatus;
+  mode: GameMode;
   startBoard: number;
+  /** The board the table is on (original numbering). Only the owner moves it on. */
+  currentBoard: number;
   game: GameFileV1;
   players: PublicPlayer[];
   results: ResultDto[];
@@ -111,10 +127,20 @@ export interface CreateEventRequest {
   name: string;
   game: GameFileV1;
   startBoard: number;
+  mode: GameMode;
 }
-/** Joining a game (POST /events/:code/players), or starting a demo game (POST /events/demo). */
+/** Joining a game (POST /events/:code/players), or adding a player without the app (the owner). */
 export interface JoinRequest {
   name: string;
+}
+/** Starting a demo game (POST /events/demo). */
+export interface DemoRequest {
+  name: string;
+  mode: GameMode;
+}
+/** The owner moves the table to a board (original numbering). */
+export interface CurrentBoardRequest {
+  board: number;
 }
 /** The creator picks a partner by slot, or asks for random partnerships. */
 export type PartnershipsRequest = { partnerSlot: number } | { random: true };
@@ -151,19 +177,23 @@ export interface AnswerClaimRequest {
   accept: boolean;
 }
 
-/** Ask to take over a seat in a full or started game. Someone at the table must allow it. */
+/**
+ * Ask to take over a seat (any player's, in the lobby too). Someone at the table must allow it,
+ * unless nobody is connected: then it's allowed straight away.
+ */
 export interface SeatRequestRequest {
   name: string;
   slot: number;
 }
 /**
  * `playerId` is the requester's key: it identifies them while they wait, and becomes the seat's
- * key if the request is allowed. `anyoneConnected` is false when nobody is there to answer yet.
+ * key if the request is allowed. `status` is "allowed" when nobody was connected to answer, so
+ * the seat was handed over at once; otherwise "pending".
  */
 export interface SeatRequestCreated {
   requestId: string;
   playerId: string;
-  anyoneConnected: boolean;
+  status: "pending" | "allowed";
 }
 export interface SeatRequestState {
   status: SeatRequestStatus;
@@ -186,6 +216,8 @@ export interface LiveTicketResponse {
 
 export interface ResultsSinceResponse {
   results: ResultDto[];
+  /** The board the table is on now (it may have moved on while this device was away). */
+  currentBoard: number;
   now: string;
 }
 
@@ -197,6 +229,7 @@ export interface ErrorResponse {
 
 export type PushMessage =
   | { type: "result"; result: ResultDto }
+  | { type: "board"; board: number } // the owner moved the table to this board
   | { type: "call"; call: CallDto } // a call in an auction on the devices
   | { type: "play"; play: PlayDto } // a card played on a device
   | { type: "claim"; board: number; claim: ClaimDto | null } // a claim made or answered; null: refused or taken back
@@ -210,7 +243,7 @@ export type PushMessage =
       type: "requestClosed";
       request: SeatRequestDto;
       outcome: "allowed" | "denied" | "cancelled";
-      /** Slot of whoever answered (null when cancelled). */
+      /** Slot of whoever answered (null when cancelled, or allowed because nobody was there to answer). */
       by: number | null;
       replacedName: string;
     }

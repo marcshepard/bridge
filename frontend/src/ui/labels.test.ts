@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { formatMargin, formatMp, formatMpPair, formatPct, formatShare, handSuitOrder, isAway, netParts, sameName, seatRequestNews } from "./labels";
+import {
+  boardLabel,
+  formatMargin,
+  formatMp,
+  formatMpPair,
+  formatPct,
+  formatShare,
+  handSuitOrder,
+  isAway,
+  netParts,
+  sameName,
+  seatAndPlayer,
+  seatRequestNews,
+  vulnerableShort,
+} from "./labels";
 
 describe("numbers on screen are whole", () => {
   it("percentages round to whole numbers", () => {
@@ -57,6 +71,32 @@ describe("who is away", () => {
     expect(isAway({ slot: 2, connected: false }, 1)).toBe(true);
     expect(isAway({ slot: 2, connected: true }, 1)).toBe(false);
     expect(isAway({ slot: 1, connected: false }, 1)).toBe(false);
+  });
+
+  it("is never a player without the app: they're at the table", () => {
+    expect(isAway({ slot: 2, connected: false, noApp: true }, 1)).toBe(false);
+  });
+});
+
+describe("the board's setup, from your seat", () => {
+  it("names the dealer and where they sit", () => {
+    expect(seatAndPlayer("S", "S", "Marc")).toBe("South (you)");
+    expect(seatAndPlayer("S", "N", "Charlie")).toBe("North (Charlie, your partner)");
+    expect(seatAndPlayer("S", "E", "Joe")).toBe("East (Joe, on your right)");
+    expect(seatAndPlayer("S", "W", "Ann")).toBe("West (Ann, on your left)");
+  });
+
+  it("says who's vulnerable, and whether that's you", () => {
+    expect(vulnerableShort("S", "None")).toBe("None");
+    expect(vulnerableShort("S", "Both")).toBe("Both");
+    expect(vulnerableShort("S", "NS")).toBe("N/S (you)");
+    expect(vulnerableShort("S", "EW")).toBe("E/W (them)");
+    expect(vulnerableShort("E", "NS")).toBe("N/S (them)");
+  });
+
+  it("gives our board number only when it differs", () => {
+    expect(boardLabel(7, 7)).toBe("Board 7");
+    expect(boardLabel(7, 1)).toBe("Board 7 (our board 1)");
   });
 });
 

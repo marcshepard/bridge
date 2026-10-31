@@ -233,7 +233,7 @@ export function PlayHand(p: Props) {
     if (claim?.seat === s && s !== dummy) {
       return (
         <SeatBox key={s} active={false} title={`${SEAT_NAMES[s]}: claiming`}>
-          <Hand hand={state.hands[s]} />
+          <Hand hand={state.hands[s]} trump={trump} />
         </SeatBox>
       );
     }
@@ -243,7 +243,7 @@ export function PlayHand(p: Props) {
       <SeatBox key={s} active={!over && !claim && turn === s} title={`Dummy: ${SEAT_NAMES[s]}`}>
         {/* Dummy on your left or right is only ever looked at, so it's a compact suit-per-row list. */}
         {side ? (
-          <Hand hand={state.hands[s]} />
+          <Hand hand={state.hands[s]} trump={trump} />
         ) : (
           <HandTiles hand={state.hands[s]} trump={trump} short inPlay label="Dummy's cards" play={playFor(s)} />
         )}

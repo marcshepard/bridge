@@ -26,7 +26,6 @@ export function looksLikeTcgPage(text: string): boolean {
 
 const SEAT_IDS: Record<Seat, string> = { N: "north", E: "east", S: "south", W: "west" };
 const SUIT_ORDER = ["spade", "heart", "diamond", "club"] as const;
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** Plain text from an HTML fragment: tags removed, common entities decoded, spaces collapsed. */
 function textOf(html: string): string {
@@ -48,13 +47,10 @@ function numberOf(text: string): number {
   return Number(textOf(text).replace(/−/g, "-"));
 }
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-/** "2026-10-22" → "Thu 22 Oct 2026". */
+/** "2026-10-22" → "10/22/26": short, so the game's title fits on a phone, and the Common Game's own style. */
 function formatDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
-  const day = DAYS[new Date(Date.UTC(y!, m! - 1, d!)).getUTCDay()];
-  return `${day} ${d} ${MONTHS[m! - 1]} ${y}`;
+  return `${m}/${d}/${String(y).slice(-2)}`;
 }
 
 function readHand(block: string, board: number, seat: Seat): string {
@@ -152,7 +148,7 @@ export function tcgPageToGameFile(html: string, fileName: string): GameFileV1 {
   return {
     schemaVersion: 1,
     id: `tcg-${date ?? "unknown"}${fieldName ? `-${fieldName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}` : ""}`,
-    title: `The Common Game, ${when}${fieldName ? ` (${fieldName})` : ""}`,
+    title: `The Common Game ${when}${fieldName ? ` (${fieldName})` : ""}`,
     ...(date ? { date } : {}),
     source: {
       name: "The Common Game",

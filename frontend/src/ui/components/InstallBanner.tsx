@@ -1,8 +1,8 @@
-// "Install to home screen" on phones and tablets, shown under the header until the app is installed
-// (or dismissed for this visit). Tapping anywhere on it opens a dialog that installs it, or explains how.
-// On a computer (dev builds show it there too) the banner has a close button, and once closed it
-// stays closed on that browser (remembered in the profile). The avatar menu's
-// "Install to home screen" opens the same dialog (`open`), on any device.
+// "Install to home screen" on phones and tablets (dev builds show it on a computer too), shown under
+// the header until the app is installed. Tapping anywhere on it opens a dialog that installs it, or
+// explains how. Installing is optional, so the banner has a close button, and once closed it stays
+// closed on that browser (remembered in the profile); the dialog's "Not now" hides it for this visit
+// only. The avatar menu's "Install to home screen" opens the same dialog (`open`), on any device.
 
 import CloseIcon from "@mui/icons-material/Close";
 import { Alert, Box, Button, ButtonBase, IconButton, Typography } from "@mui/material";
@@ -20,8 +20,8 @@ interface Props {
 
 export function InstallBanner({ open, onOpen, onClose }: Props) {
   const install = useInstall();
-  // Closed on a computer before, or "Not now" this visit.
-  const [hidden, setHidden] = useState(() => !install.touch && profile.installBannerClosed());
+  // Closed on this browser before, or "Not now" this visit.
+  const [hidden, setHidden] = useState(() => profile.installBannerClosed());
   // Once installed, the "it's installed" dialog shows once.
   const [doneShown, setDoneShown] = useState(false);
 
@@ -54,31 +54,29 @@ export function InstallBanner({ open, onOpen, onClose }: Props) {
                 "& .MuiAlert-icon": { color: "inherit" },
                 "& .MuiAlert-message": { textAlign: "center" },
                 // Room for the close button, so the text stays centred clear of it.
-                ...(!install.touch && { px: 7 }),
+                px: 7,
               }}
             >
               Install to home screen for the best experience
             </Alert>
           </ButtonBase>
-          {/* On a computer it can be closed; outside the banner's button, so closing doesn't open the dialog. */}
-          {!install.touch && (
-            <IconButton
-              aria-label="Close the install banner"
-              onClick={() => {
-                profile.setInstallBannerClosed();
-                setHidden(true);
-              }}
-              sx={{
-                position: "absolute",
-                right: (t) => t.spacing(1),
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "secondary.contrastText",
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          )}
+          {/* Outside the banner's button, so closing doesn't open the dialog. */}
+          <IconButton
+            aria-label="Close the install banner"
+            onClick={() => {
+              profile.setInstallBannerClosed();
+              setHidden(true);
+            }}
+            sx={{
+              position: "absolute",
+              right: (t) => t.spacing(1),
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "secondary.contrastText",
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
       )}
 

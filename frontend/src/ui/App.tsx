@@ -4,7 +4,7 @@
 // dialogs over them, so there are no back buttons. A shared link (`?join=CODE`) opens the join
 // dialog with the code filled in. A reload goes straight back to the game you're in.
 
-import { Alert, Button, Typography } from "@mui/material";
+import { Alert, Box, Button, Typography } from "@mui/material";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parseGameFile } from "../providers/gameFile";
 import { games, profile } from "../services";
@@ -105,6 +105,11 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
     });
   }, []);
 
+  /** The owner moved the table to a board (here, or pushed to everyone). */
+  const mergeCurrent = useCallback((board: number) => {
+    setSnapshot((s) => s && { ...s, currentBoard: board });
+  }, []);
+
   /** A claim made, answered or ended (null) here or on another device. */
   const mergeClaim = useCallback((board: number, claim: ClaimDto | null) => {
     setSnapshot((s) => s && { ...s, claims: [...s.claims.filter((k) => k.board !== board), ...(claim ? [claim] : [])] });
@@ -147,12 +152,14 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
     if (!code) return;
     void refresh();
     return games.subscribe(code, (m) => {
-      if (m.type === "deleted") onGone("The person who started the game cancelled it.");
+      if (m.type === "deleted") onGone("The game's owner cancelled it.");
       else if (m.type === "disconnected") setOnline(false);
       else if (m.type === "presence") {
         setSnapshot((s) => s && { ...s, players: s.players.map((p) => ({ ...p, connected: m.connected.includes(p.slot) })) });
       } else if (m.type === "result") {
         mergeResult(m.result);
+      } else if (m.type === "board") {
+        mergeCurrent(m.board);
       } else if (m.type === "call") {
         mergeCall(m.call);
       } else if (m.type === "play") {
@@ -179,7 +186,7 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
         void refresh();
       }
     });
-  }, [code, refresh, onGone, onNews, mergeResult, mergeCall, mergePlay, mergeClaim]);
+  }, [code, refresh, onGone, onNews, mergeResult, mergeCurrent, mergeCall, mergePlay, mergeClaim]);
 
   // While disconnected, keep checking: if your seat was given to someone else meanwhile, the live
   // connection can't come back, and this is how you find out.
@@ -190,7 +197,7 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
     return () => clearInterval(timer);
   }, [online, code, refresh]);
 
-  return { snapshot, error, refresh, mergeResult, mergeCall, mergePlay, mergeClaim, online };
+  return { snapshot, error, refresh, mergeResult, mergeCurrent, mergeCall, mergePlay, mergeClaim, online };
 }
 
 export function App() {
@@ -224,7 +231,7 @@ export function App() {
   const [laterRequests, setLaterRequests] = useState<string[]>([]);
 
   const live = useGame(code, onGone, onNews);
-  const { error, mergeResult, mergeCall, mergePlay, mergeClaim, online } = live;
+  const { error, mergeResult, mergeCurrent, mergeCall, mergePlay, mergeClaim, online } = live;
   const snapshot = useSteadyPresence(live.snapshot);
   // Say "Reconnecting" only once the connection has been down a while: a blip that's back within
   // a few seconds (the usual case) shows nothing.
@@ -289,6 +296,7 @@ export function App() {
         game={game}
         seat={mySeat}
         onSaved={mergeResult}
+        onMoved={mergeCurrent}
         onCalled={mergeCall}
         onPlayed={mergePlay}
         onClaim={mergeClaim}
@@ -321,7 +329,9 @@ export function App() {
   const isCreatorInLobby = snapshot?.status === "lobby" && snapshot.you?.isCreator;
 
   return (
-    <>
+    // The app fills the window: header (and install banner) on top, then the screen, whose middle
+    // is all that scrolls (see Screen in controls/Layout.tsx).
+    <Box sx={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
       <AppHeader
         name={name}
         onHelp={() => setDialog("help")}
@@ -387,6 +397,6 @@ export function App() {
           </Alert>
         )}
       </SheetDialog>
-    </>
+    </Box>
   );
 }

@@ -1,7 +1,8 @@
-// Playing a shared game. Each device moves through the boards on its own; the results are the
-// table's, shared live: whoever enters or corrects a board's result, everyone sees it.
+// Playing a shared game. The owner runs the table: every device shows the board the table is on
+// (`currentBoard`), and only the owner enters results and moves everyone on to the next board. The
+// owner can also look back at an earlier board from the tally, to correct it.
 
-import { Alert } from "@mui/material";
+import { Alert, Container } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Seat, type TableResult, SEATS, directionOf } from "../../core/types";
 import {
@@ -9,7 +10,6 @@ import {
   compareSessionBoard,
   corrections,
   fromStored,
-  nextUnplayed,
   pendingContract,
   sessionFromShared,
   tally as tallyOf,
@@ -20,10 +20,9 @@ import { callCode, parseCall } from "../../core/auction";
 import { parseContract } from "../../core/contract";
 import { cardCode, parseCard } from "../../core/play";
 import { games } from "../../services";
-import { AnalysisDialog, BoardInfoDialog, BreakdownDialog, FieldDialog } from "../components/BoardDialogs";
+import { BoardInfoDialog, BreakdownDialog, FieldDialog } from "../components/BoardDialogs";
 import { TallyDialog } from "../components/TallyDialog";
 import { ResultText } from "../controls/BridgeText";
-import { Screen } from "../controls/Layout";
 import type { NoticeMessage } from "../controls/Notice";
 import { toneOf } from "../controls/ScoreChip";
 import { formatMargin, isAway } from "../labels";
@@ -33,7 +32,7 @@ import { PlayBoard } from "./PlayBoard";
 /** How long the finished table stays on screen after the play ends, before the result screen. */
 const END_PAUSE_MS = 3000;
 
-type Dialog = EntryStep | "tally" | "info" | "breakdown" | "field" | "analysis" | null;
+type Dialog = EntryStep | "tally" | "info" | "breakdown" | "field" | null;
 
 interface Props {
   snapshot: EventSnapshot;
@@ -41,6 +40,8 @@ interface Props {
   seat: Seat;
   /** Called with the saved result, so the screen updates without waiting for the live update. */
   onSaved: (result: ResultDto) => void;
+  /** Called with the board the owner moved the table to, likewise. */
+  onMoved: (board: number) => void;
   /** Called with a call you made, likewise. */
   onCalled: (call: CallDto) => void;
   /** Called with a card you played, likewise. */
@@ -51,33 +52,32 @@ interface Props {
   onNotice: (notice: NoticeMessage) => void;
 }
 
-export function Play({ snapshot, game, seat, onSaved, onCalled, onPlayed, onClaim, onNotice }: Props) {
+export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlayed, onClaim, onNotice }: Props) {
   const session = useMemo(
     () => sessionFromShared(game, seat, snapshot.startBoard, snapshot.results),
     [game, seat, snapshot.startBoard, snapshot.results],
   );
   const order = session.boardOrder;
-  // Start on the first board without a result; after that, this device moves on its own.
-  const [current, setCurrent] = useState<number>(() => nextUnplayed(session) ?? order[0]!);
+  const isOwner = snapshot.you?.isCreator ?? false;
+  const tableBoard = snapshot.currentBoard;
+  // The owner looking back at an earlier board (from the tally); everyone else stays on the table's.
+  const [lookingAt, setLookingAt] = useState<number | null>(null);
+  const current = isOwner && lookingAt !== null ? lookingAt : tableBoard;
   const [dialog, setDialog] = useState<Dialog>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // When the table moves on, any look back ends, and so do dialogs about the old board.
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [current]);
-
-  // When a board's cards start being played on the devices, every device goes to it: the table
-  // plays it together.
-  const liveBoard = snapshot.results.find((r) => r.onDevices && r.tricks === null)?.board;
-  useEffect(() => {
-    if (liveBoard !== undefined) setCurrent(liveBoard);
-  }, [liveBoard]);
+    setLookingAt(null);
+    setDialog((d) => (d === "tally" ? d : null));
+  }, [tableBoard]);
 
   // When the play ends (the last card, or a claim accepted), the backend saves the result. The
   // finished table stays on screen for a moment, showing how it went, before the result screen.
   // Noticed while rendering, not in an effect: an effect runs after the screen has redrawn, so the
   // play table would be taken away for one redraw and come back as a fresh copy (with the last
   // trick turned face down).
+  const liveBoard = snapshot.results.find((r) => r.onDevices && r.tricks === null)?.board;
   const [ending, setEnding] = useState<number | null>(null);
   const [wasLive, setWasLive] = useState(liveBoard);
   if (wasLive !== liveBoard) {
@@ -91,12 +91,12 @@ export function Play({ snapshot, game, seat, onSaved, onCalled, onPlayed, onClai
     return () => clearTimeout(timer);
   }, [ending]);
 
-  // Tell this device when someone else corrects a finished board: it may be one you've moved on
-  // from, and it changes the tally.
+  // Tell everyone else when the owner corrects a board the table has moved on from: it changes
+  // the tally.
   const seen = useRef(snapshot.results);
   useEffect(() => {
     const fixed = corrections(seen.current, snapshot.results, snapshot.you?.slot ?? null)
-      .filter((r) => r.tricks !== null)
+      .filter((r) => r.tricks !== null && r.board !== tableBoard)
       .at(-1);
     seen.current = snapshot.results;
     if (!fixed || fixed.tricks === null) return;
@@ -108,7 +108,6 @@ export function Play({ snapshot, game, seat, onSaved, onCalled, onPlayed, onClai
           {who} corrected board {fixed.board}: now <ResultText result={fromStored({ ...fixed, tricks: fixed.tricks })} />
         </>
       ),
-      action: fixed.board === current ? undefined : { label: "Show board", onClick: () => setCurrent(fixed.board) },
     });
   }, [snapshot.results]); // only on new results, not when you change board
 
@@ -127,16 +126,16 @@ export function Play({ snapshot, game, seat, onSaved, onCalled, onPlayed, onClai
       return [st, !!p && isAway(p, mySlot)];
     }),
   ) as Record<Seat, boolean>;
+  const owner = snapshot.players.find((p) => p.isCreator)?.name ?? "the owner";
   const shared = snapshot.results.find((r) => r.board === board.number);
   const enteredBy = shared ? (snapshot.players.find((p) => p.slot === shared.enteredBy)?.name ?? null) : null;
   const contract = pendingContract(snapshot.results, board.number);
 
   const position = order.indexOf(board.number);
-  const go = (i: number) => (i >= 0 && i < order.length ? () => setCurrent(order[i]!) : null);
+  const next = order[order.indexOf(tableBoard) + 1] ?? null;
 
   const tallyLabel = tally.played === 0 ? `${dir}: no boards yet` : `${dir} ${formatMargin(tally.margin)}`;
 
-  const isCreator = snapshot.you?.isCreator ?? false;
   const live = !!shared && shared.onDevices && shared.tricks === null;
   // Being bid on the devices: the result has no contract yet. Passed out, the finished auction
   // stays on screen for the moment after, like the play table.
@@ -188,21 +187,24 @@ export function Play({ snapshot, game, seat, onSaved, onCalled, onPlayed, onClai
 
   return (
     <>
+      {/* Above the screen, outside the part that scrolls, so it can't be missed. */}
       {saveError && (
-        <Screen>
+        <Container maxWidth="sm" sx={{ pt: 2, flexShrink: 0 }}>
           <Alert severity="error" onClose={() => setSaveError(null)}>
             {saveError}
           </Alert>
-        </Screen>
+        </Container>
       )}
       <PlayBoard
+        // A new board is a fresh screen, scrolled to the top.
+        key={board.number}
         code={snapshot.code}
+        title={snapshot.title}
         board={board}
         position={position + 1}
         seat={seat}
         names={names}
         away={away}
-        total={order.length}
         tally={{
           label: tallyLabel,
           tone: tally.played > 0 ? toneOf(tally.margin) : "neutral",
@@ -210,13 +212,14 @@ export function Play({ snapshot, game, seat, onSaved, onCalled, onPlayed, onClai
         }}
         comparison={comparison}
         contract={playContract}
-        enteredBy={enteredBy}
+        isOwner={isOwner}
+        owner={owner}
         onTally={() => setDialog("tally")}
         onBoardInfo={() => setDialog("info")}
-        onEnterContract={() => setDialog("contract")}
         onEnterResult={() => setDialog("result")}
+        onEnterContract={() => setDialog("contract")}
         onStartPlay={
-          isCreator
+          isOwner && snapshot.mode === "devices"
             ? () => void act("Couldn't start playing", async () => onSaved(await games.startCardPlay(snapshot.code, board.number)))
             : undefined
         }
@@ -224,7 +227,7 @@ export function Play({ snapshot, game, seat, onSaved, onCalled, onPlayed, onClai
           bidding
             ? {
                 bots: snapshot.players.filter((pl) => pl.isBot && pl.seat).map((pl) => pl.seat!),
-                callsForBots: isCreator,
+                callsForBots: isOwner,
                 calls,
                 onCall: async (seq, call) => onCalled(await games.call(snapshot.code, board.number, seq, callCode(call))),
               }
@@ -234,7 +237,7 @@ export function Play({ snapshot, game, seat, onSaved, onCalled, onPlayed, onClai
           !bidding && (live || ending === board.number) && playContract
             ? {
                 bots: snapshot.players.filter((pl) => pl.isBot && pl.seat).map((pl) => pl.seat!),
-                playsForBots: isCreator,
+                playsForBots: isOwner,
                 calls,
                 cards,
                 claim: snapshot.claims.find((k) => k.board === board.number) ?? null,
@@ -248,18 +251,29 @@ export function Play({ snapshot, game, seat, onSaved, onCalled, onPlayed, onClai
               }
             : null
         }
-        onCorrect={() => setDialog("correct")}
+        onCorrect={isOwner ? () => setDialog("correct") : undefined}
         onBreakdown={() => setDialog("breakdown")}
         onField={() => setDialog("field")}
-        onAnalysis={() => setDialog("analysis")}
-        onPrev={go(position - 1)}
-        onNext={go(position + 1)}
+        next={next}
+        // Moving on is the owner's, from the table's board; from one they're looking back at, it's back.
+        backTo={board.number !== tableBoard ? { board: tableBoard, onBack: () => setLookingAt(null) } : null}
+        onNext={
+          isOwner && next !== null && board.number === tableBoard
+            ? () =>
+                void act("Couldn't move to the next board", async () => {
+                  await games.moveTo(snapshot.code, next);
+                  onMoved(next);
+                })
+            : undefined
+        }
       />
 
-      {(dialog === "contract" || dialog === "result" || dialog === "correct") && (
+      {isOwner && (dialog === "contract" || dialog === "result" || dialog === "correct") && (
         <EnterResultDialog
           open
-          step={dialog}
+          // The result after the contract needs only the tricks; without one (shouldn't happen: its
+          // button waits for the contract), it takes both.
+          step={dialog === "result" ? (contract ? "result" : "full") : dialog}
           board={board}
           seat={seat}
           initial={comparison ? comparison.ours.result : contract ? { ...contract, tricks: null } : null}
@@ -273,10 +287,15 @@ export function Play({ snapshot, game, seat, onSaved, onCalled, onPlayed, onClai
         onClose={() => setDialog(null)}
         tally={tally}
         direction={dir}
-        onOpenBoard={(b) => {
-          setCurrent(b);
-          setDialog(null);
-        }}
+        // Only the owner looks back at earlier boards: everyone else keeps to the table's.
+        onOpenBoard={
+          isOwner
+            ? (b) => {
+                setLookingAt(b === tableBoard ? null : b);
+                setDialog(null);
+              }
+            : undefined
+        }
       />
       <BoardInfoDialog
         open={dialog === "info"}
@@ -290,7 +309,6 @@ export function Play({ snapshot, game, seat, onSaved, onCalled, onPlayed, onClai
         <>
           <BreakdownDialog open={dialog === "breakdown"} onClose={() => setDialog(null)} board={board} seat={seat} c={comparison} />
           <FieldDialog open={dialog === "field"} onClose={() => setDialog(null)} board={board} seat={seat} c={comparison} />
-          <AnalysisDialog open={dialog === "analysis"} onClose={() => setDialog(null)} board={board} seat={seat} c={comparison} />
         </>
       )}
     </>

@@ -39,6 +39,12 @@ nothing secret to protect beyond the fairness of one game, and rate limiting com
 - **A cheap middle step:** leave the hands out of the snapshot and fetch them on a separate request
   when a board starts. That stops casual peeking, not a determined player.
 
+## To undo
+
+- **Demo board 9 is a test deal** (each hand a 13-card suit), to check the result screen's worst
+  case. Put the real deal back with `git checkout` of `backend/src/demo/demo-game.json`'s board 9,
+  or regenerate with `python scripts/make_sample_game.py --demo`.
+
 ## Ideas, not planned
 
 - "Where would you have placed": rank the session total against the original pair standings
@@ -53,15 +59,19 @@ nothing secret to protect beyond the fairness of one game, and rate limiting com
 - **"Not played":** give up on a board partway through, on the devices or with real cards (a dead
   device, a mix-up), without replaying it. The board is scored as not played, the way a director
   gives an average when a board can't be finished (Law 12), rather than thrown away and restarted.
-  Anyone can do it, with a confirmation. (Replaces the old creator-only "Stop playing", which threw
+  The owner does it, with a confirmation. (Replaces the old creator-only "Stop playing", which threw
   the cards away so the board could be played again.)
+- **A better way to get a player without the app their hands.** Today a player without the app is
+  just a name in a seat, and they need a printed hand record (or similar). Something better might
+  be a "Show Joe's hand" on the owner's device to hand over, or one device dealing for two seats.
+- **An End game button** for the owner (the API has `POST /events/:code/end`; no screen uses it).
 - A custom domain (a subdomain of `navia-apps.com`, or a new name), attached in the Cloudflare
   dashboard without code changes.
 
 ## Parked
 
 **Other ways to start a game from a phone.** Decided instead: prepare on a computer, play on a
-phone (start on the computer, then join from the phone as a replacement for your own seat; Help
+phone (start on the computer, then join from the phone and choose "Join as Marc (owner)"; Help
 says how). Parked unless that proves not enough:
 
 - **Email or cloud:** save the page on a computer, open it from the phone's file picker (works

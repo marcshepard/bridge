@@ -1,8 +1,10 @@
 // Join a game: type the code you were given (or arrive with it from a shared link).
 //
 // If the game is full or has started, the same dialog lists who's playing so you can ask to take
-// over someone's seat (replacing them, or carrying on as yourself on this device). Someone at the
-// table has to allow it; until then the dialog waits.
+// over someone's seat (replacing them, or carrying on as yourself on this device). In the lobby,
+// when the owner is away or you've the owner's name, it offers to join as the owner: the way to
+// start a game on a computer and carry on from your phone. Someone at the table has to allow a
+// takeover (until then the dialog waits), unless nobody is connected: then it's straight away.
 
 import {
   Alert,
@@ -35,15 +37,19 @@ interface Props {
   onJoined: (code: string) => void;
 }
 
-/** Joining normally; or the game is full, so pick whose seat to ask for; or waiting for an answer. */
+/**
+ * Joining normally; or joining the lobby as its owner or as a new player; or the game is full, so
+ * pick whose seat to ask for; or waiting for an answer.
+ */
 type Step =
   | { kind: "code" }
+  | { kind: "owner"; owner: PublicPlayer; players: PublicPlayer[] }
   | { kind: "pick"; reason: string; players: PublicPlayer[] }
-  | { kind: "waiting"; requestId: string; anyoneConnected: boolean; players: PublicPlayer[]; reason: string };
+  | { kind: "waiting"; requestId: string; players: PublicPlayer[]; back: Step };
 
 function playerLabel(p: PublicPlayer): string {
   const who = p.seat ? `${SEAT_NAMES[p.seat]}: ${p.name}` : p.name;
-  return isAway(p, null) ? `${who} (away)` : who;
+  return p.noApp ? `${who} (without the app)` : isAway(p, null) ? `${who} (away)` : who;
 }
 
 export function JoinGame({ open, name, initialCode = "", onClose, onJoined }: Props) {
@@ -69,7 +75,7 @@ export function JoinGame({ open, name, initialCode = "", onClose, onJoined }: Pr
   const waitingId = step.kind === "waiting" ? step.requestId : null;
   useEffect(() => {
     if (!waitingId || step.kind !== "waiting") return;
-    const back = { kind: "pick", reason: step.reason, players: step.players } as const;
+    const back = step.back;
     const timer = setInterval(() => {
       games.seatRequestStatus(typed, waitingId).then(
         (status) => {
@@ -96,6 +102,14 @@ export function JoinGame({ open, name, initialCode = "", onClose, onJoined }: Pr
     setBusy(true);
     setError(null);
     try {
+      // A lobby whose owner is away, or has your name: maybe it's you, carrying on from this device.
+      const snap = await games.snapshot(typed).catch(() => null);
+      const owner = snap?.players.find((p) => p.isCreator);
+      const room = !!snap && snap.status === "lobby" && snap.players.length < 4;
+      if (snap && !snap.you && room && owner && (isAway(owner, null) || sameName(owner.name, name))) {
+        setStep({ kind: "owner", owner, players: snap.players });
+        return;
+      }
       onJoined(await games.join(typed, name));
     } catch (e) {
       // Full or started: offer to take over a seat instead.
@@ -115,13 +129,34 @@ export function JoinGame({ open, name, initialCode = "", onClose, onJoined }: Pr
     }
   }
 
-  async function ask() {
-    if (step.kind !== "pick" || slot === null) return;
+  /** Ask for a player's seat: straight in if nobody's there to answer, else wait for an answer. */
+  async function ask(askFor: number | null = slot) {
+    if ((step.kind !== "pick" && step.kind !== "owner") || askFor === null) return;
     setBusy(true);
     setError(null);
     try {
-      const r = await games.requestSeat(typed, name, slot);
-      setStep({ kind: "waiting", ...r, players: step.players, reason: step.reason });
+      const r = await games.requestSeat(typed, name, askFor);
+      if (r.allowed) {
+        setStep({ kind: "code" });
+        onJoined(typed);
+      } else {
+        setSlot(askFor);
+        setStep({ kind: "waiting", requestId: r.requestId, players: step.players, back: step });
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** In the lobby: not the owner after all, so take a new place. */
+  async function joinAsNew() {
+    setBusy(true);
+    setError(null);
+    try {
+      onJoined(await games.join(typed, name));
+      setStep({ kind: "code" });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -147,6 +182,15 @@ export function JoinGame({ open, name, initialCode = "", onClose, onJoined }: Pr
           <Button color="inherit" onClick={close}>
             Cancel
           </Button>
+        ) : step.kind === "owner" ? (
+          <Stack spacing={1} sx={{ width: 1 }}>
+            <Button variant="contained" size="large" fullWidth disabled={busy} onClick={() => void ask(step.owner.slot)}>
+              Join as {step.owner.name} (owner)
+            </Button>
+            <Button variant="outlined" size="large" fullWidth disabled={busy} onClick={() => void joinAsNew()}>
+              Join as a new player
+            </Button>
+          </Stack>
         ) : (
           <Button
             type="submit"
@@ -168,11 +212,23 @@ export function JoinGame({ open, name, initialCode = "", onClose, onJoined }: Pr
             Waiting for someone at the table to accept
             {asked && (sameName(asked.name, name) ? " you on this device" : ` you in place of ${asked.name}`)}…
           </Typography>
-          {!step.anyoneConnected && (
+          {asked?.isCreator && (
             <Typography color="text.secondary">
-              Nobody at the table is connected right now. Your request will show as soon as someone is.
+              Still have the game open on another device? Tap <strong>Allow</strong> there.
             </Typography>
           )}
+        </Stack>
+      ) : step.kind === "owner" ? (
+        <Stack spacing={2}>
+          <Typography>
+            {step.owner.name} started this game{isAway(step.owner, null) ? " and isn't connected right now" : ""}. Are
+            you {step.owner.name}, carrying on from this device?
+          </Typography>
+          <Typography color="text.secondary">
+            Joining as the owner moves the game to this device: you'll enter the results and move the table on from
+            here.
+          </Typography>
+          {error && <Alert severity="error">{error}</Alert>}
         </Stack>
       ) : (
         <Stack

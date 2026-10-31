@@ -9,7 +9,10 @@ import type {
   ClaimDto,
   ClaimRequest,
   CreateEventRequest,
+  CurrentBoardRequest,
+  DemoRequest,
   EventSnapshot,
+  GameMode,
   JoinedResponse,
   JoinRequest,
   LiveTicketResponse,
@@ -84,13 +87,14 @@ export class ApiGameStore implements GameStore {
     return joined.code;
   }
 
-  async create(name: string, game: GameFileV1, startBoard: number): Promise<string> {
-    const req: CreateEventRequest = { name, game, startBoard };
+  async create(name: string, game: GameFileV1, startBoard: number, mode: GameMode): Promise<string> {
+    const req: CreateEventRequest = { name, game, startBoard, mode };
     return this.remember(await this.request<JoinedResponse>("POST", "/events", undefined, req));
   }
 
   async createDemo(name: string): Promise<string> {
-    const req: JoinRequest = { name };
+    // With real cards: you deal yourself each board and enter any result, as the owner.
+    const req: DemoRequest = { name, mode: "cards" };
     return this.remember(await this.request<JoinedResponse>("POST", "/events/demo", undefined, req));
   }
 
@@ -116,8 +120,22 @@ export class ApiGameStore implements GameStore {
     this.profile.forget(code);
   }
 
+  async addPlayerWithoutApp(code: string, name: string): Promise<void> {
+    const body: JoinRequest = { name };
+    await this.request<unknown>("POST", `/events/${code}/players/no-app`, code, body);
+  }
+
+  async removePlayerWithoutApp(code: string, slot: number): Promise<void> {
+    await this.request<void>("DELETE", `/events/${code}/players/no-app/${slot}`, code);
+  }
+
   async choosePartnerships(code: string, choice: PartnershipsRequest): Promise<void> {
     await this.request<unknown>("POST", `/events/${code}/partnerships`, code, choice);
+  }
+
+  async moveTo(code: string, board: number): Promise<void> {
+    const body: CurrentBoardRequest = { board };
+    await this.request<unknown>("PUT", `/events/${code}/current`, code, body);
   }
 
   saveResult(code: string, board: number, result: SaveResultRequest): Promise<ResultDto> {
@@ -162,8 +180,13 @@ export class ApiGameStore implements GameStore {
     const c = normaliseCode(code);
     const body: SeatRequestRequest = { name, slot };
     const created = await this.request<SeatRequestCreated>("POST", `/events/${c}/requests`, undefined, body);
+    if (created.status === "allowed") {
+      // Nobody was there to answer, so the seat is ours already.
+      this.remember({ code: c, playerId: created.playerId, slot });
+      return { requestId: created.requestId, allowed: true };
+    }
     this.requestKeys.set(created.requestId, created.playerId);
-    return { requestId: created.requestId, anyoneConnected: created.anyoneConnected };
+    return { requestId: created.requestId, allowed: false };
   }
 
   async seatRequestStatus(code: string, requestId: string): Promise<SeatRequestStatus> {

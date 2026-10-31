@@ -4,12 +4,31 @@
 import { Box, Container, Paper, Typography } from "@mui/material";
 import type { ReactNode } from "react";
 
-/** A screen's main column: narrow enough to read on a phone, centred on bigger screens. */
-export function Screen({ children }: { children: ReactNode }) {
+/**
+ * A screen: its main column (narrow enough to read on a phone, centred on bigger screens), and an
+ * optional `footer` for the screen's main action (or why there's none yet).
+ *
+ * The app fills the window (see App.tsx): the header at the top and the footer at the bottom stay
+ * put, and only the column between them scrolls, so the main action is never out of sight and
+ * there's no page scroll round an inner one.
+ */
+export function Screen({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
   return (
-    <Container component="main" maxWidth="sm" sx={{ pt: 2, pb: 6 }}>
-      {children}
-    </Container>
+    <>
+      <Box component="main" sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+        {/* Little room below the content, so a screen that fits never scrolls just for padding. */}
+        <Container maxWidth="sm" sx={{ pt: 2, pb: 2 }}>
+          {children}
+        </Container>
+      </Box>
+      {footer && (
+        <Box sx={{ flexShrink: 0, bgcolor: "background.default", borderTop: 1, borderColor: "divider" }}>
+          <Container maxWidth="sm" sx={{ py: 1.5, textAlign: "center" }}>
+            {footer}
+          </Container>
+        </Box>
+      )}
+    </>
   );
 }
 

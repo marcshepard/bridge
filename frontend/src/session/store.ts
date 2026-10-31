@@ -8,6 +8,7 @@ import type {
   CallDto,
   ClaimDto,
   EventSnapshot,
+  GameMode,
   PartnershipsRequest,
   PlayDto,
   PushMessage,
@@ -21,6 +22,7 @@ export type {
   CallDto,
   ClaimDto,
   EventSnapshot,
+  GameMode,
   PlayDto,
   PublicPlayer,
   ResultDto,
@@ -36,11 +38,14 @@ export type {
 export type LiveMessage = PushMessage | { type: "disconnected" } | { type: "reconnected" };
 
 export interface GameStore {
-  /** Create a game from a game file. You join it as the first player; returns its join code. */
-  create(name: string, game: GameFileV1, startBoard: number): Promise<string>;
   /**
-   * Start a demo game: the built-in made-up game from board 9, with bots in the other three places.
-   * You join it as the first player; returns its join code.
+   * Create a game from a game file, played with real cards or on the devices. You join it as the
+   * first player, and its owner; returns its join code.
+   */
+  create(name: string, game: GameFileV1, startBoard: number, mode: GameMode): Promise<string>;
+  /**
+   * Start a demo game: the built-in made-up game from board 9, played with real cards, with bots in
+   * the other three places. You join it as the first player; returns its join code.
    */
   createDemo(name: string): Promise<string>;
   /** Join a game that hasn't started; returns its normalised join code. */
@@ -49,9 +54,15 @@ export interface GameStore {
   snapshot(code: string): Promise<EventSnapshot>;
   /** Leave a game before it starts. If you created it, this cancels it for everyone. */
   leave(code: string): Promise<void>;
+  /** The owner adds a player without the app (real-cards games, in the lobby). */
+  addPlayerWithoutApp(code: string, name: string): Promise<void>;
+  /** The owner takes a player without the app back out of the lobby. */
+  removePlayerWithoutApp(code: string, slot: number): Promise<void>;
   /** The creator picks a partner (or random partnerships); seats are assigned and play starts. */
   choosePartnerships(code: string, choice: PartnershipsRequest): Promise<void>;
-  /** Save or correct the table's result on a board. Everyone at the table sees it straight away. */
+  /** The owner moves the table to a board; every device follows. */
+  moveTo(code: string, board: number): Promise<void>;
+  /** The owner saves or corrects the table's result on a board. Everyone sees it straight away. */
   saveResult(code: string, board: number, result: SaveResultRequest): Promise<ResultDto>;
   /**
    * The creator starts playing a board online, on the devices: its auction, or its cards when the
@@ -69,10 +80,10 @@ export interface GameStore {
   /** The claimer takes their claim back. */
   withdrawClaim(code: string, board: number): Promise<void>;
   /**
-   * Ask to take over a seat (by slot) in a full or started game. Someone at the table has to allow
-   * it. Returns the request's ID, and whether anyone is connected to answer it right now.
+   * Ask to take over a player's seat (by slot). Someone at the table has to allow it, unless nobody
+   * is connected: then it's allowed at once (`allowed`, and this device is in the game).
    */
-  requestSeat(code: string, name: string, slot: number): Promise<{ requestId: string; anyoneConnected: boolean }>;
+  requestSeat(code: string, name: string, slot: number): Promise<{ requestId: string; allowed: boolean }>;
   /** How your request stands. Once it's allowed, this device is in the game (it's the current game). */
   seatRequestStatus(code: string, requestId: string): Promise<SeatRequestStatus>;
   /** Give up waiting. */
@@ -96,7 +107,7 @@ export interface ProfileStore {
   /** The game this device is in right now, so a reload goes straight back to it. */
   currentGame(): string | null;
   setCurrentGame(code: string | null): void;
-  /** The install banner was closed on this computer: don't show it again. */
+  /** The install banner was closed on this device: don't show it again. */
   installBannerClosed(): boolean;
   setInstallBannerClosed(): void;
 }

@@ -45,7 +45,8 @@ export function AppHeader({ name, onHelp, onLeaveGame, onInstall, reconnecting =
   const initial = name.trim().charAt(0).toUpperCase() || "?";
 
   return (
-    <AppBar position="sticky">
+    // Static: the app fills the window and only the screen below scrolls (see App.tsx).
+    <AppBar position="static">
       <Toolbar sx={{ gap: 1 }}>
         <Box component="span" aria-hidden sx={{ typography: "h5", lineHeight: 1 }}>
           ♠

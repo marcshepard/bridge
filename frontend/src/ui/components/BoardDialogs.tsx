@@ -1,10 +1,10 @@
-// The dialogs behind a board: how the score adds up, the field and the analysis (opened once a
-// result is entered), and the board details (opened from the board number at any time).
+// The dialogs behind a board: how the score adds up and the field, with any analysis (opened once a
+// result is entered), and the board details (opened from the board heading at any time).
 
-import { Alert, Box, Stack, Typography } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Stack, Typography } from "@mui/material";
 import type { ReactNode } from "react";
 import type { BoardComparison } from "../../core/compare";
-import { describeResult } from "../../core/describe";
 import { scoreFor } from "../../core/scoring";
 import { type Seat, directionOf } from "../../core/types";
 import type { Board, Game } from "../../providers/types";
@@ -12,7 +12,7 @@ import { ResultText, ScoreText } from "../controls/BridgeText";
 import { Section } from "../controls/Layout";
 import { SheetDialog } from "../controls/SheetDialog";
 import { HelpTip } from "../controls/HelpTip";
-import { formatImps, netParts } from "../labels";
+import { boardLabel, formatImps, netParts } from "../labels";
 import { Breakdown } from "./Breakdown";
 import { DoubleDummyTable } from "./DoubleDummyTable";
 import { Traveller } from "./Traveller";
@@ -102,11 +102,47 @@ export function BreakdownDialog({ open, onClose, board, seat, c }: Props) {
   );
 }
 
+/**
+ * The board's analysis from the source, when it has any: the expert commentary and the double-dummy
+ * tricks. Closed to start with, so the table can talk the board over before anyone reads it.
+ */
+function Analysis({ board, seat }: { board: Board; seat: Seat }) {
+  const tricks = board.doubleDummy?.tricks;
+  if (!board.commentary && !tricks) return null;
+  return (
+    <Accordion variant="outlined" disableGutters sx={{ mb: 2 }}>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="analysis-content" id="analysis-header">
+        <Typography variant="subtitle1" component="h3">
+          {board.commentary ? "Expert analysis" : "Double dummy"}
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails id="analysis-content">
+        {board.commentary && (
+          <Typography sx={{ whiteSpace: "pre-line", pl: 2, borderLeft: 3, borderColor: "primary.main" }}>
+            {board.commentary}
+          </Typography>
+        )}
+        {tricks && board.commentary && (
+          <Section title="Double dummy" id="dd">
+            <DoubleDummyTable dd={{ tricks }} direction={directionOf(seat)} />
+          </Section>
+        )}
+        {tricks && !board.commentary && <DoubleDummyTable dd={{ tricks }} direction={directionOf(seat)} />}
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
 export function FieldDialog({ open, onClose, board, seat, c }: Props) {
   return (
     <SheetDialog open={open} onClose={onClose} title={`Board ${board.number}: the field`}>
       {c.fieldSize === 0 ? (
-        <Alert severity="info">This game has no results from the original field for this board.</Alert>
+        <>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            This game has no results from the original field for this board.
+          </Alert>
+          <Analysis board={board} seat={seat} />
+        </>
       ) : (
         <>
           <Stack spacing={1.5} sx={{ mb: 2 }}>
@@ -156,48 +192,10 @@ export function FieldDialog({ open, onClose, board, seat, c }: Props) {
               </Typography>
             </Stack>
           </Stack>
+          <Analysis board={board} seat={seat} />
           <Traveller c={c} />
         </>
       )}
-    </SheetDialog>
-  );
-}
-
-export function AnalysisDialog({ open, onClose, board, seat, c }: Props) {
-  return (
-    <SheetDialog open={open} onClose={onClose} title={`Board ${board.number}: analysis`}>
-      <Stack component="ul" spacing={0.75} sx={{ pl: 2.5, my: 0 }}>
-        <li>
-          Your result: <ResultText result={c.ours.result} />, <ScoreText score={c.ourScore} /> (
-          {describeResult(c.ours).toLowerCase()})
-        </li>
-        {c.mostCommon && (
-          <li>
-            Most common: <MostCommon c={c} />
-          </li>
-        )}
-        {board.doubleDummy?.par && (
-          <li>
-            Best result double dummy (par): <Par board={board} seat={seat} />
-          </li>
-        )}
-      </Stack>
-
-      {board.doubleDummy?.tricks && (
-        <Section title="Double dummy" id="dd">
-          <DoubleDummyTable dd={{ tricks: board.doubleDummy.tricks }} direction={directionOf(seat)} />
-        </Section>
-      )}
-
-      <Section title="Expert commentary" id="commentary">
-        {board.commentary ? (
-          <Typography sx={{ whiteSpace: "pre-line", pl: 2, borderLeft: 3, borderColor: "primary.main" }}>
-            {board.commentary}
-          </Typography>
-        ) : (
-          <Typography color="text.secondary">No commentary for this board.</Typography>
-        )}
-      </Section>
     </SheetDialog>
   );
 }
@@ -209,7 +207,7 @@ function fieldSize(board: Board): number {
 
 /**
  * About the board you're on: which game it's from, its number there, and how many results it's
- * scored against (later boards in a big game often have far fewer). Opened from the board number.
+ * scored against (later boards in a big game often have far fewer). Opened from the board heading.
  */
 export function BoardInfoDialog({
   open,
@@ -224,7 +222,7 @@ export function BoardInfoDialog({
   board: Board;
   /** Where this board comes in your game, from 1. */
   position: number;
-  /** The game's title, e.g. "The Common Game, 16 Oct 2026 (Open field)". */
+  /** The game's title, e.g. "The Common Game 10/16/26 (299er)". */
   title: string;
   game: Game;
 }) {
@@ -239,7 +237,7 @@ export function BoardInfoDialog({
     ["Results", <span className="num">{fieldSize(board)}</span>],
   ];
   return (
-    <SheetDialog open={open} onClose={onClose} title={`Board ${position}`}>
+    <SheetDialog open={open} onClose={onClose} title={boardLabel(board.number, position)}>
       <Box component="dl" sx={{ m: 0, display: "grid", gap: 1 }}>
         {rows.map(([label, value]) => (
           <Box key={label} sx={{ display: "flex", gap: 1 }}>

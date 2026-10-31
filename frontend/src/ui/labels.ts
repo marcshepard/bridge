@@ -31,6 +31,33 @@ export function seatWithRelation(me: Seat, other: Seat): string {
   return `${SEAT_NAMES[other]} (${RELATION_LONG[relationTo(me, other)]})`;
 }
 
+const RELATION_PLACE: Record<Exclude<Relation, "you">, string> = {
+  partner: "your partner",
+  lho: "on your left",
+  rho: "on your right",
+};
+
+/** A seat and who's in it, as seen from yours: "South (you)", "East (Joe, on your right)". */
+export function seatAndPlayer(me: Seat, seat: Seat, name: string): string {
+  const r = relationTo(me, seat);
+  return r === "you" ? `${SEAT_NAMES[seat]} (you)` : `${SEAT_NAMES[seat]} (${name}, ${RELATION_PLACE[r]})`;
+}
+
+/** Who's vulnerable, short, from your side: "Both", "None", "N/S (you)", "E/W (them)". */
+export function vulnerableShort(me: Seat, vul: Vulnerability): string {
+  if (vul === "None" || vul === "Both") return vul;
+  const side = vul === "NS" ? "N/S" : "E/W";
+  return `${side} (${isVulnerable(vul, directionOf(me)) ? "you" : "them"})`;
+}
+
+/**
+ * Which board this is: the original game's number, plus where it comes in the game you're playing
+ * when that differs (a game started at board 7 shows "Board 7 (our board 1)").
+ */
+export function boardLabel(original: number, position: number): string {
+  return original === position ? `Board ${original}` : `Board ${original} (our board ${position})`;
+}
+
 export function vulnerabilityPhrase(me: Seat, vul: Vulnerability): string {
   if (vul === "None") return "Nobody is vulnerable";
   if (vul === "Both") return "Everybody is vulnerable";
@@ -128,8 +155,9 @@ function showTenth(n: number): string {
  * A player with no live connection right now (asleep, closed the app, lost signal). You're never
  * shown as away on your own screen: if your connection is down, the header's "Reconnecting" icon says so.
  */
-export function isAway(p: { connected: boolean; slot: number }, mySlot: number | null): boolean {
-  return !p.connected && p.slot !== mySlot;
+export function isAway(p: { connected: boolean; slot: number; noApp?: boolean }, mySlot: number | null): boolean {
+  // A player without the app is at the table, just not on a device.
+  return !p.connected && !p.noApp && p.slot !== mySlot;
 }
 
 /**

@@ -27,68 +27,85 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
       <Heading>Getting started</Heading>
       <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
         <li>
-          <strong>Start a game:</strong> one person uploads the game: a PBN file, or a Common Game results page
-          saved from your browser. They get a join code to share with the others.
+          <strong>Start a game:</strong> one person, the game's <strong>owner</strong>, uploads the game: a PBN
+          file, or a Common Game results page saved from your browser. They choose how you'll play the boards:
+          with <strong>real cards</strong> (everyone needs their own deck) or <strong>online</strong> (no
+          cards needed). They get a join code to share with the others.
         </li>
         <li>
           <strong>Join a game:</strong> the others type the code, or open the link they were sent.
         </li>
         <li>
-          <strong>Partners:</strong> once all four have joined, the person who started the game picks partners
-          (or lets the app choose at random). Each screen then shows where everyone sits.
+          <strong>Someone without the app?</strong> In a real-cards game, the owner can tap{" "}
+          <strong>Add a player without the app</strong> in the lobby and type their name. The app can't show
+          them their cards, so they need their hands some other way, such as a printed hand record.
+        </li>
+        <li>
+          <strong>Partners:</strong> once all four have joined, the owner taps their partner's name, or{" "}
+          <strong>Let the app choose</strong> for random partners, then starts the game. Each screen then shows
+          where everyone sits.
         </li>
         <li>
           <strong>Start demo game</strong> to see how it works on your own. You get a made-up game (the deals
-          are real, but the other results and the commentary are invented), with three bots at the table
-          (Bot 2, Bot 3 and Bot 4). Pick a partner, then deal yourself each board and enter any contract and
-          result you like. It starts at board 9 of 36, to show that a game can start part-way through and
-          wrap round. If you play a board's cards on your device (see below), the bots play theirs, with simple
-          rules, and they accept any claim.
-        </li>
-        <li>
-          <strong>Deal:</strong> use one deck per player. Each of you takes your own 13 cards from your deck, as
-          your screen shows them, so nobody sees the other hands.
+          are real, but the other results and the commentary are invented), with three bots at the table (Bot 2,
+          Bot 3 and Bot 4). Pick a partner, then for each board deal yourself your cards and enter any result
+          you like, as the owner. It starts at board 9 of 36, to show that a game can start part-way through and
+          wrap round.
         </li>
       </Box>
 
-      <Heading>Playing a board</Heading>
+      <Heading>The owner runs the table</Heading>
+      <Typography>
+        Everyone's screen shows the same board. The owner enters each result, corrects it if needed, and moves
+        the table on to the next board, so nobody gets ahead or left behind. Talk the board over first; the owner
+        can then open the field and the analysis for everyone to see.
+      </Typography>
+
+      <Heading>Playing a board with real cards</Heading>
       <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
         <li>
-          The board screen shows who sits where (you at the bottom, partner opposite). <strong>Dealer</strong>{" "}
-          and <strong>Vulnerable</strong> labels under the names show who deals and which side is vulnerable;
-          a side with no label isn't. Below that are your 13 cards, sorted by suit, with your high-card points
-          (HCP: ace 4, king 3, queen 2, jack 1). Tap <strong>Large</strong> to show them bigger, a suit per row,
-          and <strong>Small</strong> to go back. Take those cards
-          from your deck, then bid and play as normal.
+          At the top is the board: its number in the game it comes from, for example{" "}
+          <strong>Board 7 · The Common Game 10/16/26</strong>. Tap the ⓘ to see where it comes in
+          your game (board 1, if you started at board 7) and how many results from the original game it's scored
+          against.
         </li>
         <li>
-          The number in the middle of the table is the board you're on, counting from 1. Tap it to see which
-          game it comes from, its number in that game, and how many results from the original game it's
-          scored against.
+          Under it: your seat, the <strong>dealer</strong> (and who that is, for example{" "}
+          <strong>East (Joe, on your right)</strong>), and who's <strong>vulnerable</strong>, for example{" "}
+          <strong>N/S (you)</strong>, <strong>Both</strong> or <strong>None</strong>.
         </li>
         <li>
-          When the bidding is over, anyone taps <strong>Contract: Tap to enter</strong> and enters the contract and who's
-          declaring (or <strong>Passed out</strong>). It shows on everyone's screen at once, so you can all keep
-          it in mind during the play, for example <strong>Contract: 4♠ by West</strong>. If it's wrong, tap the
-          contract to change it.
+          Then your 13 cards, in big type, a suit per row (spades, hearts, clubs, diamonds, so the colours
+          alternate), with your high-card points (HCP: ace 4, king 3, queen 2, jack 1). Take those cards from your
+          deck, so nobody sees the other hands, then bid and play as normal.
         </li>
         <li>
-          When the play is over, anyone taps <strong>Enter the result</strong>: how many tricks declarer took. If
-          a result turns out to be wrong, anyone can tap the result to correct it, even on an earlier board.
-          Everyone else gets a message saying which board changed, since it can change the running tally.
+          When the bidding is over, the owner taps <strong>Enter the contract</strong> (at the bottom of the
+          screen): the contract and who's declaring (or <strong>Passed out</strong>, which ends the board). It shows
+          on everyone's screen, for example <strong>Contract 4♠ by West (Ann, on your left)</strong>, so you can
+          all keep it in mind during the play, and your cards re-sort with trumps first. The owner can tap{" "}
+          <strong>Edit the contract</strong> if it's wrong.
         </li>
         <li>
-          You then see the result in two lines, for example <strong>2♣× by N, made, +180 N/S</strong> and{" "}
-          <strong>83% matchpoints, net +66</strong>. Below them, the table fills in with all four hands, each in
-          its seat (you're still at the bottom). Each part of the result opens more: tap the
-          score to see how it adds up, and the matchpoints to see what the original pairs scored. When the
-          board has expert commentary, an <strong>Analysis</strong> button shows it, with the best possible
-          result.
+          When the play is over, the owner taps <strong>Enter the result</strong>: how many tricks declarer took.
+          Every screen then shows the result.
         </li>
         <li>
-          Tap <strong>Next board</strong> when you're ready. Each screen moves on by itself, so nobody waits for
-          anyone else. The running tally at the top (for example NS +140) adds up how far ahead or behind the
-          field you are; tap it to see every board.
+          The result card says what happened, for example <strong>2♣× by N, made</strong>, with two buttons
+          under it: your <strong>Score</strong> (+180 N/S; tap it to see how it adds up) and your{" "}
+          <strong>Matchpoints</strong> (83% N/S; tap it to see what the original pairs scored, and your net). Below are all
+          four hands, North at the top and South at the bottom, each headed with the seat and the player, for
+          example <strong>West (Marc)</strong>. Trumps come first in each hand, then the other suits alternating
+          colours. When the source has
+          analysis for the board (<strong>Expert analysis</strong>, or just the <strong>Double dummy</strong>{" "}
+          tricks), it's there too, closed until you tap it.
+        </li>
+        <li>
+          The owner taps <strong>Correct</strong> beside the result to fix it, and <strong>Next board</strong> (at
+          the bottom of the screen) to move everyone on. To correct an earlier board, the owner opens the running
+          tally and taps that board's row. The running
+          tally at the top (for example NS +140) adds up how far ahead or behind the field you are; anyone can tap
+          it to see every board.
         </li>
         <li>
           If someone's phone goes to sleep or loses signal, their name is greyed out with a small no-signal icon
@@ -97,16 +114,15 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
       </Box>
 
-      <Heading>Playing online, on your devices (being tried out)</Heading>
+      <Heading>Playing online</Heading>
       <Typography sx={{ mb: 1 }}>
-        Instead of real cards and bidding boxes, you can bid and play a board on your phones, tablets or
-        computers. For now, the person who started the game turns it on, one board at a time.
+        In a game played online, there are no cards or bidding boxes: you bid and play each board on your
+        phones, tablets or computers.
       </Typography>
       <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
         <li>
-          The person who started the game taps <strong>Play online</strong>, next to the contract. Everyone's screen
-          goes to that board and shows the auction. (If you've already bid with real cards and entered the
-          contract, it goes straight to the card play.)
+          Each board starts with the auction as soon as the table gets to it. When the play is over, everyone sees
+          the result and the four hands, as with real cards, and the owner taps <strong>Next board</strong>.
         </li>
         <li>
           <strong>Bidding:</strong> the auction is written in four columns, West, North, East, South, starting
@@ -123,7 +139,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           tap the contract at the top to see the auction again.
         </li>
         <li>
-          In a game with robot players (a demo game), the person who started it bids for the robots: their screen
+          In a game with robot players (a demo game), the owner bids for the robots: their screen
           says <strong>Bid for North</strong> and shows that robot's hand. The robots play their own cards.
         </li>
         <li>
@@ -174,12 +190,14 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           <strong>Join a game</strong> and type it.
         </li>
         <li>
-          The game is already full, so you see who's playing. Pick whose seat you're taking (your own, if you're
-          changing devices) and tap <strong>Join as replacement</strong>.
+          If the game is already full, you see who's playing. Pick whose seat you're taking (your own, if you're
+          changing devices) and tap <strong>Join as replacement</strong>. If you're the owner and the game hasn't
+          started yet, tap <strong>Join as</strong> your name <strong>(owner)</strong>.
         </li>
         <li>
-          Everyone at the table is asked whether to allow it; the first answer counts. Once someone allows it,
-          you're in that seat with all its results so far, and the old device leaves the game.
+          Everyone at the table is asked whether to allow it; the first answer counts. If nobody's connected to
+          answer, you're let in straight away. You're then in that seat with all its results so far (and, for the
+          owner's seat, you're the owner), and the old device leaves the game.
         </li>
       </Box>
 
@@ -240,7 +258,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
       <Heading>Put it on your home screen</Heading>
       <Typography sx={{ mb: 1 }}>
         Install the app and it opens like any other app, full screen, from its own icon. Until you do, your
-        avatar menu (top right) has <strong>Install to home screen</strong>, which shows you how.
+        avatar menu (top right) has <strong>Install to home screen</strong>, which shows you how. It's optional:
+        the app works in your browser too, and the ✕ on the install banner hides the banner on that device.
       </Typography>
       <Box component="ul" sx={{ m: 0, pl: 2.5, display: "grid", gap: 0.5 }}>
         <li>

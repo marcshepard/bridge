@@ -4,6 +4,7 @@ import type {
   CallDto,
   ClaimDto,
   EventSnapshot,
+  GameMode,
   JoinedResponse,
   LiveTicketResponse,
   PushMessage,
@@ -36,8 +37,8 @@ async function api<T = unknown>(method: string, path: string, body?: unknown, pl
 }
 
 /** Creator + 3 joiners, still in the lobby. */
-async function lobbyOfFour() {
-  const created = await api<JoinedResponse>("POST", "/events", { name: "Marc", game, startBoard: 1 });
+async function lobbyOfFour(mode: GameMode = "cards") {
+  const created = await api<JoinedResponse>("POST", "/events", { name: "Marc", game, startBoard: 1, mode });
   const { code } = created.json;
   const others = [];
   for (const name of ["Ann", "Bob", "Cy"]) {
@@ -47,8 +48,8 @@ async function lobbyOfFour() {
 }
 
 /** A game in play, with Ann (slot 2) as the creator's partner. */
-async function gameInPlay() {
-  const g = await lobbyOfFour();
+async function gameInPlay(mode: GameMode = "cards") {
+  const g = await lobbyOfFour(mode);
   await api("POST", `/events/${g.code}/partnerships`, { partnerSlot: 2 }, g.creator.playerId);
   return g;
 }
@@ -81,7 +82,7 @@ async function connect(code: string, playerId: string) {
 
 describe("creating a game", () => {
   it("returns a join code and the creator's player ID", async () => {
-    const res = await api<JoinedResponse>("POST", "/events", { name: "Marc", game, startBoard: 2 });
+    const res = await api<JoinedResponse>("POST", "/events", { name: "Marc", game, startBoard: 2, mode: "cards" });
     expect(res.status).toBe(201);
     expect(res.json.code).toMatch(/^[2-9A-HJKMNP-Z]{8}$/);
     expect(res.json.slot).toBe(1);
@@ -90,7 +91,8 @@ describe("creating a game", () => {
     expect(snap.json.title).toBe("Test fixture (3 boards)");
     expect(snap.json.status).toBe("lobby");
     expect(snap.json.startBoard).toBe(2);
-    expect(snap.json.players).toEqual([{ slot: 1, name: "Marc", isCreator: true, isBot: false, seat: null, connected: false }]);
+    expect(snap.json.currentBoard).toBe(2);
+    expect(snap.json.players).toEqual([{ slot: 1, name: "Marc", isCreator: true, noApp: false, isBot: false, seat: null, connected: false }]);
     expect(snap.json.you).toEqual({ slot: 1, isCreator: true, seat: null });
   });
 
@@ -99,11 +101,11 @@ describe("creating a game", () => {
     broken.boards[0]!.hands.N = "AKQJ.AKQJ.AKQJ.AKQJ";
     expect((await api("POST", "/events", { name: "Marc", game: broken })).status).toBe(400);
     expect((await api("POST", "/events", { name: "  ", game })).status).toBe(400);
-    expect((await api("POST", "/events", { name: "Marc", game, startBoard: 99 })).status).toBe(400);
+    expect((await api("POST", "/events", { name: "Marc", game, startBoard: 99, mode: "cards" })).status).toBe(400);
   });
 
   it("accepts the code in any case, with spaces or dashes", async () => {
-    const { code } = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game })).json;
+    const { code } = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, mode: "cards" })).json;
     const typed = `${code.slice(0, 4).toLowerCase()}-${code.slice(4)}`;
     expect((await api("GET", `/events/${typed}`)).status).toBe(200);
   });
@@ -146,7 +148,7 @@ describe("joining", () => {
 
 describe("partnerships and seats", () => {
   it("only the creator chooses, and only with 4 players", async () => {
-    const created = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game })).json;
+    const created = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, mode: "cards" })).json;
     const early = await api("POST", `/events/${created.code}/partnerships`, { random: true }, created.playerId);
     expect(early.status).toBe(409);
 
@@ -182,14 +184,16 @@ describe("partnerships and seats", () => {
 // ---- Results ------------------------------------------------------------------------------------
 
 describe("results", () => {
-  it("any player can save, and anyone at the table can correct it", async () => {
+  it("only the owner saves and corrects them", async () => {
     const { code, creator, others } = await gameInPlay();
     const first = await api<ResultDto>("PUT", `/events/${code}/boards/1`, { contract: "4s", declarer: "S", tricks: 10 }, creator.playerId);
     expect(first.status).toBe(200);
     expect(first.json).toMatchObject({ board: 1, contract: "4S", declarer: "S", tricks: 10, enteredBy: 1 });
 
-    const fix = await api<ResultDto>("PUT", `/events/${code}/boards/1`, { contract: "4SX", declarer: "S", tricks: 9 }, others[1]!.playerId);
-    expect(fix.json).toMatchObject({ contract: "4SX", tricks: 9, enteredBy: 3 });
+    const other = await api<ResultDto>("PUT", `/events/${code}/boards/1`, { contract: "4SX", declarer: "S", tricks: 9 }, others[1]!.playerId);
+    expect(other.status).toBe(403);
+    const fix = await api<ResultDto>("PUT", `/events/${code}/boards/1`, { contract: "4SX", declarer: "S", tricks: 9 }, creator.playerId);
+    expect(fix.json).toMatchObject({ contract: "4SX", tricks: 9, enteredBy: 1 });
 
     const snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
     expect(snap.results).toHaveLength(1);
@@ -197,12 +201,12 @@ describe("results", () => {
   });
 
   it("takes the contract first, then the tricks", async () => {
-    const { code, creator, others } = await gameInPlay();
+    const { code, creator } = await gameInPlay();
     const put = (body: unknown, id = creator.playerId) => api<ResultDto>("PUT", `/events/${code}/boards/1`, body, id);
 
-    const bid = await put({ contract: "3nt", declarer: "W", tricks: null }, others[0]!.playerId);
+    const bid = await put({ contract: "3nt", declarer: "W", tricks: null });
     expect(bid.status).toBe(200);
-    expect(bid.json).toMatchObject({ contract: "3NT", declarer: "W", tricks: null, enteredBy: 2 });
+    expect(bid.json).toMatchObject({ contract: "3NT", declarer: "W", tricks: null, enteredBy: 1 });
     expect((await put({ contract: "3NT", declarer: null, tricks: null })).status).toBe(400);
 
     const played = await put({ contract: "3NT", declarer: "W", tricks: 8 });
@@ -322,7 +326,7 @@ describe("playing the cards on devices", () => {
 
   it("lets the creator play the bots' cards, and bots accept claims straight away", async () => {
     // Marc (creator) and Ann against two bots.
-    const marc = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, startBoard: 1 })).json;
+    const marc = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, startBoard: 1, mode: "cards" })).json;
     const { code } = marc;
     const ann = (await api<JoinedResponse>("POST", `/events/${code}/players`, { name: "Ann" })).json;
     await api("POST", `/events/${code}/test-players`);
@@ -462,7 +466,7 @@ describe("bidding on devices", () => {
   });
 
   it("takes calls in turn, only allowed ones, then the contract goes in and play starts", async () => {
-    const { code, idOf } = await bidding();
+    const { code, idOf, creator } = await bidding();
     expect((await call(code, 1, "1NT", idOf.E)).status).toBe(409); // North deals
     expect((await call(code, 2, "1NT", idOf.N)).status).toBe(409); // wrong call number
     expect((await call(code, 1, "8NT", idOf.N)).status).toBe(400);
@@ -471,7 +475,7 @@ describe("bidding on devices", () => {
     expect((await call(code, 1, "PASS", idOf.N)).status).toBe(409); // a second tap
     expect((await call(code, 2, "1S", idOf.E)).status).toBe(400); // too low
     // The contract can't be entered by hand meanwhile.
-    expect((await api("PUT", `/events/${code}/boards/1`, { contract: "4S", declarer: "S", tricks: null }, idOf.E)).status).toBe(409);
+    expect((await api("PUT", `/events/${code}/boards/1`, { contract: "4S", declarer: "S", tricks: null }, creator.playerId)).status).toBe(409);
     await call(code, 2, "PASS", idOf.E);
     await call(code, 3, "3NT", idOf.S);
     await call(code, 4, "PASS", idOf.W);
@@ -496,7 +500,7 @@ describe("bidding on devices", () => {
   });
 
   it("lets the creator call for the bots", async () => {
-    const marc = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, startBoard: 1 })).json;
+    const marc = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, startBoard: 1, mode: "cards" })).json;
     const ann = (await api<JoinedResponse>("POST", `/events/${marc.code}/players`, { name: "Ann" })).json;
     await api("POST", `/events/${marc.code}/test-players`);
     await api("POST", `/events/${marc.code}/partnerships`, { partnerSlot: 2 }, marc.playerId);
@@ -563,10 +567,11 @@ describe("live updates", () => {
     first.webSocket!.close();
   });
 
-  it("tells everyone when the game ends", async () => {
-    const { code, others } = await gameInPlay();
+  it("only the owner ends the game, and everyone is told", async () => {
+    const { code, creator, others } = await gameInPlay();
     const ann = await connect(code, others[0]!.playerId);
-    expect((await api("POST", `/events/${code}/end`, undefined, others[2]!.playerId)).status).toBe(204);
+    expect((await api("POST", `/events/${code}/end`, undefined, others[2]!.playerId)).status).toBe(403);
+    expect((await api("POST", `/events/${code}/end`, undefined, creator.playerId)).status).toBe(204);
     await ann.waitFor((m) => m.type === "status" && m.status === "ended");
     ann.ws.close();
   });
@@ -589,7 +594,7 @@ describe("seat requests", () => {
 
     const asked = await ask(code, "Dana", 3);
     expect(asked.status).toBe(201);
-    expect(asked.json.anyoneConnected).toBe(true);
+    expect(asked.json.status).toBe("pending");
     const dana = asked.json;
     await ann.waitFor((m) => m.type === "request" && m.request.name === "Dana" && m.request.slot === 3);
     expect(await status(code, dana)).toBe("pending");
@@ -614,6 +619,8 @@ describe("seat requests", () => {
 
   it("can be denied or cancelled, and only the first answer counts", async () => {
     const { code, creator, others } = await gameInPlay();
+    const marc = await connect(code, creator.playerId); // someone there to answer
+    await marc.waitFor((m) => m.type === "presence" && m.connected.includes(1));
     const answer = (id: string, allow: boolean, who = creator.playerId) =>
       api("POST", `/events/${code}/requests/${id}/answer`, { allow }, who);
 
@@ -632,14 +639,106 @@ describe("seat requests", () => {
     expect((await answer(first.requestId, true, "not-a-player")).status).toBe(403);
     expect((await answer(first.requestId, true)).status).toBe(204);
     expect(await status(code, second)).toBe("denied");
+    marc.ws.close();
   });
 
-  it("is only for full games, and for a real player's seat", async () => {
-    const created = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game })).json;
-    expect((await ask(created.code, "Dana", 1)).status).toBe(409); // there's room: just join
-    const { code } = await lobbyOfFour();
-    expect((await ask(code, "Dana", 9)).status).toBe(400);
-    expect((await ask(code, "Dana", 2)).status).toBe(201); // a full lobby works too
+  it("is for a player's seat, in the lobby too", async () => {
+    const created = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, mode: "cards" })).json;
+    expect((await ask(created.code, "Dana", 2)).status).toBe(400); // an empty place: join instead
+    expect((await ask(created.code, "Dana", 9)).status).toBe(400);
+    const marc = await connect(created.code, created.playerId);
+    await marc.waitFor((m) => m.type === "presence" && m.connected.includes(1));
+    expect((await ask(created.code, "Marc", 1)).json.status).toBe("pending"); // the owner's own seat
+    marc.ws.close();
+  });
+
+  it("is allowed straight away when nobody is connected, and the owner's seat keeps being the owner", async () => {
+    // Marc starts the game on his computer, closes it, and carries on from his phone.
+    const created = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, mode: "cards" })).json;
+    const asked = (await ask(created.code, "Marc", 1)).json;
+    expect(asked.status).toBe("allowed");
+    expect(await status(created.code, asked)).toBe("allowed");
+    const snap = (await api<EventSnapshot>("GET", `/events/${created.code}`, undefined, asked.playerId)).json;
+    expect(snap.you).toMatchObject({ slot: 1, isCreator: true });
+    expect((await api<EventSnapshot>("GET", `/events/${created.code}`, undefined, created.playerId)).json.you).toBeNull();
+  });
+});
+
+// ---- The owner runs the table ---------------------------------------------------------------------
+
+describe("how a game is played", () => {
+  it("must be chosen when the game is created", async () => {
+    expect((await api("POST", "/events", { name: "Marc", game, startBoard: 1 })).status).toBe(400);
+    expect((await api("POST", "/events", { name: "Marc", game, startBoard: 1, mode: "bridge" })).status).toBe(400);
+    const { code } = await lobbyOfFour("devices");
+    expect((await api<EventSnapshot>("GET", `/events/${code}`)).json.mode).toBe("devices");
+  });
+
+  it("on the devices, starts each board's auction when the table gets to it", async () => {
+    const { code, creator } = await gameInPlay("devices");
+    let snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
+    expect(snap.results).toEqual([expect.objectContaining({ board: 1, contract: "", onDevices: true })]);
+    // One board at a time.
+    expect((await api("PUT", `/events/${code}/current`, { board: 2 }, creator.playerId)).status).toBe(409);
+    await api("PUT", `/events/${code}/boards/1`, { contract: "3NT", declarer: "N", tricks: 9 }, creator.playerId);
+    expect((await api("PUT", `/events/${code}/current`, { board: 2 }, creator.playerId)).status).toBe(200);
+    snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
+    expect(snap.currentBoard).toBe(2);
+    expect(snap.results.find((r) => r.board === 2)).toMatchObject({ contract: "", onDevices: true });
+  });
+});
+
+describe("the current board", () => {
+  it("starts at the start board; only the owner moves it, and everyone is told", async () => {
+    const { code, creator, others } = await gameInPlay();
+    expect((await api<EventSnapshot>("GET", `/events/${code}`)).json.currentBoard).toBe(1);
+    const ann = await connect(code, others[0]!.playerId);
+    expect((await api("PUT", `/events/${code}/current`, { board: 2 }, others[0]!.playerId)).status).toBe(403);
+    expect((await api("PUT", `/events/${code}/current`, { board: 99 }, creator.playerId)).status).toBe(404);
+    expect((await api("PUT", `/events/${code}/current`, { board: 2 }, creator.playerId)).status).toBe(200);
+    await ann.waitFor((m) => m.type === "board" && m.board === 2);
+    expect((await api<EventSnapshot>("GET", `/events/${code}`)).json.currentBoard).toBe(2);
+    const since = await api<{ currentBoard: number }>("GET", `/events/${code}/results?since=2000-01-01`, undefined, others[0]!.playerId);
+    expect(since.json.currentBoard).toBe(2);
+    ann.ws.close();
+  });
+
+  it("can't move before play starts", async () => {
+    const { code, creator } = await lobbyOfFour();
+    expect((await api("PUT", `/events/${code}/current`, { board: 2 }, creator.playerId)).status).toBe(409);
+  });
+});
+
+describe("players without the app", () => {
+  it("are added by the owner, to real-cards games in the lobby, and can be taken out again", async () => {
+    const created = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, mode: "cards" })).json;
+    const ann = (await api<JoinedResponse>("POST", `/events/${created.code}/players`, { name: "Ann" })).json;
+    const add = (name: string, id = created.playerId, code = created.code) =>
+      api<{ slot: number }>("POST", `/events/${code}/players/no-app`, { name }, id);
+    expect((await add("Joe", ann.playerId)).status).toBe(403);
+    expect((await add("Joe")).json).toEqual({ slot: 3 });
+    let snap = (await api<EventSnapshot>("GET", `/events/${created.code}`)).json;
+    expect(snap.players.find((p) => p.slot === 3)).toMatchObject({ name: "Joe", noApp: true, isBot: false });
+    expect((await api("DELETE", `/events/${created.code}/players/no-app/2`, undefined, created.playerId)).status).toBe(404); // Ann has the app
+    expect((await api("DELETE", `/events/${created.code}/players/no-app/3`, undefined, created.playerId)).status).toBe(204);
+    snap = (await api<EventSnapshot>("GET", `/events/${created.code}`)).json;
+    expect(snap.players.map((p) => p.name)).toEqual(["Marc", "Ann"]);
+
+    const online = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, mode: "devices" })).json;
+    expect((await add("Joe", online.playerId, online.code)).status).toBe(409);
+  });
+
+  it("fill a seat, and someone with the app can take it over", async () => {
+    const created = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, mode: "cards" })).json;
+    const { code } = created;
+    await api(`POST`, `/events/${code}/players`, { name: "Ann" });
+    await api(`POST`, `/events/${code}/players`, { name: "Bob" });
+    await api("POST", `/events/${code}/players/no-app`, { name: "Joe" }, created.playerId);
+    expect((await api("POST", `/events/${code}/partnerships`, { partnerSlot: 2 }, created.playerId)).status).toBe(200);
+    const joe = (await api<SeatRequestCreated>("POST", `/events/${code}/requests`, { name: "Joe", slot: 4 })).json;
+    expect(joe.status).toBe("allowed"); // nobody connected
+    const snap = (await api<EventSnapshot>("GET", `/events/${code}`, undefined, joe.playerId)).json;
+    expect(snap.players.find((p) => p.slot === 4)).toMatchObject({ name: "Joe", noApp: false });
   });
 });
 
@@ -675,7 +774,7 @@ describe("deleting and test players", () => {
   });
 
   it("fills empty places with test players in dev", async () => {
-    const { code } = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game })).json;
+    const { code } = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, mode: "cards" })).json;
     const res = await api<{ added: number[] }>("POST", `/events/${code}/test-players`);
     expect(res.json.added).toEqual([2, 3, 4]);
     const snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
@@ -683,11 +782,12 @@ describe("deleting and test players", () => {
   });
 
   it("starts a demo game at board 9 with three bots (allowed in the live app too)", async () => {
-    const res = await api<JoinedResponse>("POST", "/events/demo", { name: "Marc" });
+    const res = await api<JoinedResponse>("POST", "/events/demo", { name: "Marc", mode: "devices" });
     expect(res.status).toBe(201);
     const snap = (await api<EventSnapshot>("GET", `/events/${res.json.code}`, undefined, res.json.playerId)).json;
     expect(snap.title).toBe("Demo game (made-up results)");
     expect(snap.startBoard).toBe(9);
+    expect(snap.mode).toBe("devices");
     expect(snap.status).toBe("lobby");
     expect(snap.you?.isCreator).toBe(true);
     expect(snap.players.map((p) => p.name)).toEqual(["Marc", "Bot 2", "Bot 3", "Bot 4"]);

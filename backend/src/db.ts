@@ -1,7 +1,7 @@
 // All SQL lives here. Routes call these functions; nothing else touches D1 directly.
 
 import type { Seat } from "../../frontend/src/core/types";
-import type { CallDto, ClaimDto, EventStatus, PlayDto, ResultDto, SeatRequestDto } from "./api-types";
+import type { CallDto, ClaimDto, EventStatus, GameMode, PlayDto, ResultDto, SeatRequestDto } from "./api-types";
 
 export interface EventRow {
   code: string;
@@ -9,6 +9,9 @@ export interface EventRow {
   game_json: string;
   start_board: number;
   status: EventStatus;
+  mode: GameMode;
+  /** NULL until the owner first moves the table on: the start board. */
+  current_board: number | null;
   created_at: string;
   expires_at: string;
 }
@@ -19,6 +22,7 @@ export interface PlayerRow {
   name: string;
   is_creator: number;
   is_bot: number;
+  no_app: number;
   seat: Seat | null;
 }
 
@@ -54,9 +58,9 @@ export async function insertEvent(db: D1Database, e: EventRow, creator: PlayerRo
   await db.batch([
     db
       .prepare(
-        "INSERT INTO events (code, title, game_json, start_board, status, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO events (code, title, game_json, start_board, status, mode, current_board, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
-      .bind(e.code, e.title, e.game_json, e.start_board, e.status, e.created_at, e.expires_at),
+      .bind(e.code, e.title, e.game_json, e.start_board, e.status, e.mode, e.current_board, e.created_at, e.expires_at),
     insertPlayerStmt(db, e.code, creator, joinedAt),
   ]);
 }
@@ -64,9 +68,9 @@ export async function insertEvent(db: D1Database, e: EventRow, creator: PlayerRo
 function insertPlayerStmt(db: D1Database, code: string, p: PlayerRow, joinedAt: string) {
   return db
     .prepare(
-      "INSERT INTO players (event_code, player_id, slot, name, is_creator, is_bot, seat, joined_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO players (event_code, player_id, slot, name, is_creator, is_bot, no_app, seat, joined_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
-    .bind(code, p.player_id, p.slot, p.name, p.is_creator, p.is_bot, p.seat, joinedAt);
+    .bind(code, p.player_id, p.slot, p.name, p.is_creator, p.is_bot, p.no_app, p.seat, joinedAt);
 }
 
 export async function insertPlayer(db: D1Database, code: string, p: PlayerRow, joinedAt: string) {
@@ -75,7 +79,7 @@ export async function insertPlayer(db: D1Database, code: string, p: PlayerRow, j
 
 export async function getPlayers(db: D1Database, code: string): Promise<PlayerRow[]> {
   const { results } = await db
-    .prepare("SELECT player_id, slot, name, is_creator, is_bot, seat FROM players WHERE event_code = ? ORDER BY slot")
+    .prepare("SELECT player_id, slot, name, is_creator, is_bot, no_app, seat FROM players WHERE event_code = ? ORDER BY slot")
     .bind(code)
     .all<PlayerRow>();
   return results;
@@ -92,6 +96,11 @@ export async function setSeatsAndStart(db: D1Database, code: string, seats: Map<
     ),
     db.prepare("UPDATE events SET status = 'playing' WHERE code = ?").bind(code),
   ]);
+}
+
+/** The owner moves the table to a board. */
+export async function setCurrentBoard(db: D1Database, code: string, board: number) {
+  await db.prepare("UPDATE events SET current_board = ? WHERE code = ?").bind(board, code).run();
 }
 
 export async function setStatus(db: D1Database, code: string, status: EventStatus) {
@@ -386,10 +395,13 @@ export async function closeSeatRequest(
   return res.meta.changes > 0;
 }
 
-/** The seat changes hands: the requester's key and name replace the old player's. */
+/**
+ * The seat changes hands: the requester's key and name replace the old player's. Being the owner
+ * goes with the seat; a bot's or a player without the app's seat now has someone on a device.
+ */
 export async function replacePlayer(db: D1Database, code: string, slot: number, playerId: string, name: string) {
   await db
-    .prepare("UPDATE players SET player_id = ?, name = ?, is_bot = 0 WHERE event_code = ? AND slot = ?")
+    .prepare("UPDATE players SET player_id = ?, name = ?, is_bot = 0, no_app = 0 WHERE event_code = ? AND slot = ?")
     .bind(playerId, name, code, slot)
     .run();
 }

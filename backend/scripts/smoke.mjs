@@ -24,7 +24,7 @@ async function call(method, path, body, playerId) {
   return json;
 }
 
-const { code, playerId } = await call("POST", "/events", { name: "You", game, startBoard: 1 });
+const { code, playerId } = await call("POST", "/events", { name: "You", game, startBoard: 1, mode: "cards" });
 console.log(`Created game ${code} (you are slot 1)`);
 
 const { added } = await call("POST", `/events/${code}/test-players`);

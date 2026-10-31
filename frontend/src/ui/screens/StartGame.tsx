@@ -1,12 +1,17 @@
-// Start a game: upload a game file, check what's in it, choose the starting board, create it.
+// Start a game: upload a game file, check what's in it, choose how the boards are played (real
+// cards or online: no default, it's a real choice) and the starting board, create it.
 
 import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
+import PriorityHighIcon from "@mui/icons-material/PriorityHigh";
 import { Alert, Box, Button, Collapse, IconButton, Link, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useState } from "react";
 import { type GameFileV1, parseGameFile } from "../../providers/gameFile";
 import { ACCEPTED_FILES, fileToGameFile } from "../../providers/importFile";
 import type { Game } from "../../providers/types";
 import { games } from "../../services";
+import type { GameMode } from "../../session/store";
+import { GameModeHelp } from "../components/GameModeHelp";
+import { ChoiceGroup } from "../controls/ChoiceGroup";
 import { SheetDialog } from "../controls/SheetDialog";
 
 interface Props {
@@ -42,12 +47,12 @@ function TcgHelp() {
           Save the page: press <strong>Ctrl+S</strong> (<strong>Cmd+S</strong> on a Mac) and save it as{" "}
           <strong>Webpage, HTML only</strong>.
         </li>
-        <li>Choose the saved .html file here.</li>
+        <li>Upload the saved .html file here.</li>
       </Box>
       <Typography variant="body2" sx={{ mt: 1 }}>
         Phones can't easily save web pages, so start the game on the computer. To play on your phone instead,
-        join the game from your phone, choose <strong>Join as replacement</strong>, pick your own seat, and tap{" "}
-        <strong>Allow</strong> on the computer.
+        join the game from your phone with the code and choose <strong>Join as</strong> yourself{" "}
+        <strong>(owner)</strong>. If the game is still open on the computer, tap <strong>Allow</strong> there.
       </Typography>
       <Typography variant="body2" sx={{ mt: 1 }}>
         The page you save is the field you'll be compared with: the 299er page compares you with the 299ers.
@@ -68,8 +73,10 @@ function fieldSummary(game: Game): string {
   return `${varies ? "~" : ""}${average} tables/board`;
 }
 
+
 export function StartGame({ open, name, onClose, onCreated }: Props) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [mode, setMode] = useState<GameMode | null>(null);
   const [startBoard, setStartBoard] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -89,12 +96,13 @@ export function StartGame({ open, name, onClose, onCreated }: Props) {
   }
 
   async function create() {
-    if (!loaded) return;
+    if (!loaded || !mode) return;
     setBusy(true);
     setError(null);
     try {
-      onCreated(await games.create(name, loaded.file, startBoard));
+      onCreated(await games.create(name, loaded.file, startBoard, mode));
       setLoaded(null);
+      setMode(null);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -105,6 +113,9 @@ export function StartGame({ open, name, onClose, onCreated }: Props) {
   const warnings = loaded?.game.warnings ?? [];
   // Without the original field's results there's nothing to score against: worth a warning.
   const noField = !!loaded && loaded.game.boards.every((b) => b.field.length === 0);
+  // What's still needed before the game can be created, said under the button.
+  const toDo = [...(loaded ? [] : ["upload a game file"]), ...(mode ? [] : ["choose how you'll play the boards"])];
+  const toDoText = toDo.join(" and ");
 
   return (
     <SheetDialog
@@ -112,9 +123,24 @@ export function StartGame({ open, name, onClose, onCreated }: Props) {
       title="Start a game"
       onClose={onClose}
       actions={
-        <Button variant="contained" size="large" fullWidth disabled={!loaded || busy} onClick={() => void create()}>
-          {busy ? "Creating the game…" : loaded ? `Create the game, starting at board ${startBoard}` : "Choose a game file first"}
-        </Button>
+        <Stack spacing={1} sx={{ width: 1 }}>
+          <Button variant="contained" size="large" fullWidth disabled={toDo.length > 0 || busy} onClick={() => void create()}>
+            {busy ? "Creating the game…" : loaded ? `Create the game, starting at board ${startBoard}` : "Create the game"}
+          </Button>
+          {toDo.length > 0 && (
+            <Stack
+              direction="row"
+              spacing={0.5}
+              sx={{ justifyContent: "center", alignItems: "center", color: "warning.main" }}
+              aria-live="polite"
+            >
+              <PriorityHighIcon fontSize="small" aria-label="Still to do" />
+              <Typography variant="body2" color="text.secondary">
+                {toDoText.charAt(0).toUpperCase() + toDoText.slice(1)}.
+              </Typography>
+            </Stack>
+          )}
+        </Stack>
       }
     >
       <Stack spacing={2}>
@@ -135,7 +161,7 @@ export function StartGame({ open, name, onClose, onCreated }: Props) {
         </Collapse>
         <Box>
           <Button variant="outlined" component="label">
-            {loaded ? "Choose a different file" : "Choose a game file"}
+            {loaded ? "Upload a different file" : "Upload a game file"}
             <input
               hidden
               type="file"
@@ -150,6 +176,17 @@ export function StartGame({ open, name, onClose, onCreated }: Props) {
         </Box>
 
         {error && <Alert severity="error">{error}</Alert>}
+
+        <ChoiceGroup<GameMode>
+          label="How will you play the boards?"
+          help={<GameModeHelp />}
+          value={mode}
+          onChange={setMode}
+          choices={[
+            { value: "cards", label: "Real cards", sub: "Everyone deals their own" },
+            { value: "devices", label: "Online", sub: "Bid and play on screen" },
+          ]}
+        />
 
         {loaded && (
           <>

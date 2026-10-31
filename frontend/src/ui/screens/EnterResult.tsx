@@ -24,11 +24,13 @@ import { formatTrickResult } from "../../core/contract";
 
 /**
  * Which part of the board's result this dialog takes:
- * - "contract": once the bidding is over, so everyone can see it during the play;
+ * - "contract": the contract alone, after the bidding, so everyone sees it during the play
+ *   (passed out is the whole result);
  * - "result": the tricks, for the contract already entered;
+ * - "full": the contract and tricks together;
  * - "correct": both at once, to fix a result after it's in.
  */
-export type EntryStep = "contract" | "result" | "correct";
+export type EntryStep = "contract" | "result" | "full" | "correct";
 
 interface Props {
   open: boolean;
@@ -47,6 +49,7 @@ interface Props {
 const TITLES: Record<EntryStep, string> = {
   contract: "enter the contract",
   result: "enter the result",
+  full: "enter the result",
   correct: "correct the result",
 };
 

@@ -28,7 +28,10 @@ import type {
   ClaimDto,
   ClaimRequest,
   CreateEventRequest,
+  CurrentBoardRequest,
+  DemoRequest,
   EventSnapshot,
+  GameMode,
   JoinedResponse,
   JoinRequest,
   LiveTicketResponse,
@@ -126,6 +129,34 @@ async function push(c: Ctx, code: string, message: PushMessage) {
   c.executionCtx.waitUntil(hub(c.env, code).notify(message).catch((e) => console.error("push failed", e)));
 }
 
+/** The game's owner only, or a 403 saying `what` is theirs to do. */
+function ownerOnly(me: db.PlayerRow, what: string) {
+  if (!me.is_creator) throw new HttpError(403, `Only the game's owner can ${what}`);
+}
+
+function parseMode(raw: unknown): GameMode {
+  if (raw === "cards" || raw === "devices") return raw;
+  throw new HttpError(400, "Choose how the boards are played: real cards or on the devices");
+}
+
+/** The board the table is on (original numbering). */
+const currentBoard = (event: db.EventRow) => event.current_board ?? event.start_board;
+
+/**
+ * In a game played on the devices, a board starts with its auction as soon as the table is on it,
+ * unless it already has a result or is under way. One board at a time: false (and nothing started)
+ * when another board's cards are still being played.
+ */
+async function startOnDevices(c: Ctx, code: string, board: number, by: number): Promise<boolean> {
+  const results = await db.getResults(c.env.DB, code);
+  if (results.some((r) => r.onDevices && r.tricks === null && r.board !== board)) return false;
+  if (!results.some((r) => r.board === board)) {
+    await db.startAuction(c.env.DB, code, board, by, nowIso());
+    await push(c, code, { type: "result", result: (await db.getResult(c.env.DB, code, board))! });
+  }
+  return true;
+}
+
 function nextFreeSlot(players: db.PlayerRow[]): number | null {
   for (let s = 1; s <= MAX_PLAYERS; s++) if (!players.some((p) => p.slot === s)) return s;
   return null;
@@ -137,7 +168,7 @@ function nextFreeSlot(players: db.PlayerRow[]): number | null {
 app.post("/events", async (c) => {
   if (Number(c.req.header("Content-Length") ?? 0) > MAX_GAME_BYTES) throw new HttpError(413, "Game file too large");
   const req = await body<CreateEventRequest>(c);
-  return c.json<JoinedResponse>(await createEvent(c, cleanName(req.name), req.game, req.startBoard), 201);
+  return c.json<JoinedResponse>(await createEvent(c, cleanName(req.name), req.game, req.startBoard, parseMode(req.mode)), 201);
 });
 
 /**
@@ -146,14 +177,20 @@ app.post("/events", async (c) => {
  * in the lobby to pick partners. Bots are allowed here in the live app because the game is ours.
  */
 app.post("/events/demo", async (c) => {
-  const req = await body<JoinRequest>(c);
-  const joined = await createEvent(c, cleanName(req.name), demoGame as unknown as GameFileV1, DEMO_START_BOARD);
+  const req = await body<DemoRequest>(c);
+  const joined = await createEvent(c, cleanName(req.name), demoGame as unknown as GameFileV1, DEMO_START_BOARD, parseMode(req.mode));
   await addBots(c, joined.code);
   return c.json<JoinedResponse>(joined, 201);
 });
 
 /** Validates the game file, then creates the game with you as its first player. */
-async function createEvent(c: Ctx, name: string, file: GameFileV1, start: number | undefined): Promise<JoinedResponse> {
+async function createEvent(
+  c: Ctx,
+  name: string,
+  file: GameFileV1,
+  start: number | undefined,
+  mode: GameMode,
+): Promise<JoinedResponse> {
   let game;
   try {
     game = parseGameFile(file);
@@ -166,7 +203,7 @@ async function createEvent(c: Ctx, name: string, file: GameFileV1, start: number
   const now = new Date();
   const expires = new Date(now.getTime() + EVENT_LIFETIME_DAYS * 86_400_000);
   const playerId = newPlayerId();
-  const creator: db.PlayerRow = { player_id: playerId, slot: 1, name, is_creator: 1, is_bot: 0, seat: null };
+  const creator: db.PlayerRow = { player_id: playerId, slot: 1, name, is_creator: 1, is_bot: 0, no_app: 0, seat: null };
 
   // Codes are random; retry on the (astronomically unlikely) collision.
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -180,6 +217,8 @@ async function createEvent(c: Ctx, name: string, file: GameFileV1, start: number
           game_json: JSON.stringify(file),
           start_board: startBoard,
           status: "lobby",
+          mode,
+          current_board: null,
           created_at: now.toISOString(),
           expires_at: expires.toISOString(),
         },
@@ -213,12 +252,15 @@ app.get("/events/:code", async (c) => {
     code: event.code,
     title: event.title,
     status: event.status,
+    mode: event.mode,
     startBoard: event.start_board,
+    currentBoard: currentBoard(event),
     game: JSON.parse(event.game_json) as GameFileV1,
     players: players.map((p) => ({
       slot: p.slot,
       name: p.name,
       isCreator: p.is_creator === 1,
+      noApp: p.no_app === 1,
       isBot: p.is_bot === 1,
       seat: p.seat,
       connected: connected.includes(p.slot),
@@ -245,13 +287,51 @@ app.post("/events/:code/players", async (c) => {
 
   const playerId = newPlayerId();
   try {
-    await db.insertPlayer(c.env.DB, event.code, { player_id: playerId, slot, name, is_creator: 0, is_bot: 0, seat: null }, nowIso());
+    await db.insertPlayer(c.env.DB, event.code, { player_id: playerId, slot, name, is_creator: 0, is_bot: 0, no_app: 0, seat: null }, nowIso());
   } catch (e) {
     if (String(e).includes("UNIQUE")) throw new HttpError(409, "Someone else just took that place; try again");
     throw e;
   }
   await push(c, event.code, { type: "players" });
   return c.json<JoinedResponse>({ code: event.code, playerId, slot }, 201);
+});
+
+/**
+ * The owner adds a player without the app to a real-cards game in the lobby: a name in a seat, for
+ * someone at the table who gets their hands some other way (a printed hand record). Nobody gets
+ * their key; someone can take the seat over later with a seat request.
+ */
+app.post("/events/:code/players/no-app", async (c) => {
+  const event = await loadEvent(c);
+  const players = await db.getPlayers(c.env.DB, event.code);
+  ownerOnly(caller(c, players), "add a player without the app");
+  if (event.mode !== "cards") throw new HttpError(409, "Players without the app can only join games played with real cards");
+  if (event.status !== "lobby") throw new HttpError(409, "This game has already started");
+  const name = cleanName((await body<JoinRequest>(c)).name);
+  const slot = nextFreeSlot(players);
+  if (slot === null) throw new HttpError(409, "This game already has 4 players");
+  const row = { player_id: newPlayerId(), slot, name, is_creator: 0, is_bot: 0, no_app: 1, seat: null };
+  try {
+    await db.insertPlayer(c.env.DB, event.code, row, nowIso());
+  } catch (e) {
+    if (String(e).includes("UNIQUE")) throw new HttpError(409, "Someone else just took that place; try again");
+    throw e;
+  }
+  await push(c, event.code, { type: "players" });
+  return c.json({ slot }, 201);
+});
+
+/** The owner takes a player without the app back out of the lobby (a typo, or they got the app after all). */
+app.delete("/events/:code/players/no-app/:slot", async (c) => {
+  const event = await loadEvent(c);
+  const players = await db.getPlayers(c.env.DB, event.code);
+  ownerOnly(caller(c, players), "remove a player");
+  if (event.status !== "lobby") throw new HttpError(409, "This game has already started");
+  const p = players.find((x) => x.slot === Number(c.req.param("slot")));
+  if (!p || !p.no_app) throw new HttpError(404, "No player without the app in that place");
+  await db.deletePlayer(c.env.DB, event.code, p.player_id);
+  await push(c, event.code, { type: "players" });
+  return c.body(null, 204);
 });
 
 /**
@@ -279,7 +359,7 @@ app.post("/events/:code/partnerships", async (c) => {
   const event = await loadEvent(c);
   const players = await db.getPlayers(c.env.DB, event.code);
   const me = caller(c, players);
-  if (!me.is_creator) throw new HttpError(403, "Only the player who started the game chooses partnerships");
+  ownerOnly(me, "choose partnerships");
   if (event.status !== "lobby") throw new HttpError(409, "Play has already started");
   if (players.length !== MAX_PLAYERS) throw new HttpError(409, "Waiting for 4 players");
 
@@ -298,16 +378,38 @@ app.post("/events/:code/partnerships", async (c) => {
   await db.setSeatsAndStart(c.env.DB, event.code, seats);
   await push(c, event.code, { type: "players" });
   await push(c, event.code, { type: "status", status: "playing" });
+  if (event.mode === "devices") await startOnDevices(c, event.code, currentBoard(event), me.slot);
   return c.json({ seats: Object.fromEntries(seats) });
 });
 
 /**
+ * The owner moves the table to a board; every device follows. Played on the devices, the board's
+ * auction starts straight away (one board at a time, so not while another is being played).
+ */
+app.put("/events/:code/current", async (c) => {
+  const event = await loadEvent(c);
+  const me = caller(c, await db.getPlayers(c.env.DB, event.code));
+  ownerOnly(me, "move the table to another board");
+  if (event.status !== "playing") throw new HttpError(409, "The game isn't in play");
+  const board = Number((await body<CurrentBoardRequest>(c)).board);
+  const game = JSON.parse(event.game_json) as GameFileV1;
+  if (!game.boards.some((b) => b.number === board)) throw new HttpError(404, `Board ${board} isn't in this game`);
+  if (event.mode === "devices" && !(await startOnDevices(c, event.code, board, me.slot))) {
+    throw new HttpError(409, "Another board is being played on the devices; finish it first");
+  }
+  await db.setCurrentBoard(c.env.DB, event.code, board);
+  await push(c, event.code, { type: "board", board });
+  return c.json({ board });
+});
+
+/**
  * Save or correct a board's result, or just its contract (`tricks: null`) once the bidding is over.
- * Any seated player can.
+ * Only the owner can: the table talks it over, and one person enters it.
  */
 app.put("/events/:code/boards/:board", async (c) => {
   const event = await loadEvent(c);
   const me = caller(c, await db.getPlayers(c.env.DB, event.code));
+  ownerOnly(me, "enter or correct results");
   if (event.status !== "playing") throw new HttpError(409, "Results can only be entered while the game is in play");
 
   const board = Number(c.req.param("board"));
@@ -357,14 +459,14 @@ async function boardInPlay(c: Ctx, event: db.EventRow) {
 
 /**
  * Play a board online, on the devices: its auction, then its cards. When the contract was already
- * entered by hand (the table bid with real cards), it starts at the card play. For now only the
- * game's creator can, board by board, while it's being tried out. One board at a time: the table
- * plays it together, until its result is in.
+ * entered by hand, it starts at the card play. Only the owner can. A game played on the devices
+ * starts each board this way by itself (`startOnDevices`); this starts one by hand. One board at a
+ * time: the table plays it together, until its result is in.
  */
 app.post("/events/:code/boards/:board/play", async (c) => {
   const event = await loadEvent(c);
   const me = caller(c, await db.getPlayers(c.env.DB, event.code));
-  if (!me.is_creator) throw new HttpError(403, "Only the player who started the game can start playing on devices");
+  ownerOnly(me, "start playing on the devices");
   const { board, result } = await boardInPlay(c, event);
   if (result && result.tricks !== null) throw new HttpError(409, "This board already has a result");
   const other = (await db.getResults(c.env.DB, event.code)).find(
@@ -568,13 +670,17 @@ app.get("/events/:code/results", async (c) => {
   caller(c, await db.getPlayers(c.env.DB, event.code));
   const since = c.req.query("since") || undefined;
   const now = nowIso(); // before reading, as above
-  return c.json<ResultsSinceResponse>({ results: await db.getResults(c.env.DB, event.code, since), now });
+  return c.json<ResultsSinceResponse>({
+    results: await db.getResults(c.env.DB, event.code, since),
+    currentBoard: currentBoard(event),
+    now,
+  });
 });
 
-/** End the game. Any seated player can (the app asks them to confirm). */
+/** End the game. Only the owner can (the app asks them to confirm). */
 app.post("/events/:code/end", async (c) => {
   const event = await loadEvent(c);
-  caller(c, await db.getPlayers(c.env.DB, event.code));
+  ownerOnly(caller(c, await db.getPlayers(c.env.DB, event.code)), "end the game");
   if (event.status === "ended") return c.body(null, 204);
   await db.setStatus(c.env.DB, event.code, "ended");
   await push(c, event.code, { type: "status", status: "ended" });
@@ -585,7 +691,7 @@ app.post("/events/:code/end", async (c) => {
 app.delete("/events/:code", async (c) => {
   const event = await loadEvent(c);
   const me = caller(c, await db.getPlayers(c.env.DB, event.code));
-  if (!me.is_creator) throw new HttpError(403, "Only the player who started the game can delete it");
+  ownerOnly(me, "delete it");
   await db.deleteEvent(c.env.DB, event.code);
   await push(c, event.code, { type: "deleted" });
   return c.body(null, 204);
@@ -611,10 +717,12 @@ app.get("/events/:code/live", async (c) => {
 
 // ---- Seat requests: taking over a seat --------------------------------------------------------------
 //
-// When a game is full or has started, someone with the code can ask to take over a seat: to replace
-// a player, or to carry on as themselves on another device. Anyone at the table can allow or deny
-// it, and the first answer wins. Allowing it hands the seat (and its results) to the requester's
-// new key; the old key stops working and the old device is disconnected.
+// Someone with the code can ask to take over a player's seat, in the lobby or during play: to
+// replace a player, or to carry on as themselves on another device (the owner starting a game on a
+// computer, then moving to their phone). Anyone at the table can allow or deny it, and the first
+// answer wins; when nobody is connected to answer, it's allowed straight away. Allowing it hands
+// the seat (its results, and being the owner) to the requester's new key; the old key stops
+// working and the old device is disconnected.
 
 /** Ask for a seat. Returns the requester's key, which they use to check on the request. */
 app.post("/events/:code/requests", async (c) => {
@@ -623,7 +731,6 @@ app.post("/events/:code/requests", async (c) => {
   const name = cleanName(req.name);
   if (event.status === "ended") throw new HttpError(409, "This game has ended");
   const players = await db.getPlayers(c.env.DB, event.code);
-  if (nextFreeSlot(players) !== null) throw new HttpError(409, "This game still has room: join it instead");
   const slot = Number(req.slot);
   if (!players.some((p) => p.slot === slot)) throw new HttpError(400, "Pick one of the players");
   const pending = await db.getPendingSeatRequests(c.env.DB, event.code, requestCutoff());
@@ -641,9 +748,14 @@ app.post("/events/:code/requests", async (c) => {
     created_at: nowIso(),
   };
   await db.insertSeatRequest(c.env.DB, event.code, row);
+  // Nobody there to answer: hand the seat over now rather than leave them waiting.
+  const nobodyThere = (await hub(c.env, event.code).connectedSlots()).length === 0;
+  if (nobodyThere && (await db.closeSeatRequest(c.env.DB, event.code, row.id, "allowed", null))) {
+    await handOver(c, event.code, players, row, null);
+    return c.json<SeatRequestCreated>({ requestId: row.id, playerId: row.player_id, status: "allowed" }, 201);
+  }
   await push(c, event.code, { type: "request", request: db.toSeatRequest(row) });
-  const connected = await hub(c.env, event.code).connectedSlots();
-  return c.json<SeatRequestCreated>({ requestId: row.id, playerId: row.player_id, anyoneConnected: connected.length > 0 }, 201);
+  return c.json<SeatRequestCreated>({ requestId: row.id, playerId: row.player_id, status: "pending" }, 201);
 });
 
 /** The requester's own request, checked with their key. */
@@ -687,26 +799,46 @@ app.post("/events/:code/requests/:id/answer", async (c) => {
     throw new HttpError(409, "Someone else answered it first");
   }
 
-  const old = players.find((p) => p.slot === r.slot);
-  const closed = (outcome: "allowed" | "denied", req: db.SeatRequestRow): PushMessage => ({
-    type: "requestClosed",
-    request: db.toSeatRequest(req),
-    outcome,
-    by: me.slot,
-    replacedName: old?.name ?? "",
-  });
-  if (!allow || !old) {
-    await push(c, event.code, closed("denied", r));
+  if (!allow || !players.some((p) => p.slot === r.slot)) {
+    await push(c, event.code, closedMessage(players, r, "denied", me.slot));
     return c.body(null, 204);
   }
+  await handOver(c, event.code, players, r, me.slot);
+  return c.body(null, 204);
+});
 
-  await db.replacePlayer(c.env.DB, event.code, r.slot, r.player_id, r.name);
-  // Anyone else waiting for the same seat is turned down: it's taken now.
-  const others = (await db.getPendingSeatRequests(c.env.DB, event.code, requestCutoff())).filter((x) => x.slot === r.slot);
-  for (const x of others) await db.closeSeatRequest(c.env.DB, event.code, x.id, "denied", me.slot);
+function closedMessage(
+  players: db.PlayerRow[],
+  r: db.SeatRequestRow,
+  outcome: "allowed" | "denied",
+  by: number | null,
+): PushMessage {
+  return {
+    type: "requestClosed",
+    request: db.toSeatRequest(r),
+    outcome,
+    by,
+    replacedName: players.find((p) => p.slot === r.slot)?.name ?? "",
+  };
+}
 
-  const h = hub(c.env, event.code);
-  const messages = [closed("allowed", r), ...others.map((x) => closed("denied", x)), { type: "players" } as const];
+/**
+ * A request already closed as allowed: the seat goes to the requester, anyone else waiting for it
+ * is turned down (it's taken now), and the old device is told and cut off. `by` is who allowed it
+ * (null: nobody was connected to answer).
+ */
+async function handOver(c: Ctx, code: string, players: db.PlayerRow[], r: db.SeatRequestRow, by: number | null) {
+  const old = players.find((p) => p.slot === r.slot)!;
+  await db.replacePlayer(c.env.DB, code, r.slot, r.player_id, r.name);
+  const others = (await db.getPendingSeatRequests(c.env.DB, code, requestCutoff())).filter((x) => x.slot === r.slot);
+  for (const x of others) await db.closeSeatRequest(c.env.DB, code, x.id, "denied", by);
+
+  const h = hub(c.env, code);
+  const messages = [
+    closedMessage(players, r, "allowed", by),
+    ...others.map((x) => closedMessage(players, x, "denied", by)),
+    { type: "players" } as const,
+  ];
   // In order: everyone hears the news (the old device too, so it can say why it's leaving), then
   // the old device is cut off.
   c.executionCtx.waitUntil(
@@ -715,8 +847,7 @@ app.post("/events/:code/requests/:id/answer", async (c) => {
       await h.closePlayer(old.player_id);
     })().catch((e) => console.error("push failed", e)),
   );
-  return c.body(null, 204);
-});
+}
 
 /** Dev only: fill the empty places with test players so a game can start from one device. */
 app.post("/events/:code/test-players", async (c) => {
@@ -733,7 +864,7 @@ async function addBots(c: Ctx, code: string): Promise<number[]> {
   const players = await db.getPlayers(c.env.DB, code);
   const added: number[] = [];
   for (let slot = nextFreeSlot(players); slot !== null; slot = nextFreeSlot(players)) {
-    const row = { player_id: newPlayerId(), slot, name: `Bot ${slot}`, is_creator: 0, is_bot: 1, seat: null };
+    const row = { player_id: newPlayerId(), slot, name: `Bot ${slot}`, is_creator: 0, is_bot: 1, no_app: 0, seat: null };
     await db.insertPlayer(c.env.DB, code, row, nowIso());
     players.push(row);
     added.push(slot);

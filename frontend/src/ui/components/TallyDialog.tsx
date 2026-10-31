@@ -14,7 +14,8 @@ interface Props {
   onClose: () => void;
   tally: Tally;
   direction: Direction;
-  onOpenBoard: (board: number) => void;
+  /** Opens a board (the owner, to look back at or correct it); without it the numbers are plain text. */
+  onOpenBoard?: (board: number) => void;
 }
 
 export function TallyDialog({ open, onClose, tally, direction, onOpenBoard }: Props) {
@@ -64,16 +65,30 @@ export function TallyDialog({ open, onClose, tally, direction, onOpenBoard }: Pr
           </TableHead>
           <TableBody>
             {tally.rows.map(({ board, comparison: c }) => (
-              <TableRow key={board} hover>
-                <TableCell component="th" scope="row">
-                  <Button
-                    size="small"
-                    aria-label={`Go to board ${board}`}
-                    sx={{ minWidth: 0 }}
-                    onClick={() => onOpenBoard(board)}
-                  >
-                    {board}
-                  </Button>
+              <TableRow
+                key={board}
+                hover
+                // The whole row opens the board (a tap anywhere on it); the board number is the
+                // button itself, for the keyboard and screen readers.
+                onClick={onOpenBoard ? () => onOpenBoard(board) : undefined}
+                sx={onOpenBoard ? { cursor: "pointer" } : undefined}
+              >
+                <TableCell component="th" scope="row" className="num">
+                  {onOpenBoard ? (
+                    <Button
+                      size="small"
+                      aria-label={`Go to board ${board}`}
+                      sx={{ minWidth: 0 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenBoard(board);
+                      }}
+                    >
+                      {board}
+                    </Button>
+                  ) : (
+                    board
+                  )}
                 </TableCell>
                 <TableCell>
                   <ResultText result={c.ours.result} />

@@ -1,7 +1,7 @@
 import { Box, ButtonBase, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import type { Card } from "../../core/play";
-import { type Hand as HandT, type Strain, type Suit, SUIT_SYMBOLS, SUITS } from "../../core/types";
+import { type Hand as HandT, type Strain, type Suit, SUIT_SYMBOLS } from "../../core/types";
 import { StrainSymbol, SUIT_NAMES } from "../controls/BridgeText";
 import { handSuitOrder } from "../labels";
 
@@ -169,14 +169,34 @@ export function HandTiles({ hand, trump, label = "Your cards", short = false, pl
   );
 }
 
-/** One hand, a suit per row. `large` is for reading at arm's length while sorting real cards. */
-export function Hand({ hand, large = false }: { hand: HandT; large?: boolean }) {
+/**
+ * One hand, a suit per row: trumps first, then alternating colours (`handSuitOrder`). `large` is
+ * for reading at arm's length while sorting real cards. A suit too long for the row wraps, and the
+ * next line starts under its first card, not under the suit symbol.
+ */
+export function Hand({
+  hand,
+  large = false,
+  trump = null,
+}: {
+  hand: HandT;
+  large?: boolean;
+  trump?: Strain | null;
+}) {
   return (
     <Box sx={{ display: "grid", gap: large ? 0.5 : 0 }}>
-      {SUITS.map((s) => (
-        <Typography key={s} variant={large ? "h4" : "body1"} component="div" sx={{ display: "flex", gap: large ? 2 : 0.75 }}>
-          <StrainSymbol strain={s} />
-          <Box component="span" sx={{ fontWeight: "fontWeightBold" }}>
+      {handSuitOrder(trump).map((s) => (
+        <Typography
+          key={s}
+          variant={large ? "h4" : "body1"}
+          component="div"
+          // The symbol in a column of its own, so a long suit's ranks wrap beside it, under its first card.
+          sx={{ display: "flex", gap: large ? 2 : 0.75 }}
+        >
+          <Box component="span" sx={{ flexShrink: 0 }}>
+            <StrainSymbol strain={s} />
+          </Box>
+          <Box component="span" sx={{ fontWeight: "fontWeightBold", minWidth: 0 }}>
             {hand[s].length === 0 ? (
               <Box component="span" sx={{ color: "text.secondary", fontWeight: "fontWeightRegular", fontStyle: "italic" }}>
                 void

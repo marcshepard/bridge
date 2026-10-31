@@ -17,6 +17,8 @@ export interface Choice<T extends string | number> {
 
 interface Props<T extends string | number> {
   label?: string;
+  /** A "?" beside the label that explains the choice (a HelpTip). */
+  help?: ReactNode;
   choices: Choice<T>[];
   value: T | null;
   onChange: (value: T) => void;
@@ -24,13 +26,14 @@ interface Props<T extends string | number> {
   disabled?: boolean;
 }
 
-export function ChoiceGroup<T extends string | number>({ label, choices, value, onChange, disabled = false }: Props<T>) {
+export function ChoiceGroup<T extends string | number>({ label, help, choices, value, onChange, disabled = false }: Props<T>) {
   const id = useId();
   return (
     <Box sx={{ mt: 2 }}>
       {label && (
-        <Typography id={id} variant="subtitle2" component="p" sx={{ mb: 0.5 }}>
-          {label}
+        <Typography variant="subtitle2" component="p" sx={{ mb: 0.5 }}>
+          <span id={id}>{label}</span>
+          {help}
         </Typography>
       )}
       <ToggleButtonGroup

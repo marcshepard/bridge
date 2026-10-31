@@ -9,12 +9,24 @@ import { type Contract, type Strain, type Suit, type TableResult, SUIT_SYMBOLS }
 
 export const SUIT_NAMES: Record<Suit, string> = { S: "spades", H: "hearts", D: "diamonds", C: "clubs" };
 
-/** ♠ ♥ ♦ ♣ (hearts and diamonds in the theme's red), or "NT". */
+/**
+ * ♠ ♥ ♦ ♣, or "NT". Hearts and diamonds in the theme's red; spades and clubs in full-strength text
+ * colour (black, or white in dark mode), not the grey of the text around them, so red and black
+ * never look alike. On a filled background (a picked toggle, a contained button) they take its text
+ * colour instead.
+ */
 export function StrainSymbol({ strain }: { strain: Strain }) {
   if (strain === "NT") return <>NT</>;
   const red = strain === "H" || strain === "D";
   return (
-    <Box component="span" aria-label={SUIT_NAMES[strain]} sx={{ color: red ? "error.main" : "inherit" }}>
+    <Box
+      component="span"
+      aria-label={SUIT_NAMES[strain]}
+      sx={{
+        color: red ? "error.main" : "text.primary",
+        ...(!red && { ".Mui-selected &, .MuiButton-contained &": { color: "inherit" } }),
+      }}
+    >
       {SUIT_SYMBOLS[strain]}
     </Box>
   );

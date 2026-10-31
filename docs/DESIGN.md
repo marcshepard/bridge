@@ -216,9 +216,13 @@ tablet or computer).
 
 - **Exactly 4 players, one table.** No spectators, no second table (the backend data model allows
   more tables later).
-- **Self-deal only.** Players deal real cards from what their device shows and enter the contract
-  and result. In-app bidding and card play ("the app deals") is a much larger project; it is
-  **hidden**, not shown greyed out, until it exists.
+- **Two ways to play, chosen when the game is created:** with **real cards** (self-deal: each
+  player deals their own hand from what their device shows, and the owner enters each result), or
+  **online** (bid and play on the devices; see "Playing online" below; `mode: "devices"` in the
+  API). The screens call them **Real cards** and **Online**, and the same "?" explains both
+  (`GameModeHelp`). There's no default: under its button, Start a game shows a "!" with what's
+  still to do ("Upload a game file and choose how you'll play the boards.") until both are done.
+- **The owner runs the table.** See decision 2.
 - Your matchpoint % and nets (a board's, the tally's) are shown to one decimal, left off when it's
   zero: 96.3%, 62%, +92.6. A net comes from the % as shown, so "96.3 − 3.7" always nets +92.6, and
   the tally adds up the nets as shown. Every other percentage (the field list's other rows) is a
@@ -234,50 +238,101 @@ name ("?" until you set one). The avatar menu has the light/dark/system theme sw
 **Home:** splash image. On first use it asks for your **display name**; after that it shows your
 name (editable) and two actions: **Start a game** and **Join a game**.
 
-**Start a game:** upload a PBN file or a saved Common Game results page (see "Data sources"), and choose the starting board. The app creates the game and shows its **join code**
-with a share button. It then goes to the lobby.
+**Start a game:** upload a PBN file or a saved Common Game results page (see "Data sources"),
+choose **how the boards are played** (Real cards / Online, with a "?" explaining each), and
+choose the starting board. The app creates the game and shows its **join code** with a share
+button. It then goes to the lobby.
 
-**Join a game:** enter the code (or open a shared link). Goes to the lobby.
+**Join a game:** enter the code (or open a shared link). Goes to the lobby. In the lobby, when the
+owner is away or the name you're joining with is the owner's, it first asks: **Join as Marc
+(owner)** or **Join as a new player**. That's how the owner starts a game on a computer (to upload
+a Common Game page) and carries on from their phone: it's a seat request for the owner's seat.
 
-**Lobby:** shows who has joined, live. When 4 have joined, the creator chooses **partnerships**:
-pick a partner, or **Random**. Seats are then assigned by the app (see "Seats"), and each device
-shows where to sit physically: "You're North, opposite Bob, with Ann on your left."
+**Lobby:** kept compact so it fits a phone (a Pixel 9) without scrolling: the game's title, "Game
+type: **Real cards** ?", the join code on one line with **Share** under it (the share sheet gets the text, "Join "…" on
+Bridge Replay", and the link separately; without a share sheet, the button is **Copy link**).
+Below that, who has joined, live, one dense line each ("Marc (you) · Owner").
+In a real-cards game the owner
+can **Add a player without the app** (a name, with a warning that they need their hands some other
+way, such as a printed hand record) and remove one again. When 4 have joined, the owner chooses
+**partnerships**: pick a partner from the three names, *or* (a separate button under an "or", so
+it doesn't look like a fourth player) **Let the app choose**. The Start button says which it is
+("Start the game: Ann is your partner", "Start the game with random partners"). Seats are then
+assigned by the app (see "Seats"),
+and each device shows where to sit physically: "You're North, opposite Bob, with Ann on your left."
 
-**Playing a board:**
+**Moving together:** every device shows the board the table is on (`currentBoard`, stored on the
+game). Only the owner moves it on (**Next board**, on the result screen); there's no Previous or
+Next for anyone else, so nobody gets lost. Everyone else sees "Waiting for Marc to start the next
+board…". The owner can look back at an earlier board from the tally (a tap anywhere on its row), to
+correct it; the bottom bar then says **Back to board N** instead of Next board. Other players'
+tallies don't open boards (the API doesn't stop it, the screens do).
+
+**Playing a board (real cards):**
 
 - Below the header: the **join code** (to read out to someone rejoining) and the **running tally**
   for your side, e.g. "NS +140". Tapping the tally opens a dialog with the board-by-board grid.
-- A compass with the players' names, **you at the bottom**, and Dealer / Vulnerable chips under
-  the names (no separate dealer and vulnerability sentence). A player who isn't connected is
-  greyed out with a small no-signal icon; tap it for "Away". Only once they've been gone 5 seconds
-  (`useSteadyPresence` in App.tsx), so a dropped connection that comes straight back shows nothing.
-- The **board number** in the middle of the compass counts from 1 in the order you play (a game
-  started at original board 9 shows 1 there). Tap it for board details: the game's title, the
-  original board number "of" the game's boards, and how many field results it's scored against.
-- **Contract** row: "Contract: Tap to enter" until the bidding is over, then "Contract: 4♠ by West".
-  Tapping it opens the contract dialog (any player); everyone sees it at once.
-- **Your hand (11 HCP)**: by default a fan of overlapping playing cards, rank over suit in each
-  corner, sorted by suit (trumps first once there's a contract, colours alternating), sized from
-  the screen's width. **Large** switches to big suit rows for reading at arm's length.
-- **Enter the result** (any player, once the play is over): the tricks. Everyone sees it
-  immediately. The entry dialog says "Last saved by: Ann" once anything is saved. A correction by
-  someone else shows a notice on every other device ("Ann corrected board 3: now …", with **Show
-  board**), since it may be a board they've moved on from and it changes the tally.
+- The **board header** (`BoardHeader`). On the result screen it's kept to two small lines so the
+  cards get the room. On the board screen the setup stands out instead (`stacked`): a line each, in
+  bigger type, labels lined up in a column beside a primary-colour rule. The two-line form: "**Board 7** · The Common Game 10/16/26" with an ⓘ for the board details
+  (where it comes in our game, the board "of" the game's boards, and how many field results it's
+  scored against); then the setup in small type, values in full-strength text: "You **South** ·
+  Dealer **East (Joe, on your right)** · Vulnerable **N/S (you)**" (You before the result only;
+  Vulnerable is Both, None, N/S (you) or E/W (them)). No compass before the result: your cards are
+  what matters.
+- **Your hand (11 HCP)**: always in big suit rows for reading at arm's length while sorting real
+  cards, ♠ ♥ ♣ ♦ so the colours alternate.
+- **The owner's two buttons**, in the screen's footer (`Screen`'s `footer`): **Enter the
+  contract** (after the bidding: contract and declarer, or Passed out, which is the whole result)
+  and **Enter the result** (after the play: the tricks), greyed out until there's a contract.
+  Whichever is next is the filled button; once the contract is in, its button says **Edit the
+  contract**. The contract then shows to everyone as a fourth setup line ("Contract 4♠ by West
+  (Ann, on your left)"), and the hand re-sorts with trumps first, so the table can keep it in mind
+  during the play. Everyone else sees "Marc will enter the contract once the bidding is over.",
+  then "…the result once the play is over." there instead.
+  A correction of an earlier board shows a notice on every other device ("Marc corrected board 3:
+  now …"), since it changes the tally.
+- A player who isn't connected is greyed out with a small no-signal icon; tap it for "Away". Only
+  once they've been gone 5 seconds (`useSteadyPresence` in App.tsx), so a dropped connection that
+  comes straight back shows nothing. A player without the app is never shown as away.
 
-**After the result:**
+**After the result (every device moves to it as soon as the owner saves):**
 
-- Two lines above the compass: "2♣× by N, made +180 N/S" and "83% matchpoints, net +66". Tap the
-  result to correct it, the score for the score breakdown dialog, and the matchpoints for the field
-  dialog (all field results plus yours, with the most common result and the par result called out).
-- The compass fills in with **all four hands**, each in its seat under the name.
-- **Analysis** (only when the board has expert commentary): your result, the most common result,
-  the best result double dummy, and the commentary.
-- **Next board.** Each device moves on by itself; nobody waits for one person to advance the table.
+- The board header (Dealer and Vulnerable rows).
+- A **result card**, compact so the result screen fits a phone: "Result" over "2♣× by N, made",
+  with the owner's **Correct ✎** (`EditButton`) beside it. Under it, two outlined buttons side by
+  side (`DetailButton`: a small label over a bold figure, and a chevron, so they plainly look
+  tappable): **Score** "+180 N/S", opening the score breakdown, and **Matchpoints** "83% N/S" (the
+  % green, or red below 50%), opening the field dialog (all field results plus yours, with the
+  most common result and the par result called out, and the net). The net isn't on the card: it's
+  in the field dialog and the tally.
+- **The field dialog's analysis:** when the source has expert commentary or double-dummy tricks, an
+  accordion after the summary and before the field list ("Expert analysis", or "Double dummy"
+  alone), closed by default, so the table talks the board over first.
+- **All four hands** in a standard diagram, North at the top and South at the bottom whatever your
+  seat (your seat's box has a primary-colour border). West and East share the middle row, each
+  half the width; North and South are the same width, centred above and below (no empty middle
+  square: four equal grid quarters, a box taking two). The three rows are equal and each box fills
+  its row, so all four boxes are the height of the tallest: a suit that wraps in one hand doesn't
+  make the boxes uneven. Each box has a heading strip, "West
+  (Marc)", then the cards in body type, one size always. Trumps first, then alternating colours
+  (`handSuitOrder`: 4♥ is ♥ ♠ ♦ ♣, NT ♠ ♥ ♣ ♦). About 9 cards fit on a line on a phone (all 13 on
+  a computer); a longer suit wraps, its next line starting under its first card, not the symbol.
+  (Shrinking the type to fit was tried first; it couldn't know the font's real widths, so it cut
+  rows off.)
+- **Next board** (the owner only), or "Waiting for Marc to start the next board…", in the
+  screen's footer. After the last board: "That was the last board."
+- **What scrolls:** the app fills the window (`100dvh`): the header (and install banner) at the
+  top and a screen's footer at the bottom stay put, and only the part between them scrolls
+  (`Screen` in `controls/Layout.tsx`). No page scroll round an inner one; a new board starts
+  scrolled to the top.
+- **Suit symbols:** ♥ ♦ in the theme's red, ♠ ♣ in full-strength text colour (black; white in dark
+  mode), never the grey of secondary text around them, so red and black can't be confused.
 
-**Playing online, on the devices (being tried out):** instead of real cards and bidding boxes, a
-board can be bid and played on the devices. For now the creator turns it on board by board (**Play
-online**, beside the contract); one board at a time, and every device jumps to it. When the
-contract was already entered by hand (bid at the table), it starts at the card play.
+**Playing online:** instead of real cards and bidding boxes, every board is bid and played on the
+devices. A board's auction starts as soon as the table is on it (at the start, and each time the
+owner moves on); one board at a time, so the owner can't move on while a board's cards are being
+played. If a board somehow hasn't started, the owner has **Play online**.
 
 - **The auction** (`ui/screens/BidHand.tsx`): the same status strip as the play table
   (`TurnStrip`: "Bidding" and the dealer, whose turn it is, who's vulnerable), then the auction in
@@ -332,7 +387,7 @@ contract was already entered by hand (bid at the table), it starts at the card p
   the outcome in the status strip ("Game down 1: 9 tricks"), then shows the result screen. A
   wrong result is corrected as usual.
 
-**End game:** any player can end the game (with a confirmation).
+**End game:** the owner can end the game (the API has it; there's no button for it yet).
 
 ### Decisions made
 
@@ -340,19 +395,26 @@ contract was already entered by hand (bid at the table), it starts at the card p
    anyone gets makes no difference, and each pair is compared only with the field in its own
    direction, so which pair is North–South doesn't matter either. The creator picks partnerships
    (or random); the app assigns seats and tells people where to sit.
-2. **No owner-only powers after setup.** The creator makes the game and picks partnerships. After
-   that all four players are equal: anyone can enter or correct results and anyone can end the
-   game. (While card play on devices is being tried out, only the creator starts it.) A creator's device dying costs nothing, and ownership never needs transferring.
+2. **The owner runs the table.** (This replaced "no owner-only powers after setup", after the
+   first real game: with everyone able to enter results and look at the analysis, it lost the feel
+   of an in-person game, and people got lost moving through the boards on their own.) The creator is
+   the game's owner: they pick partnerships, enter and correct results, move the table from board to
+   board, and end or delete the game. Everyone else can look at the score, the field and the tally.
+   Being the owner belongs to the seat, so it moves with a seat request: a new device for the owner,
+   or whoever takes over the owner's seat. A seat request is allowed straight away when nobody is
+   connected to answer it, so an owner whose only device died can always get back in.
 3. **Disconnected is not "left".** Phones die and lock, laptops sleep; nobody remembers to tap Leave. With push,
    the game knows who is connected and shows a disconnected player's name greyed out, with a no-signal icon.
    - **Same device:** reopening the app or link puts you back in your seat and catches up on missed
      results.
    - **Different device, or a new player:** join with the code; the game is full, so you pick
      whose seat you're taking (your own, if you're changing devices) and tap **Join as
-     replacement**. Everyone connected gets Allow / Deny, the first answer wins, and everyone is
-     told the outcome ("Dana has replaced Joe", "Marc has moved to another device"). Allowed: the
-     new device's key and name take the seat and its results, the old key stops working, and the
-     old device is sent Home. Requests lapse after 10 minutes; at most 5 wait per game.
+     replacement** (in the lobby, the owner's seat is offered as "Join as Marc (owner)"). Everyone
+     connected gets Allow / Deny, the first answer wins, and everyone is told the outcome ("Dana has
+     replaced Joe", "Marc has moved to another device"). When nobody is connected, it's allowed at
+     once. Allowed: the new device's key and name take the seat and its results, the old key stops
+     working, and the old device is sent Home. Requests lapse after 10 minutes; at most 5 wait per
+     game.
    - **Leave game** during play only leaves on that device: the seat stays yours, and joining
      again with the code goes straight back to it. It does not end the game.
 4. **Rounding.** The two sides' matchpoints always add to exactly 100 with our formula (every table
@@ -368,6 +430,9 @@ fills the other three places with Bot 2, Bot 3 and Bot 4. The player lands in th
 partners. Bots are allowed here even though test players are off in the live app, because the
 game file is ours. No Common Game data is used (see AGENTS.md); bots still show as away.
 
+The demo game is played with real cards: you deal yourself each board and enter any result, as
+the owner (the bots need nothing).
+
 Bots are marked (`players.is_bot`, `isBot` in the snapshot; migration 0006). When a board's cards
 are played on the devices, the creator's device plays the bots' cards after a two-second pause,
 using the robot rules in `core/bot.ts` (second hand low, third hand high, win cheaply fourth hand,
@@ -379,7 +444,7 @@ The same goes for dev test players. A person who takes over a bot's seat stops b
 
 - **Fill with test players** (dev builds only): a lobby button that adds Bot 2, Bot 3 and Bot 4 (the
   number is the order they joined) so a game starts immediately and every board can be played from one device. Nothing else
-  is needed from the test players, because any player can enter results.
+  is needed from the test players: the owner enters the results and moves the table on.
 - **Several identities in one browser:** a dev-only URL option `?as=2` gives a tab its own player
   ID, so four tabs side by side behave like four players' devices for testing live sync.
 
@@ -428,9 +493,12 @@ bundled-games list are removed along with solo play.
 The schema is `backend/migrations/0001_init.sql`. In short:
 
 - **events**: `code` (join code), `title`, `game_json` (the normalised game file), `start_board`,
-  `status` (`lobby` → `playing` → `ended`), `created_at`, `expires_at` (30 days).
+  `status` (`lobby` → `playing` → `ended`), `mode` (`cards` or `devices`; migration 0008),
+  `current_board` (the board the table is on; NULL means the start board), `created_at`,
+  `expires_at` (30 days).
 - **players**: `player_id` (the device's secret key), `slot` (public handle 1–4, in join order),
-  `name`, `is_creator`, `is_bot`, `seat` (assigned when play starts).
+  `name`, `is_creator` (the owner), `is_bot`, `no_app` (a player without the app: their key is
+  never handed out), `seat` (assigned when play starts).
 - **results**: one row per board per table: `contract`, `declarer`, `tricks`, `entered_by` (slot),
   `updated_at`, `on_devices` (the cards are played on the devices; with `tricks` NULL the board is
   being played right now).
@@ -439,8 +507,7 @@ The schema is `backend/migrations/0001_init.sql`. In short:
 - **claims** (`0005_claims.sql`): at most one per board: `seat`, `tricks` (of those left, for the
   claimer's side), `accepted_by` (seats, e.g. "EW"). Refused or taken back: deleted.
 
-One result per table per board: whoever at that table enters or corrects it, everyone sees the
-same result. Scores, matchpoints and tallies are **not stored**; every device computes them from the
+One result per table per board: the owner enters or corrects it, and everyone sees the same result. Scores, matchpoints and tallies are **not stored**; every device computes them from the
 results with `core/`, exactly as before.
 
 ### API
@@ -454,29 +521,32 @@ the player with `isCreator`; there's no separate host key.
 
 | Method and path | Who | Does |
 |---|---|---|
-| `POST /api/events` | Anyone | Create a game from a game file: `{ name, game, startBoard }` → `{ code, playerId, slot }`. The creator is slot 1 |
-| `GET /api/events/:code` | Anyone with the code | Snapshot: title, status, game, players (with seats and who's connected), results, the cards and claim on a board being played on the devices, and `you` if your player ID was sent |
+| `POST /api/events` | Anyone | Create a game from a game file: `{ name, game, startBoard, mode }` (`mode`: `cards` or `devices`, required) → `{ code, playerId, slot }`. The creator is slot 1, and the owner |
+| `GET /api/events/:code` | Anyone with the code | Snapshot: title, status, mode, current board, game, players (with seats, who's connected and who has no app), results, the cards and claim on a board being played on the devices, and `you` if your player ID was sent |
 | `POST /api/events/:code/players` | Anyone with the code | Join the lobby: `{ name }` → `{ code, playerId, slot }`. Closed once play starts or with 4 players |
+| `POST /api/events/:code/players/no-app` | Owner | Real-cards games, in the lobby: add a player without the app, `{ name }` → `{ slot }` |
+| `DELETE /api/events/:code/players/no-app/:slot` | Owner | In the lobby: take a player without the app back out |
+| `PUT /api/events/:code/current` | Owner | `{ board }`: move the table to a board; pushed to everyone as `board`. On the devices, starts its auction (refused while another board is being played) |
 | `DELETE /api/events/:code/players/me` | A player | Leave the lobby (frees the place). If the creator leaves the lobby, the game is cancelled |
-| `POST /api/events/:code/partnerships` | Creator | `{ partnerSlot }` or `{ random: true }`; assigns seats (partners opposite, at random) and starts play |
-| `PUT /api/events/:code/boards/:board` | A player | Save or correct a result: `{ contract, declarer, tricks }`. `tricks: null` saves just the contract (bidding over, play not); passed out is always complete |
-| `POST /api/events/:code/requests` | Anyone with the code | Full or started game only: ask to take over a seat, `{ name, slot }` → `{ requestId, playerId, anyoneConnected }` |
+| `POST /api/events/:code/partnerships` | Owner | `{ partnerSlot }` or `{ random: true }`; assigns seats (partners opposite, at random) and starts play (on the devices, with the start board's auction) |
+| `PUT /api/events/:code/boards/:board` | Owner | Save or correct a result: `{ contract, declarer, tricks }`. `tricks: null` saves just the contract (bidding over, play not); passed out is always complete |
+| `POST /api/events/:code/requests` | Anyone with the code | Ask to take over a player's seat (lobby or play), `{ name, slot }` → `{ requestId, playerId, status }`: `allowed` at once when nobody is connected, else `pending` |
 | `GET /api/events/:code/requests/:id` | The requester (its `playerId`) | `{ status }`: pending, allowed, denied, cancelled or expired (10 minutes) |
 | `DELETE /api/events/:code/requests/:id` | The requester | Withdraw the request |
 | `POST /api/events/:code/requests/:id/answer` | A player | `{ allow }`. First answer wins. Allowing gives the seat (and its results) the requester's key and name; the old key stops working and the old device is disconnected |
-| `POST /api/events/:code/boards/:board/play` | Creator | Play the board online: its auction, or its cards when the contract is already in (one board at a time) |
+| `POST /api/events/:code/boards/:board/play` | Owner | Start a board on the devices by hand: its auction, or its cards when the contract is already in (one board at a time) |
 | `POST /api/events/:code/boards/:board/calls` | The player whose turn it is (the creator for a bot) | `{ seq, call }`: make a call ("1H", "3NT", "PASS", "X", "XX"). `seq` is its number in the auction, so a double tap can't call twice. Checked with `core/auction.ts`; the last pass saves the contract (or the passed-out result) |
 | `POST /api/events/:code/boards/:board/cards` | The player whose turn it is (declarer for dummy) | `{ seq, card }`: play a card. `seq` is its number on the board, so a double tap can't play twice. Checked with `core/play.ts` |
 | `POST /api/events/:code/boards/:board/claim` | A player, not dummy | `{ tricks }`: claim that many of the tricks left. Play stops until it's answered |
 | `POST /api/events/:code/boards/:board/claim/answer` | The claimer's opponents, not dummy | `{ accept }`. A refusal ends the claim |
 | `DELETE /api/events/:code/boards/:board/claim` | The claimer | Take the claim back (until it's accepted) |
-| `GET /api/events/:code/results?since=` | A player | Results changed at or after a timestamp (catching up after a reconnect) |
-| `POST /api/events/:code/end` | A player | End the game |
-| `DELETE /api/events/:code` | Creator | Delete the game and its results |
+| `GET /api/events/:code/results?since=` | A player | Results changed at or after a timestamp, and the current board (catching up after a reconnect) |
+| `POST /api/events/:code/end` | Owner | End the game |
+| `DELETE /api/events/:code` | Owner | Delete the game and its results |
 | `POST /api/events/:code/live-ticket` | A player | `{ ticket }`: a single-use pass to open the WebSocket, valid for a minute. Browsers can't send headers on a WebSocket, and the secret `playerId` mustn't appear in an address (addresses end up in logs) |
 | `GET /api/events/:code/live?ticket=` | A player (with a pass) | WebSocket for pushed updates |
 | `POST /api/events/:code/test-players` | Dev only | Fill the empty places with test players |
-| `POST /api/events/demo` | Anyone | `{ name }` → a demo game (the built-in made-up game from board 9) with three bots; you're the creator |
+| `POST /api/events/demo` | Anyone | `{ name, mode }` → a demo game (the built-in made-up game from board 9) with three bots; you're the owner. The frontend asks for `cards` |
 
 Every write is validated in the Worker with the same `core/` functions the frontend uses (contract
 parses, tricks 0–13, board exists in the game). Errors come back as `{ "error": "message" }` with
@@ -519,7 +589,8 @@ state.**
   guessing. (Rate-limiting failed lookups is in the backlog.)
 - A player's `playerId` is a random UUID, never shown to other players; it's the only way to act as
   that player.
-- Only the creator can choose partnerships or delete the game. During play all players are equal.
+- Only the owner can choose partnerships, enter results, move the table on, or end or delete the
+  game. Anyone with the code can ask for a seat; with nobody connected it's granted at once.
 - Events and their results expire 30 days after creation: expired games are treated as not found
   at once, and a nightly clean-up deletes them (03:00 UTC, logged).
 - Data stored: display names chosen by players, and bridge results. No emails, no accounts.
