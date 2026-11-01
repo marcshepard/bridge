@@ -33,8 +33,7 @@ export function Home({ name, onName, onStart, onJoin, onDemo, onHelp, notice }: 
     <Screen>
       <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start", mt: 1, mb: 3 }}>
         <Typography variant="subtitle1" sx={{ flex: 1, pt: 1 }}>
-          Four people replay the boards from an old duplicate game, scored by matchpoints (MP %) against the
-          pairs who played them originally.
+          Replay a real bridge tournament with three friends and see how you'd have done.
         </Typography>
         <IconButton aria-label="How it works" onClick={onHelp}>
           <HelpOutlineIcon />

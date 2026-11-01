@@ -249,8 +249,9 @@ owner is away or the name you're joining with is the owner's, it first asks: **J
 a Common Game page) and carries on from their phone: it's a seat request for the owner's seat.
 
 **Lobby:** kept compact so it fits a phone (a Pixel 9) without scrolling: the game's title, "Game
-type: **Real cards** ?", the join code on one line with **Share** under it (the share sheet gets the text, "Join "…" on
-Bridge Replay", and the link separately; without a share sheet, the button is **Copy link**).
+type: **Real cards** ?", the join code on one line with **Share** under it. The share sheet gets one text with the link
+inside it, "Join our game on Bridge Replay: https://…/?join=CODE", because apps handle a separate
+link differently (Outlook drops it). Without a share sheet there's no button; the code is on screen.
 Below that, who has joined, live, one dense line each ("Marc (you) · Owner").
 In a real-cards game the owner
 can **Add a player without the app** (a name, with a warning that they need their hands some other

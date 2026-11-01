@@ -35,26 +35,19 @@ function joinLink(code: string): string {
 }
 
 /**
- * The join code, and Share for the invite: the device's share sheet, with the text and the link
- * passed separately (the app shared to puts the link after the text; a few, like Outlook on a
- * computer, take only the text). Where the browser can't share, the button copies the link.
+ * The join code, and Share for the invite: the device's share sheet, with the link inside the
+ * text. Passed as a separate url, some apps (Outlook) drop it and others move it; one text arrives
+ * the same everywhere. Where the browser can't share there's no button: the code is on screen.
  */
-function ShareCode({ code, title }: { code: string; title: string }) {
-  const [copied, setCopied] = useState(false);
-  const link = joinLink(code);
+function ShareCode({ code }: { code: string }) {
   const canShare = typeof navigator.share === "function";
 
   async function share() {
     try {
-      if (canShare) {
-        // The link carries the code.
-        await navigator.share({ title: "Join my bridge game", text: `Join "${title}" on Bridge Replay`, url: link });
-      } else {
-        await navigator.clipboard.writeText(link);
-        setCopied(true);
-      }
+      // The link carries the code.
+      await navigator.share({ text: `Join our game on Bridge Replay: ${joinLink(code)}` });
     } catch {
-      // Share sheet dismissed, or clipboard blocked: the code is on screen to read out anyway.
+      // Share sheet dismissed: the code is on screen to read out anyway.
     }
   }
 
@@ -69,9 +62,11 @@ function ShareCode({ code, title }: { code: string; title: string }) {
           {formatJoinCode(code)}
         </Box>
       </Typography>
-      <Button variant="outlined" onClick={() => void share()} sx={{ mt: 1 }} aria-live="polite">
-        {canShare ? "Share" : copied ? "Link copied" : "Copy link"}
-      </Button>
+      {canShare && (
+        <Button variant="outlined" onClick={() => void share()} sx={{ mt: 1 }}>
+          Share
+        </Button>
+      )}
     </Paper>
   );
 }
@@ -341,7 +336,7 @@ export function Lobby({ snapshot, onDone }: Props) {
         </Box>
         <GameModeHelp />
       </Typography>
-      <ShareCode code={snapshot.code} title={snapshot.title} />
+      <ShareCode code={snapshot.code} />
 
       <Section title="Players" id="players" tight>
         <PlayerList
