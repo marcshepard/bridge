@@ -24,12 +24,19 @@ interface Props<T extends string | number> {
   onChange: (value: T) => void;
   /** None can be picked right now. */
   disabled?: boolean;
+  /**
+   * The space above: `tight` joins the group to the one before (two parts of one choice, like a
+   * bid's level and suit); `loose` sets it apart from them (a separate choice).
+   */
+  space?: "tight" | "normal" | "loose";
 }
 
-export function ChoiceGroup<T extends string | number>({ label, help, choices, value, onChange, disabled = false }: Props<T>) {
+const SPACE_ABOVE = { tight: 0.5, normal: 2, loose: 3 } as const;
+
+export function ChoiceGroup<T extends string | number>({ label, help, choices, value, onChange, disabled = false, space = "normal" }: Props<T>) {
   const id = useId();
   return (
-    <Box sx={{ mt: 2 }}>
+    <Box sx={{ mt: SPACE_ABOVE[space] }}>
       {label && (
         <Typography variant="subtitle2" component="p" sx={{ mb: 0.5 }}>
           <span id={id}>{label}</span>

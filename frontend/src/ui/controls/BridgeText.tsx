@@ -98,3 +98,18 @@ export function callWords(call: Call): string {
       return "Redouble";
   }
 }
+
+const SYMBOL_TO_SUIT: Record<string, Suit> = { "♠": "S", "♥": "H", "♦": "D", "♣": "C" };
+
+/**
+ * Plain text that may contain suit symbols ("1♠: 12–21 points, 5+ ♠"), with each symbol in its
+ * colour. For explanations written as strings (the bidder's meanings and reasons).
+ */
+export function SuitString({ text }: { text: string }) {
+  const parts = text.split(/([♠♥♦♣])/);
+  return (
+    <>
+      {parts.map((part, i) => (SYMBOL_TO_SUIT[part] ? <StrainSymbol key={i} strain={SYMBOL_TO_SUIT[part]!} /> : part))}
+    </>
+  );
+}

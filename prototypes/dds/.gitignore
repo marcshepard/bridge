@@ -1,0 +1,5 @@
+# The DDS source (cloned at a release tag; see README.md) and the WebAssembly build of it.
+vendor/
+page/dds/
+# Vite's dependency cache, from serving the timing page.
+page/.vite/

@@ -1,5 +1,6 @@
 // The first screen. On first use it asks for your display name; then it offers Start a game, Join a
-// game, and Start demo game (on your own, with bots, on a made-up game).
+// game, Practice with bots (bidding practice on your own), and Start demo game (on your own, with
+// bots, on a made-up game).
 
 import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import { Alert, Button, IconButton, Stack, TextField, Typography } from "@mui/material";
@@ -15,6 +16,7 @@ interface Props {
   onName: (name: string) => void;
   onStart: () => void;
   onJoin: () => void;
+  onPractice: () => void;
   /** Start a demo game and go into it. Rejects with a message to show if that fails. */
   onDemo: () => Promise<void>;
   onHelp: () => void;
@@ -22,7 +24,7 @@ interface Props {
   notice?: string | null;
 }
 
-export function Home({ name, onName, onStart, onJoin, onDemo, onHelp, notice }: Props) {
+export function Home({ name, onName, onStart, onJoin, onPractice, onDemo, onHelp, notice }: Props) {
   const [editing, setEditing] = useState(!name);
   const [demoBusy, setDemoBusy] = useState(false);
   const [demoError, setDemoError] = useState<string | null>(null);
@@ -97,6 +99,9 @@ export function Home({ name, onName, onStart, onJoin, onDemo, onHelp, notice }: 
             </Button>
             <Button variant="outlined" size="large" fullWidth onClick={onJoin}>
               Join a game
+            </Button>
+            <Button variant="outlined" size="large" fullWidth onClick={onPractice}>
+              Practice with bots
             </Button>
             <Button
               variant="outlined"

@@ -14,6 +14,7 @@ import { AppHeader } from "./controls/AppHeader";
 import { Screen } from "./controls/Layout";
 import { Notice, type NoticeMessage } from "./controls/Notice";
 import { SheetDialog } from "./controls/SheetDialog";
+import { BiddingSystemDialog } from "./components/BiddingSystemDialog";
 import { HelpDialog } from "./components/HelpDialog";
 import { InstallBanner } from "./components/InstallBanner";
 import { useInstall } from "./install";
@@ -23,9 +24,10 @@ import { Home } from "./screens/Home";
 import { JoinGame } from "./screens/JoinGame";
 import { Lobby } from "./screens/Lobby";
 import { Play } from "./screens/Play";
+import { Practice } from "./screens/Practice";
 import { StartGame } from "./screens/StartGame";
 
-type Dialog = "start" | "join" | "help" | "leave" | "install" | null;
+type Dialog = "start" | "join" | "practice" | "help" | "leave" | "install" | null;
 
 /** A code from a shared link, removed from the address bar once read (other options, like dev mode's `?as=`, stay). */
 function takeJoinCodeFromUrl(): string | null {
@@ -87,18 +89,20 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
 
   /**
    * A result saved here or pushed from another device: replace that board's result. A board's
-   * calls, cards and claim are kept while it's being played on the devices, and when that play has just
-   * ended (the finished table stays on screen for a moment); a fresh start has none.
+   * cards and claim are kept while it's being played on the devices, and when that play has just
+   * ended (the finished table stays on screen for a moment). Its auction is kept for good, for the
+   * bidding review. A fresh start of the board (its auction again) has none of them.
    */
   const mergeResult = useCallback((result: ResultDto) => {
     setSnapshot((s) => {
       if (!s) return s;
       const before = s.results.find((r) => r.board === result.board);
       const keepPlays = result.onDevices && !!before && isLive(before);
+      const freshStart = result.onDevices && result.contract === "" && !(before && isLive(before));
       return {
         ...s,
         results: [...s.results.filter((r) => r.board !== result.board), result],
-        calls: keepPlays ? s.calls : s.calls.filter((k) => k.board !== result.board),
+        calls: freshStart ? s.calls.filter((k) => k.board !== result.board) : s.calls,
         plays: keepPlays ? s.plays : s.plays.filter((p) => p.board !== result.board),
         claims: keepPlays ? s.claims : s.claims.filter((k) => k.board !== result.board),
       };
@@ -207,6 +211,7 @@ export function App() {
   const [dialog, setDialog] = useState<Dialog>(() => (linkCode !== null && profile.name() ? "join" : null));
   const install = useInstall();
   const [notice, setNotice] = useState<string | null>(null);
+  const [systemOpen, setSystemOpen] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
 
   /** Back to Home, still holding your seat (you can rejoin with the code). */
@@ -285,6 +290,7 @@ export function App() {
         }}
         onStart={() => setDialog("start")}
         onJoin={() => setDialog("join")}
+        onPractice={() => setDialog("practice")}
         onDemo={async () => enter(await games.createDemo(name))}
         onHelp={() => setDialog("help")}
       />
@@ -301,6 +307,7 @@ export function App() {
         onPlayed={mergePlay}
         onClaim={mergeClaim}
         onNotice={setNews}
+        onSystem={() => setSystemOpen(true)}
       />
     );
   } else if (snapshot) {
@@ -337,12 +344,16 @@ export function App() {
         onHelp={() => setDialog("help")}
         onLeaveGame={code && snapshot ? () => setDialog("leave") : undefined}
         onInstall={install.canInstall ? () => setDialog("install") : undefined}
+        onSystem={() => setSystemOpen(true)}
         reconnecting={reconnecting}
       />
       <InstallBanner open={dialog === "install"} onOpen={() => setDialog("install")} onClose={() => setDialog(null)} />
       {page}
 
       <StartGame open={dialog === "start"} name={name} onClose={() => setDialog(null)} onCreated={enter} />
+      <Practice open={dialog === "practice"} name={name} onClose={() => setDialog(null)} onCreated={enter} onSystem={() => setSystemOpen(true)} />
+      {/* Its own state, so it opens over the practice dialog and closing it goes back there. */}
+      <BiddingSystemDialog open={systemOpen} onClose={() => setSystemOpen(false)} />
       <JoinGame
         open={dialog === "join"}
         name={name}

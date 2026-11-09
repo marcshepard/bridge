@@ -23,21 +23,45 @@ caps the Worker at 100,000 requests a day):
   `workers.dev` address; they'd be an option after moving to a custom domain.
 - Seat requests already have their own limit (5 waiting per game).
 
-## Hide the other hands from each device
+## Make the other hands less visible in the data
 
-Every device gets the whole game file in the snapshot (`GET /events/:code`): all boards, all four
-hands, double dummy, par and commentary. Anyone can read the other hands with the browser's
-developer tools. Fine among friends, but it needs fixing before play on devices goes beyond them.
-Not urgent: every game is a replay of a deal already published with its results, so there's
-nothing secret to protect beyond the fairness of one game, and rate limiting comes first.
+Low priority. The screens already show each player only the hands they should see, but every
+device gets the whole game file in the snapshot (`GET /events/:code`): all boards, all four hands,
+double dummy, par and commentary, readable as plain text with the browser's developer tools. This
+is not a security feature: every game replays a deal already published with its results, so
+someone set on cheating has easier ways to find the hands. The aim is only that the hands aren't
+sitting there in plain sight.
 
-- **What a device needs:** its own hand; dummy after the opening lead; a claimer's hand during a
-  claim; all four hands (and double dummy, par, commentary) once the board has a result.
-- **The full fix:** the backend trims the snapshot per player and hands out cards as each board
-  goes on. Every screen that reads `board.hands` then copes with hands it doesn't have yet. Decide
-  whether games played with real cards keep today's "everything up front".
-- **A cheap middle step:** leave the hands out of the snapshot and fetch them on a separate request
-  when a board starts. That stops casual peeking, not a determined player.
+- **Preferred: obfuscate, with few code changes.** Store and send the hands scrambled (ROT13-style
+  or base64 of a shuffled encoding) and unscramble them in one place on the frontend, where the game
+  is loaded. The screens, `core/` and the API's shape stay as they are.
+- **Not planned: hiding them properly.** The backend would trim the snapshot per player and hand
+  out cards as each board goes on (its own hand; dummy after the opening lead; a claimer's hand
+  during a claim; everything once the board has a result), and every screen that reads
+  `board.hands` would cope with hands it doesn't have yet. Much more work than the problem deserves.
+
+## Start a game from a page saved on a phone
+
+Today a Common Game page has to be saved on a computer (Ctrl+S) and imported there; the phone then
+joins as the owner. Recommended: let the importer read the file a phone's browser saves, so the
+whole thing can be done on a phone:
+
+- **Android Chrome:** ⋮ → Download (↓) saves the page as `.mhtml` (the page's HTML wrapped in a
+  MIME message). Start a game → upload → pick it from Downloads.
+- **iPhone and iPad Safari:** Share → Save to Files → Web Archive saves a `.webarchive` (the HTML
+  inside a binary property list).
+- **The change:** `importFile.ts` recognises the two wrappers, takes the HTML out (decoding
+  quoted-printable or base64 as needed), and hands it to the existing `tcgPage.ts`. Plus a
+  fixture-based test for each, and the phone steps in Help next to the computer ones.
+- **First:** save one real page each way (Pixel and iPad) into `private/`, so the importer is
+  written against the real formats rather than guesses.
+- **If saving and picking still feels clunky:** prototype a bookmarklet that reads the boards from
+  the open page and hands them to Bridge Replay in one tap. The risk is the hand-off between the
+  two sites (their security settings may block some routes), so try it on a phone first.
+- **Not options:** the backend fetching the page (bot protection, and no permission), a browser
+  extension (Chrome on phones has none), Android's Share (it shares only the address), or copy and
+  paste (loses the structure). The real fix is still the Common Game agreeing to archived downloads
+  (asked; no reply yet).
 
 ## To undo
 
@@ -69,18 +93,6 @@ nothing secret to protect beyond the fairness of one game, and rate limiting com
   dashboard without code changes.
 
 ## Parked
-
-**Other ways to start a game from a phone.** Decided instead: prepare on a computer, play on a
-phone (start on the computer, then join from the phone and choose "Join as Marc (owner)"; Help
-says how). Parked unless that proves not enough:
-
-- **Email or cloud:** save the page on a computer, open it from the phone's file picker (works
-  today; would need a line in Help).
-- **Saving on a phone:** Chrome on Android saves pages as `.mhtml`, which the importer could read;
-  iPhone Safari saves PDF or `.webarchive` (would need real samples).
-- Not: fetching pages from the Common Game site on the server (bot protection, permission), or
-  copy and paste (loses the structure).
-- The real fix is still the Common Game agreeing to archived downloads (asked; no reply yet).
 
 **Other sources of games.** Looked for sources with fields big enough to make the comparison
 interesting, the way the Common Game's are (hundreds of tables per board). None found:

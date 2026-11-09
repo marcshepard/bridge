@@ -346,11 +346,12 @@ played. If a board somehow hasn't started, the owner has **Play online**.
   (the backend works them out with `auctionResult`), and the play table takes over. Four passes
   save the board as passed out; the finished auction stays on screen for 3 seconds, like the play
   table at the end. During the play, the contract in the status strip opens the auction.
-- **Bots don't bid:** the creator's device bids for them, showing the bot's hand while it does
-  ("Bid for North"). It's for testing with one device and for demo games; real games have no bots.
+- **Bots bid by themselves:** the owner's device makes their calls after a short pause, by the
+  SAYC rules in `core/bidding/` (see [BOT.md](BOT.md)). The backend checks them like anyone's.
 - **Stored as:** the board's result row with `on_devices` set and an empty contract while it's
   being bid, and a `calls` row per call (migration 0007). The calls stay with the board's cards
-  through the play; the snapshot sends them only for the board being played.
+  through the play, and after it: the snapshot sends every board's auction, for the bidding review
+  (a button under the result). Starting a board's auction again replaces its calls.
 - No alerts or explanations yet (see "Convention cards and alerts" in the backlog).
 
 - The board screen becomes the play table: the join code and tally on top, then a status strip
@@ -421,6 +422,17 @@ played. If a board somehow hasn't started, the owner has **Play online**.
 4. **Rounding.** The two sides' matchpoints always add to exactly 100 with our formula (every table
    you beat, they lost to, and ties count half for both). For display, round your side and show the
    other side as 100 minus that, so "50.5 / 49.5" never shows as "51 / 50".
+
+### Bidding practice
+
+**Practice with bots** on Home: you as South, bots in the other three seats, on the built-in demo
+game or an uploaded game file (`POST /api/events/practice`; game type `bidding`). No lobby: the
+seats are set and the first board's auction starts at once. Each board is only bid: when the
+auction ends, the backend scores the contract with the game file's double-dummy tricks (a board
+without them ends with just its contract, unscored), and the result screen shows the bidding
+review inline: the auction with every call tappable for its meaning and reason, and your calls
+compared with the bot's. "Bots bid for me" (remembered on the device per game) lets the bots bid
+your seat too, faster, so you can watch. The goals, design and stages are in [BOT.md](BOT.md).
 
 ### Demo games
 
@@ -495,6 +507,8 @@ The schema is `backend/migrations/0001_init.sql`. In short:
 
 - **events**: `code` (join code), `title`, `game_json` (the normalised game file), `start_board`,
   `status` (`lobby` → `playing` → `ended`), `mode` (`cards` or `devices`; migration 0008),
+  `bidding_only` (bidding practice: reported as mode `bidding`, since SQLite can't widen `mode`'s
+  CHECK; migration 0009),
   `current_board` (the board the table is on; NULL means the start board), `created_at`,
   `expires_at` (30 days).
 - **players**: `player_id` (the device's secret key), `slot` (public handle 1–4, in join order),
@@ -547,6 +561,7 @@ the player with `isCreator`; there's no separate host key.
 | `POST /api/events/:code/live-ticket` | A player | `{ ticket }`: a single-use pass to open the WebSocket, valid for a minute. Browsers can't send headers on a WebSocket, and the secret `playerId` mustn't appear in an address (addresses end up in logs) |
 | `GET /api/events/:code/live?ticket=` | A player (with a pass) | WebSocket for pushed updates |
 | `POST /api/events/:code/test-players` | Dev only | Fill the empty places with test players |
+| `POST /api/events/practice` | Anyone | `{ name, game?, startBoard? }` → bidding practice: you as South with three bots, bidding only, on `game` or the built-in demo game, from its first board unless `startBoard` says otherwise |
 | `POST /api/events/demo` | Anyone | `{ name, mode }` → a demo game (the built-in made-up game from board 9) with three bots; you're the owner. The frontend asks for `cards` |
 
 Every write is validated in the Worker with the same `core/` functions the frontend uses (contract

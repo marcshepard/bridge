@@ -496,7 +496,8 @@ describe("bidding on devices", () => {
     const { code, idOf } = await bidding();
     for (const [i, seat] of (["N", "E", "S", "W"] as Seat[]).entries()) await call(code, i + 1, "PASS", idOf[seat]);
     expect(await board1(code)).toMatchObject({ contract: "PASS", declarer: null, tricks: 0, onDevices: true });
-    expect((await api<EventSnapshot>("GET", `/events/${code}`)).json.calls).toEqual([]); // finished boards' calls aren't sent
+    // A finished board keeps its auction, for the bidding review.
+    expect((await api<EventSnapshot>("GET", `/events/${code}`)).json.calls.map((k) => k.call)).toEqual(["PASS", "PASS", "PASS", "PASS"]);
   });
 
   it("lets the creator call for the bots", async () => {
@@ -528,6 +529,56 @@ describe("bidding on devices", () => {
     await call(code, 1, "1H", idOf.N);
     expect(await ann.waitFor((m) => m.type === "call")).toEqual({ type: "call", call: { board: 1, seq: 1, seat: "N", call: "1H" } });
     ann.ws.close();
+  });
+});
+
+describe("bidding practice", () => {
+  /** A practice game on the test game from board 1 (North deals): Marc is South, bots elsewhere. */
+  async function practice(file: unknown = game) {
+    const res = await api<JoinedResponse>("POST", "/events/practice", { name: "Marc", game: file, startBoard: 1 });
+    expect(res.status).toBe(201);
+    return res.json;
+  }
+  const call = (code: string, seq: number, text: string, id: string) =>
+    api<CallDto>("POST", `/events/${code}/boards/1/calls`, { seq, call: text }, id);
+
+  it("seats you South with three bots and starts the first auction straight away", async () => {
+    const me = await practice();
+    const snap = (await api<EventSnapshot>("GET", `/events/${me.code}`, undefined, me.playerId)).json;
+    expect(snap).toMatchObject({ status: "playing", mode: "bidding", currentBoard: 1, you: { seat: "S", isCreator: true } });
+    expect(snap.players.filter((p) => p.isBot).map((p) => p.seat).sort()).toEqual(["E", "N", "W"]);
+    expect(snap.results).toMatchObject([{ board: 1, contract: "", tricks: null, onDevices: true }]);
+  });
+
+  it("scores the contract double dummy when the auction ends, with no card play", async () => {
+    const me = await practice();
+    // North (a bot: Marc calls for it) opens 1NT; South raises to 3NT; everyone else passes.
+    for (const [i, c] of ["1NT", "PASS", "3NT", "PASS", "PASS", "PASS"].entries()) {
+      expect((await call(me.code, i + 1, c, me.playerId)).status).toBe(200);
+    }
+    const snap = (await api<EventSnapshot>("GET", `/events/${me.code}`, undefined, me.playerId)).json;
+    // The test game's double dummy: North makes 9 tricks in notrump.
+    expect(snap.results.find((r) => r.board === 1)).toMatchObject({ contract: "3NT", declarer: "N", tricks: 9 });
+    expect(snap.calls.map((k) => k.call)).toEqual(["1NT", "PASS", "3NT", "PASS", "PASS", "PASS"]);
+    // No cards to play, and the table can move on.
+    expect((await api("POST", `/events/${me.code}/boards/1/cards`, { seq: 1, card: "SA" }, me.playerId)).status).toBe(409);
+    expect((await api("PUT", `/events/${me.code}/current`, { board: 2 }, me.playerId)).status).toBe(200);
+  });
+
+  it("ends a board with just its contract when the game file has no double dummy", async () => {
+    const bare = { ...game, boards: game.boards.map(({ doubleDummy: _, ...b }) => b) };
+    const me = await practice(bare);
+    for (const [i, c] of ["1NT", "PASS", "3NT", "PASS", "PASS", "PASS"].entries()) await call(me.code, i + 1, c, me.playerId);
+    const snap = (await api<EventSnapshot>("GET", `/events/${me.code}`, undefined, me.playerId)).json;
+    expect(snap.results.find((r) => r.board === 1)).toMatchObject({ contract: "3NT", declarer: "N", tricks: null, onDevices: false });
+    expect(snap.calls).toHaveLength(6); // kept for the review
+    expect((await api("PUT", `/events/${me.code}/current`, { board: 2 }, me.playerId)).status).toBe(200);
+  });
+
+  it("practises on the built-in demo game when no game file is sent", async () => {
+    const res = await api<JoinedResponse>("POST", "/events/practice", { name: "Marc" });
+    const snap = (await api<EventSnapshot>("GET", `/events/${res.json.code}`, undefined, res.json.playerId)).json;
+    expect(snap).toMatchObject({ mode: "bidding", currentBoard: 1 });
   });
 });
 

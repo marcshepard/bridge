@@ -3,12 +3,15 @@
 // (the backend checks every call), so all four devices show the same auction. When it ends, the
 // contract goes in and the play table takes over; passed out, the board is done.
 //
-// Bots don't bid: the game creator's device bids for them, and shows the bot's hand while it does.
+// Bots bid by themselves: the game owner's device makes their calls, by the rules in core/bidding,
+// after a short pause so everyone can follow. In bidding practice the bots can bid your seat too
+// ("Bots bid for me"), and then they go quicker.
 // (Players see "bid" for every call, Pass and doubles included; "call" is only the code's word.)
 
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, FormControlLabel, Switch, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { type Call, auctionResult, canCall, isAuctionOver, toCall } from "../../core/auction";
+import { chooseCall } from "../../core/bidding/bidder";
 import { hcp } from "../../core/deal";
 import { type Seat, type Strain, STRAINS, SEAT_NAMES } from "../../core/types";
 import type { Board } from "../../providers/types";
@@ -21,16 +24,23 @@ import { TurnStrip } from "../controls/TurnStrip";
 
 const STRAIN_WORDS: Record<Strain, string> = { C: "Clubs", D: "Diamonds", H: "Hearts", S: "Spades", NT: "No trumps" };
 
+/** How long a bot takes over its call, so the table can follow the auction. */
+const BOT_DELAY_MS = 1200;
+/** Quicker when the bots bid every seat (you're watching): you'll read it all in the review. */
+const WATCH_DELAY_MS = 350;
+
 interface Props {
   board: Board;
   seat: Seat;
   names: Record<Seat, string>;
   /** Players with no live connection right now: the auction waits for them. */
   away: Record<Seat, boolean>;
-  /** Seats held by bots (demo games, dev test players). */
+  /** Seats held by bots (practice and demo games, dev test players). */
   bots: Seat[];
-  /** This device bids for the bots (it's the game creator's). */
-  callsForBots: boolean;
+  /** The seats this device makes the bots' calls for (the owner's device: the bots, and in practice perhaps your own). */
+  autoSeats: Seat[];
+  /** Bidding practice: the "Bots bid for me" switch. */
+  watch?: { on: boolean; onChange: (on: boolean) => void };
   /** The calls so far, in order. */
   calls: Call[];
   /** Sends a call (`seq` is its number in the auction, from 1); rejects with the reason if it's refused. */
@@ -42,9 +52,9 @@ export function BidHand(p: Props) {
   const dealer = board.dealer;
   const over = isAuctionOver(calls);
   const caller = toCall(dealer, calls);
-  // Your own call, or a bot's that this device makes for it.
-  const forBot = !over && caller !== seat && p.callsForBots && p.bots.includes(caller);
-  const mine = !over && (caller === seat || forBot);
+  // A call this device makes by the bot's rules: a bot's (on the owner's device), or yours when the bots bid for you.
+  const auto = !over && p.autoSeats.includes(caller);
+  const mine = !over && caller === seat && !auto;
 
   const [level, setLevel] = useState<number | null>(null);
   const [picked, setPicked] = useState<Call | null>(null);
@@ -56,6 +66,18 @@ export function BidHand(p: Props) {
     setPicked(null);
     setHint(null);
   }, [calls.length]);
+
+  // The bots' calls: after a pause (shorter when you're watching them bid your seat too). If the
+  // call is refused (another device got there first, say), the next update starts the timer again.
+  const watching = !!p.watch?.on;
+  useEffect(() => {
+    if (!auto) return;
+    const timer = setTimeout(() => {
+      const decision = chooseCall(board.hands[caller], { dealer, vul: board.vul }, calls);
+      void p.onCall(calls.length + 1, decision.call).catch(() => {});
+    }, watching ? WATCH_DELAY_MS : BOT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [auto, calls.length, caller, watching]);
 
   const allowed = (call: Call) => mine && canCall(dealer, calls, call);
   const bidAllowed = (lv: number, strain: Strain) => allowed({ kind: "bid", level: lv, strain });
@@ -75,7 +97,13 @@ export function BidHand(p: Props) {
 
   const end = auctionResult(dealer, calls);
   const awayNote = away[caller] && !p.bots.includes(caller) ? " (away)" : "";
-  const turn = over ? "" : caller === seat ? "Your turn" : forBot ? `Bid for ${SEAT_NAMES[caller]}` : `${SEAT_NAMES[caller]}'s turn${awayNote}`;
+  const turn = over
+    ? ""
+    : caller === seat
+      ? auto
+        ? "Bot bidding for you"
+        : "Your turn"
+      : `${SEAT_NAMES[caller]}'s turn${p.bots.includes(caller) ? " (bot)" : awayNote}`;
   const vulText = { None: "None vul", NS: "N/S vul", EW: "E/W vul", Both: "Both vul" }[board.vul];
 
   return (
@@ -116,6 +144,13 @@ export function BidHand(p: Props) {
       </Typography>
 
       <AuctionTable dealer={dealer} vul={board.vul} names={names} calls={calls} seat={seat} />
+      {p.watch && (
+        <FormControlLabel
+          sx={{ mt: 1 }}
+          control={<Switch checked={p.watch.on} onChange={(e) => p.watch!.onChange(e.target.checked)} />}
+          label="Bots bid for me"
+        />
+      )}
 
       {/*
         The bidding box, under its own heading and in a panel, so it reads as the place you act
@@ -123,7 +158,7 @@ export function BidHand(p: Props) {
         can't make.
       */}
       {!over && (
-        <Section title={forBot ? `Bid for ${SEAT_NAMES[caller]}` : "Your bid"} id="your-bid">
+        <Section title="Your bid" id="your-bid">
           <Panel>
             <ChoiceGroup
               value={level}
@@ -139,7 +174,9 @@ export function BidHand(p: Props) {
                 disabled: !STRAINS.some((s) => bidAllowed(lv, s)),
               }))}
             />
+            {/* The level and the suit make one bid, so they sit together; Pass, X and XX are a choice of their own. */}
             <ChoiceGroup
+              space="tight"
               value={picked?.kind === "bid" ? picked.strain : null}
               disabled={!mine || busy || level === null}
               onChange={(strain) => level !== null && setPicked({ kind: "bid", level, strain })}
@@ -151,6 +188,7 @@ export function BidHand(p: Props) {
               }))}
             />
             <ChoiceGroup<"pass" | "double" | "redouble">
+              space="loose"
               value={picked && picked.kind !== "bid" ? picked.kind : null}
               disabled={!mine || busy}
               onChange={(kind) => {
@@ -189,12 +227,6 @@ export function BidHand(p: Props) {
         </Section>
       )}
 
-      {/* Bidding for a bot: its hand, so you can pick a sensible bid for it. */}
-      {forBot && (
-        <Section title={`${SEAT_NAMES[caller]}'s hand (bot, ${hcp(board.hands[caller])} HCP)`} id="bot-hand" tight>
-          <HandTiles hand={board.hands[caller]} trump={null} label={`${SEAT_NAMES[caller]}'s cards`} />
-        </Section>
-      )}
       <Section title={`Your hand (${hcp(board.hands[seat])} HCP)`} id="your-hand" tight>
         <HandTiles hand={board.hands[seat]} trump={null} />
       </Section>

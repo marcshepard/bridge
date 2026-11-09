@@ -40,6 +40,7 @@ frontend/                 Vite + React 19 + MUI 9 + TypeScript (strict). All fro
     describe.ts           plain-English result ("Small slam made with 1 overtrick")
     compare.ts            matchpoints vs field, score groups (the traveller)
     imps.ts               IMP table and field datum
+    bidding/              The bidding bot: SAYC rules, reading an auction, the bot's call and its reason (docs/BOT.md)
   src/providers/          WHERE GAMES COME FROM. One importer per source, each producing GameFileV1.
     types.ts              Game/Board/FieldResult model (+ GameProvider, for a future feed)
     gameFile.ts           our JSON game format (schemaVersion 1) → Game, with validation
@@ -67,6 +68,8 @@ backend/                  Cloudflare Worker (Hono + D1 + a Durable Object). The 
 scripts/                  Python data tools (sample-game generator; needs `endplay`)
 docs/DESIGN.md            Design and rationale, plus working notes for a new session
 docs/BACKLOG.md           What's left to build, and what was parked
+docs/BOT.md               The bots: goals, design and stages
+prototypes/dds/           Prototype: the DDS double-dummy solver in WebAssembly, with timings
 .vscode/tasks.json        Install, start frontend/backend/both, tests, build, generate sample game
 ```
 
@@ -82,6 +85,9 @@ docs/BACKLOG.md           What's left to build, and what was parked
 In `backend/`: `npm test` (API tests), `npm run typecheck`, `npm run smoke` (end-to-end check
 against a running `npm run dev`), and `npm run deploy` (build and publish to Cloudflare; Marc runs
 it, see "Deploying" in README.md).
+
+`npm run bidding-report` in `frontend/` has the bots bid every board of a game file (the demo game
+by default; `-- path/to/file`, `--board N`) and prints each auction with the reason for every call.
 
 From the repo root: `python scripts/make_sample_game.py` regenerates the sample game (`--demo`: the
 demo game in `backend/src/demo/`), after

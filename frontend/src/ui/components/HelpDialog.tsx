@@ -46,6 +46,10 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           where everyone sits.
         </li>
         <li>
+          <strong>Practice with bots</strong> to practise your bidding on your own: you sit South, and bots
+          take the other three seats. See <strong>Practice with bots</strong> below.
+        </li>
+        <li>
           <strong>Start demo game</strong> to see how it works on your own. You get a made-up game (the deals
           are real, but the other results and the commentary are invented), with three bots at the table (Bot 2,
           Bot 3 and Bot 4). Pick a partner, then for each board deal yourself your cards and enter any result
@@ -114,6 +118,62 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
       </Box>
 
+      <Heading>Practice with bots</Heading>
+      <Typography sx={{ mb: 1 }}>
+        Practise your bidding on your own. You sit South, a bot is your partner, and bots are your opponents.
+        For now you only bid: each board goes from the auction straight to its review.
+      </Typography>
+      <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
+        <li>
+          On the first screen, tap <strong>Practice with bots</strong>. Choose the <strong>Built-in game</strong>{" "}
+          (36 made-up boards), or <strong>Upload a game</strong> (a PBN file or a saved Common Game page).
+        </li>
+        <li>
+          Choose <strong>I bid South</strong> to bid your own hand, or <strong>Watch the bots</strong> to let them
+          bid all four seats while you read why. You can switch at any time with <strong>Bots bid for me</strong>{" "}
+          on the bidding screen.
+        </li>
+        <li>
+          When the auction ends, the contract is scored as if everyone then played perfectly (double dummy): for
+          example, if 4♠ by North takes 10 tricks with perfect play, it's scored as 4♠ made. Some game files,
+          like Common Game pages, don't include these trick counts, so their contracts aren't scored yet.
+        </li>
+        <li>
+          Tap <strong>Next board</strong> to go on. The running tally at the top adds up how you're doing against
+          the original field, as in a game with people.
+        </li>
+      </Box>
+
+      <Heading>The bidding review</Heading>
+      <Typography sx={{ mb: 1 }}>
+        After a board, the review shows the auction with every hand in view. Tap any bid to see:
+      </Typography>
+      <Box component="ul" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
+        <li>
+          <strong>What it means</strong> in the system, for example <strong>1NT: 15–17 HCP, balanced</strong>.
+        </li>
+        <li>
+          <strong>Why the bot bid it</strong>, from its hand, for example{" "}
+          <strong>16 HCP and 4-3-3-3: balanced, in the 1NT range</strong>.
+        </li>
+        <li>
+          For your own bids: whether the bot would have bid the same, and if not, what it would have bid and why.
+          For example, you raise partner's 1♥ to 2♥ with four hearts, a singleton and 9 HCP; the bot would have
+          bid 3♥, because with four trumps the singleton is worth 3 more points, making 12: a limit raise.
+        </li>
+        <li>
+          <strong>What the bidding had shown before this</strong>, for example{" "}
+          <strong>North (your partner): 15–17 HCP · balanced</strong>: what you could have known at that point.
+        </li>
+      </Box>
+      <Typography sx={{ mt: 1 }}>
+        Some bids carry a small mark: <strong>≠</strong> for a bid of yours the bot would have made differently,{" "}
+        <strong>?</strong> for a hard call (the rules don't settle it, so the bot used a rule of thumb, which
+        says which), and <strong>!</strong> for a position no rule covers yet. Use <strong>Previous bid</strong>{" "}
+        and <strong>Next bid</strong> to step through the auction. In a game with other people, only your own bids
+        are compared with the bot's.
+      </Typography>
+
       <Heading>Playing online</Heading>
       <Typography sx={{ mb: 1 }}>
         In a game played online, there are no cards or bidding boxes: you bid and play each board on your
@@ -139,8 +199,13 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           tap the contract at the top to see the auction again.
         </li>
         <li>
-          In a game with robot players (a demo game), the owner bids for the robots: their screen
-          says <strong>Bid for North</strong> and shows that robot's hand. The robots play their own cards.
+          In a game with bots (robot players), the bots bid and play by themselves, after a short pause so you
+          can follow. They bid Standard American Yellow Card (SAYC), the system most club players learn: to see
+          its choices, tap your initial at the top right and then <strong>Bidding system</strong>.
+        </li>
+        <li>
+          After the board, tap <strong>Bidding review</strong> under the result to go through the auction: tap any
+          bid to see what it means, and why the bot made it. See <strong>The bidding review</strong> below.
         </li>
         <li>
           Once the card play starts, everyone's screen shows the table: your cards

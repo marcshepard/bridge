@@ -14,7 +14,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bidding-report": "rolldown scripts/bidding-report.ts --platform node --format esm --file node_modules/.cache/bidding-report.mjs --log-level warn && node node_modules/.cache/bidding-report.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

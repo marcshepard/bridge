@@ -12,6 +12,8 @@ export interface EventRow {
   mode: GameMode;
   /** NULL until the owner first moves the table on: the start board. */
   current_board: number | null;
+  /** Read as `mode: "bidding"` (bidding practice); see migration 0009. Not set when inserting. */
+  bidding_only?: number;
   created_at: string;
   expires_at: string;
 }
@@ -46,21 +48,30 @@ const toResult = (r: ResultRow): ResultDto => ({
   onDevices: r.on_devices === 1,
 });
 
-/** Live (not expired) event, or null. */
+/** Live (not expired) event, or null. A bidding-only game is stored as 'devices' plus a flag. */
 export async function getEvent(db: D1Database, code: string, now: string): Promise<EventRow | null> {
-  return db
-    .prepare("SELECT * FROM events WHERE code = ? AND expires_at > ?")
-    .bind(code, now)
-    .first<EventRow>();
+  const row = await db.prepare("SELECT * FROM events WHERE code = ? AND expires_at > ?").bind(code, now).first<EventRow>();
+  return row && row.bidding_only === 1 ? { ...row, mode: "bidding" } : row;
 }
 
 export async function insertEvent(db: D1Database, e: EventRow, creator: PlayerRow, joinedAt: string) {
   await db.batch([
     db
       .prepare(
-        "INSERT INTO events (code, title, game_json, start_board, status, mode, current_board, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO events (code, title, game_json, start_board, status, mode, bidding_only, current_board, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
-      .bind(e.code, e.title, e.game_json, e.start_board, e.status, e.mode, e.current_board, e.created_at, e.expires_at),
+      .bind(
+        e.code,
+        e.title,
+        e.game_json,
+        e.start_board,
+        e.status,
+        e.mode === "bidding" ? "devices" : e.mode,
+        e.mode === "bidding" ? 1 : 0,
+        e.current_board,
+        e.created_at,
+        e.expires_at,
+      ),
     insertPlayerStmt(db, e.code, creator, joinedAt),
   ]);
 }
@@ -185,18 +196,24 @@ export async function getCalls(db: D1Database, code: string, board: number): Pro
   return results.map(toCallDto);
 }
 
-/** The auctions on every board being played on devices right now (bidding or card play). */
-export async function getLiveCalls(db: D1Database, code: string): Promise<CallDto[]> {
+/**
+ * Every auction bid on the devices, on every board: the one being bid or played, and finished ones
+ * (for the bidding review). Starting a board's auction again deletes its old calls.
+ */
+export async function getAllCalls(db: D1Database, code: string): Promise<CallDto[]> {
   const { results } = await db
-    .prepare(
-      `SELECT k.board, k.seq, k.seat, k.call FROM calls k
-       JOIN results r ON r.event_code = k.event_code AND r.table_no = k.table_no AND r.board = k.board
-       WHERE k.event_code = ? AND r.on_devices = 1 AND r.tricks IS NULL
-       ORDER BY k.board, k.seq`,
-    )
+    .prepare("SELECT board, seq, seat, call FROM calls WHERE event_code = ? ORDER BY board, seq")
     .bind(code)
     .all<CallRow>();
   return results.map(toCallDto);
+}
+
+/**
+ * A bidding-only board whose contract can't be scored (no double dummy in the game file): it's done,
+ * but not being played. Keeps its calls, for the review.
+ */
+export async function endWithoutPlay(db: D1Database, code: string, board: number, updatedAt: string) {
+  await db.prepare("UPDATE results SET on_devices = 0, updated_at = ? WHERE event_code = ? AND board = ?").bind(updatedAt, code, board).run();
 }
 
 /** Records a call. False if that call number is already taken (someone else got there first). */

@@ -10,6 +10,8 @@ interface Profile {
   playerIds: Record<string, string>;
   currentGame: string | null;
   installBannerClosed: boolean;
+  /** Practice games in which the bots bid your seat too. */
+  botsBidForMe: string[];
 }
 
 export class LocalProfileStore implements ProfileStore {
@@ -35,12 +37,13 @@ export class LocalProfileStore implements ProfileStore {
           playerIds: p.playerIds ?? {},
           currentGame: p.currentGame ?? null,
           installBannerClosed: p.installBannerClosed ?? false,
+          botsBidForMe: p.botsBidForMe ?? [],
         };
       }
     } catch {
       // Unreadable or unavailable: start fresh.
     }
-    return { name: "", playerIds: {}, currentGame: null, installBannerClosed: false };
+    return { name: "", playerIds: {}, currentGame: null, installBannerClosed: false, botsBidForMe: [] };
   }
 
   private write(): void {
@@ -71,6 +74,7 @@ export class LocalProfileStore implements ProfileStore {
 
   forget(code: string): void {
     delete this.profile.playerIds[code];
+    this.profile.botsBidForMe = this.profile.botsBidForMe.filter((c) => c !== code);
     if (this.profile.currentGame === code) this.profile.currentGame = null;
     this.write();
   }
@@ -81,6 +85,15 @@ export class LocalProfileStore implements ProfileStore {
 
   setCurrentGame(code: string | null): void {
     this.profile.currentGame = code;
+    this.write();
+  }
+
+  botsBidForMe(code: string): boolean {
+    return this.profile.botsBidForMe.includes(code);
+  }
+
+  setBotsBidForMe(code: string, on: boolean): void {
+    this.profile.botsBidForMe = [...this.profile.botsBidForMe.filter((c) => c !== code), ...(on ? [code] : [])];
     this.write();
   }
 

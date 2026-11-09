@@ -7,10 +7,11 @@ export type EventStatus = "lobby" | "playing" | "ended";
 
 /**
  * How a game's boards are played, chosen when it's created: with real cards at the table (each
- * player deals their own hand from their device and the owner enters the result), or bid and
- * played on the devices.
+ * player deals their own hand from their device and the owner enters the result), bid and played
+ * on the devices, or (bidding practice) only bid on the devices: each auction's contract is scored
+ * double dummy, with no card play.
  */
-export type GameMode = "cards" | "devices";
+export type GameMode = "cards" | "devices" | "bidding";
 
 /** A player as everyone else sees them. The secret player ID is never included. */
 export interface PublicPlayer {
@@ -24,7 +25,10 @@ export interface PublicPlayer {
    * They're at the table, so never shown as away.
    */
   noApp: boolean;
-  /** A bot (demo games, dev test players): when cards are played on the devices, the creator's device plays its cards. */
+  /**
+   * A bot (practice and demo games, dev test players). On the devices the owner's device bids and
+   * plays for it, by the rules in core/bidding and core/bot.ts.
+   */
   isBot: boolean;
   /** Assigned when play starts. */
   seat: Seat | null;
@@ -107,7 +111,10 @@ export interface EventSnapshot {
   game: GameFileV1;
   players: PublicPlayer[];
   results: ResultDto[];
-  /** The auctions on boards being played on devices right now (kept through the card play). */
+  /**
+   * Every auction bid on the devices, for every board (the one being played, and finished ones for
+   * the bidding review). A board's calls are replaced when its auction is started again.
+   */
   calls: CallDto[];
   /** The cards played so far on boards being played on devices right now. */
   plays: PlayDto[];
@@ -132,6 +139,15 @@ export interface CreateEventRequest {
 /** Joining a game (POST /events/:code/players), or adding a player without the app (the owner). */
 export interface JoinRequest {
   name: string;
+}
+/**
+ * Starting bidding practice (POST /events/practice): you as South with three bots, bidding only.
+ * `game` is the game file to practise on; left out, the built-in demo game.
+ */
+export interface PracticeRequest {
+  name: string;
+  game?: GameFileV1;
+  startBoard?: number;
 }
 /** Starting a demo game (POST /events/demo). */
 export interface DemoRequest {

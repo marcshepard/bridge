@@ -1,6 +1,9 @@
 // Playing a shared game. The owner runs the table: every device shows the board the table is on
 // (`currentBoard`), and only the owner enters results and moves everyone on to the next board. The
 // owner can also look back at an earlier board from the tally, to correct it.
+//
+// Bidding practice (mode "bidding") is the same table with bots in three seats: each board is only
+// bid, then its result screen shows the bidding review. There's never a card play.
 
 import { Alert, Container } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -16,10 +19,10 @@ import {
 } from "../../session/session";
 import type { Game } from "../../providers/types";
 import type { CallDto, ClaimDto, EventSnapshot, PlayDto, ResultDto } from "../../session/store";
-import { callCode, parseCall } from "../../core/auction";
+import { callCode, isAuctionOver, parseCall } from "../../core/auction";
 import { parseContract } from "../../core/contract";
 import { cardCode, parseCard } from "../../core/play";
-import { games } from "../../services";
+import { games, profile } from "../../services";
 import { BoardInfoDialog, BreakdownDialog, FieldDialog } from "../components/BoardDialogs";
 import { TallyDialog } from "../components/TallyDialog";
 import { ResultText } from "../controls/BridgeText";
@@ -50,15 +53,23 @@ interface Props {
   onClaim: (board: number, claim: ClaimDto | null) => void;
   /** Show a notice about something someone else did (see controls/Notice). */
   onNotice: (notice: NoticeMessage) => void;
+  /** Open the bidding system page. */
+  onSystem: () => void;
 }
 
-export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlayed, onClaim, onNotice }: Props) {
+export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlayed, onClaim, onNotice, onSystem }: Props) {
   const session = useMemo(
     () => sessionFromShared(game, seat, snapshot.startBoard, snapshot.results),
     [game, seat, snapshot.startBoard, snapshot.results],
   );
   const order = session.boardOrder;
   const isOwner = snapshot.you?.isCreator ?? false;
+  const practice = snapshot.mode === "bidding";
+  // In practice, the bots can bid your seat too (remembered on this device, per game).
+  const [watch, setWatch] = useState(() => practice && profile.botsBidForMe(snapshot.code));
+  const bots = snapshot.players.filter((pl) => pl.isBot && pl.seat).map((pl) => pl.seat!);
+  // The owner's device makes the bots' calls (and yours, when you're watching them).
+  const autoSeats: Seat[] = isOwner ? [...bots, ...(practice && watch ? [seat] : [])] : [];
   const tableBoard = snapshot.currentBoard;
   // The owner looking back at an earlier board (from the tally); everyone else stays on the table's.
   const [lookingAt, setLookingAt] = useState<number | null>(null);
@@ -219,22 +230,36 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
         onEnterResult={() => setDialog("result")}
         onEnterContract={() => setDialog("contract")}
         onStartPlay={
-          isOwner && snapshot.mode === "devices"
+          isOwner && snapshot.mode !== "cards"
             ? () => void act("Couldn't start playing", async () => onSaved(await games.startCardPlay(snapshot.code, board.number)))
             : undefined
         }
         bidding={
           bidding
             ? {
-                bots: snapshot.players.filter((pl) => pl.isBot && pl.seat).map((pl) => pl.seat!),
-                callsForBots: isOwner,
+                bots,
+                autoSeats,
+                ...(practice && {
+                  watch: {
+                    on: watch,
+                    onChange: (on: boolean) => {
+                      setWatch(on);
+                      profile.setBotsBidForMe(snapshot.code, on);
+                    },
+                  },
+                }),
                 calls,
                 onCall: async (seq, call) => onCalled(await games.call(snapshot.code, board.number, seq, callCode(call))),
               }
             : null
         }
+        review={
+          !bidding && calls.length > 0 && isAuctionOver(calls) && (practice || comparison)
+            ? { calls, bots, inline: practice, onSystem }
+            : null
+        }
         play={
-          !bidding && (live || ending === board.number) && playContract
+          !practice && !bidding && (live || ending === board.number) && playContract
             ? {
                 bots: snapshot.players.filter((pl) => pl.isBot && pl.seat).map((pl) => pl.seat!),
                 playsForBots: isOwner,
@@ -251,7 +276,7 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
               }
             : null
         }
-        onCorrect={isOwner ? () => setDialog("correct") : undefined}
+        onCorrect={isOwner && !practice ? () => setDialog("correct") : undefined}
         onBreakdown={() => setDialog("breakdown")}
         onField={() => setDialog("field")}
         next={next}

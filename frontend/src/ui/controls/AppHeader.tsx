@@ -1,5 +1,6 @@
 // The bar at the top of every screen: app icon and name, help, and your avatar. The avatar menu
-// holds the Dark mode switch, "Leave game", and "Install to home screen" until the app is installed.
+// holds the Dark mode switch, the bidding system the bots use, "Leave game", and "Install to home
+// screen" until the app is installed.
 // While this device's live connection to the game is down, a small no-signal icon ("Reconnecting")
 // sits beside Help: in the bar, so it never moves the page or covers anything.
 
@@ -31,9 +32,11 @@ interface Props {
   onInstall?: () => void;
   /** This device's live connection to the game has been down for a few seconds. */
   reconnecting?: boolean;
+  /** Open the bidding system page. */
+  onSystem: () => void;
 }
 
-export function AppHeader({ name, onHelp, onLeaveGame, onInstall, reconnecting = false }: Props) {
+export function AppHeader({ name, onHelp, onLeaveGame, onInstall, onSystem, reconnecting = false }: Props) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const { mode, setMode } = useColorScheme();
   const dark = mode === "dark";
@@ -103,6 +106,14 @@ export function AppHeader({ name, onHelp, onLeaveGame, onInstall, reconnecting =
         <MenuItem role="menuitemcheckbox" aria-checked={dark} onClick={() => setMode(dark ? "light" : "dark")} sx={{ minWidth: (t) => t.spacing(30) }}>
           <ListItemText>Dark mode</ListItemText>
           <Switch edge="end" checked={dark} tabIndex={-1} slotProps={{ input: { "aria-hidden": true } }} />
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setAnchor(null);
+            onSystem();
+          }}
+        >
+          <ListItemText>Bidding system</ListItemText>
         </MenuItem>
         <Divider />
         <MenuItem

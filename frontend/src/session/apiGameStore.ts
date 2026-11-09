@@ -11,6 +11,7 @@ import type {
   CreateEventRequest,
   CurrentBoardRequest,
   DemoRequest,
+  PracticeRequest,
   EventSnapshot,
   GameMode,
   JoinedResponse,
@@ -96,6 +97,11 @@ export class ApiGameStore implements GameStore {
     // With real cards: you deal yourself each board and enter any result, as the owner.
     const req: DemoRequest = { name, mode: "cards" };
     return this.remember(await this.request<JoinedResponse>("POST", "/events/demo", undefined, req));
+  }
+
+  async createPractice(name: string, game: GameFileV1 | null, startBoard: number | null): Promise<string> {
+    const req: PracticeRequest = { name, ...(game && { game }), ...(startBoard !== null && { startBoard }) };
+    return this.remember(await this.request<JoinedResponse>("POST", "/events/practice", undefined, req));
   }
 
   async join(code: string, name: string): Promise<string> {

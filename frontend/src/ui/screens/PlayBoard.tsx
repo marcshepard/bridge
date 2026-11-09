@@ -8,6 +8,7 @@
 // stays pinned at the bottom of the screen.
 
 import { Box, Button, Paper, Stack, Typography } from "@mui/material";
+import { useState } from "react";
 import { formatTableResult } from "../../core/contract";
 import { formatScore } from "../../core/scoring";
 import type { BoardComparison } from "../../core/compare";
@@ -16,6 +17,7 @@ import type { Call } from "../../core/auction";
 import type { Card, Claim } from "../../core/play";
 import { type Contract, type Hand as HandT, type Seat, SEATS, SEAT_NAMES, directionOf } from "../../core/types";
 import type { Board } from "../../providers/types";
+import { BiddingReview } from "../components/BiddingReview";
 import { BoardHeader } from "../components/BoardHeader";
 import { Hand } from "../components/Hand";
 import { ContractText, ResultText, ScoreText } from "../controls/BridgeText";
@@ -24,6 +26,7 @@ import { DetailButton } from "../controls/DetailButton";
 import { EditButton } from "../controls/EditButton";
 import { PlayerName } from "../controls/PlayerName";
 import { Panel, Screen, Section } from "../controls/Layout";
+import { SheetDialog } from "../controls/SheetDialog";
 import { ScoreChip, type Tone } from "../controls/ScoreChip";
 import { formatJoinCode, netParts, seatAndPlayer, vulnerableShort } from "../labels";
 import { BidHand } from "./BidHand";
@@ -63,11 +66,23 @@ interface Props {
   onStartPlay?: () => void;
   /** While the board is being bid on the devices: the auction takes over the page. */
   bidding: {
-    /** Seats held by bots, and whether this device bids for them. */
+    /** Seats held by bots, and the seats this device makes the bots' calls for. */
     bots: Seat[];
-    callsForBots: boolean;
+    autoSeats: Seat[];
+    /** Bidding practice: the "Bots bid for me" switch. */
+    watch?: { on: boolean; onChange: (on: boolean) => void };
     calls: Call[];
     onCall: (seq: number, call: Call) => Promise<void>;
+  } | null;
+  /**
+   * The board's auction, once it's over, for the bidding review. In bidding practice (`inline`) the
+   * review is part of the result screen; otherwise it opens from a button.
+   */
+  review: {
+    calls: Call[];
+    bots: Seat[];
+    inline: boolean;
+    onSystem: () => void;
   } | null;
   /** While the cards are being played on the devices: the play table takes over the page. */
   play: {
@@ -135,6 +150,7 @@ function SeatHand({
 
 export function PlayBoard(p: Props) {
   const { board, seat, comparison: c } = p;
+  const [reviewOpen, setReviewOpen] = useState(false);
   const dir = directionOf(seat);
   const sideLabel = dir === "NS" ? "N/S" : "E/W";
 
@@ -164,7 +180,8 @@ export function PlayBoard(p: Props) {
           names={p.names}
           away={p.away}
           bots={p.bidding.bots}
-          callsForBots={p.bidding.callsForBots}
+          autoSeats={p.bidding.autoSeats}
+          watch={p.bidding.watch}
           calls={p.bidding.calls}
           onCall={p.bidding.onCall}
         />
@@ -191,6 +208,57 @@ export function PlayBoard(p: Props) {
           onAnswerClaim={p.play.onAnswerClaim}
           onWithdrawClaim={p.play.onWithdrawClaim}
         />
+      </Screen>
+    );
+  }
+
+  // What comes next, at the bottom of the screen, however long the hands are.
+  const nextFooter = p.backTo ? (
+    <Button variant="contained" size="large" fullWidth onClick={p.backTo.onBack}>
+      Back to board {p.backTo.board}
+    </Button>
+  ) : p.next === null ? (
+    <Typography color="text.secondary">That was the last board.</Typography>
+  ) : p.onNext ? (
+    <Button variant="contained" size="large" fullWidth onClick={p.onNext}>
+      Next board
+    </Button>
+  ) : (
+    <Typography color="text.secondary" role="status">
+      Waiting for {p.owner} to start the next board…
+    </Typography>
+  );
+  const allHands = (trump: Contract["strain"] | null) => {
+    const seats = Object.fromEntries(
+      SEATS.map((s) => [s, <SeatHand key={s} seat={s} name={p.names[s]} away={p.away[s]} hand={board.hands[s]} trump={trump} />]),
+    ) as Record<Seat, React.ReactNode>;
+    return <Compass me={seat} bottom="S" seats={seats} label="All four hands" />;
+  };
+  const reviewSection = p.review && (
+    <Section title="Bidding review" id="bidding-review" tight>
+      <BiddingReview board={board} calls={p.review.calls} seat={seat} names={p.names} bots={p.review.bots} onSystem={p.review.onSystem} />
+    </Section>
+  );
+
+  // Bidding practice on a game file without double dummy: the auction's contract, unscored.
+  if (!c && p.review?.inline && p.contract) {
+    return (
+      <Screen footer={nextFooter}>
+        {top}
+        <BoardHeader title={p.title} board={board.number} onInfo={p.onBoardInfo} rows={setup} />
+        <Paper component="section" aria-label="Result" variant="outlined" sx={{ p: 1.5, mb: 1.5 }}>
+          <Typography variant="caption" component="p" color="text.secondary">
+            Contract
+          </Typography>
+          <Typography variant="h6" component="p">
+            <ContractText contract={p.contract.contract} /> by {SEAT_NAMES[p.contract.declarer]}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Not scored: this game file has no double-dummy tricks, which a contract that was only bid needs for its score.
+          </Typography>
+        </Paper>
+        {reviewSection}
+        <Box sx={{ mt: 2 }}>{allHands(p.contract.contract.strain)}</Box>
       </Screen>
     );
   }
@@ -264,32 +332,10 @@ export function PlayBoard(p: Props) {
 
   // After the result: the result card (what happened, and how it scored), then all four hands.
   const trump = c.ours.result.contract?.strain ?? null;
-  const seats = Object.fromEntries(
-    SEATS.map((s) => [
-      s,
-      <SeatHand key={s} seat={s} name={p.names[s]} away={p.away[s]} hand={board.hands[s]} trump={trump} />,
-    ]),
-  ) as Record<Seat, React.ReactNode>;
   const mp = c.mpPct === null ? null : netParts(c.mpPct);
-  // What comes next, at the bottom of the screen, however long the hands are.
-  const footer = p.backTo ? (
-    <Button variant="contained" size="large" fullWidth onClick={p.backTo.onBack}>
-      Back to board {p.backTo.board}
-    </Button>
-  ) : p.next === null ? (
-    <Typography color="text.secondary">That was the last board.</Typography>
-  ) : p.onNext ? (
-    <Button variant="contained" size="large" fullWidth onClick={p.onNext}>
-      Next board
-    </Button>
-  ) : (
-    <Typography color="text.secondary" role="status">
-      Waiting for {p.owner} to start the next board…
-    </Typography>
-  );
 
   return (
-    <Screen footer={footer}>
+    <Screen footer={nextFooter}>
       {top}
       <BoardHeader title={p.title} board={board.number} onInfo={p.onBoardInfo} rows={setup} />
 
@@ -334,10 +380,21 @@ export function PlayBoard(p: Props) {
             </Typography>
           )}
         </Box>
+        {p.review && !p.review.inline && (
+          <Button variant="outlined" fullWidth sx={{ mt: 1 }} onClick={() => setReviewOpen(true)}>
+            Bidding review
+          </Button>
+        )}
       </Paper>
 
-      <Compass me={seat} bottom="S" seats={seats} label="All four hands" />
+      {p.review?.inline && reviewSection}
+      <Box sx={{ mt: p.review?.inline ? 2 : 0 }}>{allHands(trump)}</Box>
 
+      {p.review && !p.review.inline && (
+        <SheetDialog open={reviewOpen} title={`Bidding review: board ${board.number}`} onClose={() => setReviewOpen(false)}>
+          <BiddingReview board={board} calls={p.review.calls} seat={seat} names={p.names} bots={p.review.bots} onSystem={p.review.onSystem} />
+        </SheetDialog>
+      )}
     </Screen>
   );
 }

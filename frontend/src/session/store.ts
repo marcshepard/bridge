@@ -48,6 +48,11 @@ export interface GameStore {
    * the other three places. You join it as the first player; returns its join code.
    */
   createDemo(name: string): Promise<string>;
+  /**
+   * Start bidding practice: you as South with three bots, bidding only (each contract is scored
+   * double dummy). On `game`, or the built-in demo game when null. Returns its join code.
+   */
+  createPractice(name: string, game: GameFileV1 | null, startBoard: number | null): Promise<string>;
   /** Join a game that hasn't started; returns its normalised join code. */
   join(code: string, name: string): Promise<string>;
   /** Everything about a game, including `you` when this device is one of its players. */
@@ -107,6 +112,9 @@ export interface ProfileStore {
   /** The game this device is in right now, so a reload goes straight back to it. */
   currentGame(): string | null;
   setCurrentGame(code: string | null): void;
+  /** In this practice game, the bots bid your seat too (you watch). */
+  botsBidForMe(code: string): boolean;
+  setBotsBidForMe(code: string, on: boolean): void;
   /** The install banner was closed on this device: don't show it again. */
   installBannerClosed(): boolean;
   setInstallBannerClosed(): void;

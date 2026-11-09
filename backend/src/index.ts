@@ -5,6 +5,7 @@
 
 import { Hono, type Context } from "hono";
 import { auctionResult, callCode, canCall, parseCall, toCall } from "../../frontend/src/core/auction";
+import { doubleDummyResult } from "../../frontend/src/core/bidding/result";
 import { contractCode, tableResult } from "../../frontend/src/core/contract";
 import {
   cardCode,
@@ -36,6 +37,7 @@ import type {
   JoinRequest,
   LiveTicketResponse,
   PartnershipsRequest,
+  PracticeRequest,
   PlayCardRequest,
   PlayDto,
   PushMessage,
@@ -48,6 +50,7 @@ import type {
 } from "./api-types";
 import * as db from "./db";
 import type { Env } from "./env";
+import type { Seat } from "../../frontend/src/core/types";
 import { newJoinCode, newPlayerId, normaliseJoinCode } from "./ids";
 import demoGame from "./demo/demo-game.json";
 import { assignSeats } from "./seats";
@@ -139,6 +142,9 @@ function parseMode(raw: unknown): GameMode {
   throw new HttpError(400, "Choose how the boards are played: real cards or on the devices");
 }
 
+/** Boards start themselves on the devices: played online, or bidding practice. */
+const onDevicesMode = (mode: GameMode) => mode === "devices" || mode === "bidding";
+
 /** The board the table is on (original numbering). */
 const currentBoard = (event: db.EventRow) => event.current_board ?? event.start_board;
 
@@ -180,6 +186,26 @@ app.post("/events/demo", async (c) => {
   const req = await body<DemoRequest>(c);
   const joined = await createEvent(c, cleanName(req.name), demoGame as unknown as GameFileV1, DEMO_START_BOARD, parseMode(req.mode));
   await addBots(c, joined.code);
+  return c.json<JoinedResponse>(joined, 201);
+});
+
+/**
+ * Bidding practice: you as South, bots in the other three seats, on your game file or the built-in
+ * demo game. No lobby: seats are set and the first board's auction starts straight away. Each board
+ * is only bid; its contract is scored double dummy. Bots are allowed in the live app here, as in
+ * the demo: it's a game for one person.
+ */
+app.post("/events/practice", async (c) => {
+  if (Number(c.req.header("Content-Length") ?? 0) > MAX_GAME_BYTES) throw new HttpError(413, "Game file too large");
+  const req = await body<PracticeRequest>(c);
+  const file = req.game ?? (demoGame as unknown as GameFileV1);
+  // From the first board unless asked otherwise (not the demo's board 9: practice is for working through a game).
+  const joined = await createEvent(c, cleanName(req.name), file, req.startBoard, "bidding");
+  await addBots(c, joined.code);
+  // You're South; your partner North and the opponents are bots (slots 2–4 in join order).
+  await db.setSeatsAndStart(c.env.DB, joined.code, new Map<number, Seat>([[1, "S"], [2, "W"], [3, "N"], [4, "E"]]));
+  const event = (await db.getEvent(c.env.DB, joined.code, nowIso()))!;
+  await startOnDevices(c, event.code, currentBoard(event), joined.slot);
   return c.json<JoinedResponse>(joined, 201);
 });
 
@@ -240,7 +266,7 @@ app.get("/events/:code", async (c) => {
   const [players, results, calls, plays, claims, connected, requests] = await Promise.all([
     db.getPlayers(c.env.DB, event.code),
     db.getResults(c.env.DB, event.code),
-    db.getLiveCalls(c.env.DB, event.code),
+    db.getAllCalls(c.env.DB, event.code),
     db.getLivePlays(c.env.DB, event.code),
     db.getLiveClaims(c.env.DB, event.code),
     hub(c.env, event.code).connectedSlots(),
@@ -378,7 +404,7 @@ app.post("/events/:code/partnerships", async (c) => {
   await db.setSeatsAndStart(c.env.DB, event.code, seats);
   await push(c, event.code, { type: "players" });
   await push(c, event.code, { type: "status", status: "playing" });
-  if (event.mode === "devices") await startOnDevices(c, event.code, currentBoard(event), me.slot);
+  if (onDevicesMode(event.mode)) await startOnDevices(c, event.code, currentBoard(event), me.slot);
   return c.json({ seats: Object.fromEntries(seats) });
 });
 
@@ -394,7 +420,7 @@ app.put("/events/:code/current", async (c) => {
   const board = Number((await body<CurrentBoardRequest>(c)).board);
   const game = JSON.parse(event.game_json) as GameFileV1;
   if (!game.boards.some((b) => b.number === board)) throw new HttpError(404, `Board ${board} isn't in this game`);
-  if (event.mode === "devices" && !(await startOnDevices(c, event.code, board, me.slot))) {
+  if (onDevicesMode(event.mode) && !(await startOnDevices(c, event.code, board, me.slot))) {
     throw new HttpError(409, "Another board is being played on the devices; finish it first");
   }
   await db.setCurrentBoard(c.env.DB, event.code, board);
@@ -516,16 +542,23 @@ app.post("/events/:code/boards/:board/calls", async (c) => {
 
   const end = auctionResult(board.dealer, [...calls, call]);
   if (end) {
-    // Passed out is a complete result; otherwise the contract is in and the cards come next.
+    // Passed out is a complete result; otherwise the contract is in and the cards come next. In
+    // bidding practice there's no card play: the contract takes the tricks double dummy says it
+    // does, or, without double dummy in the game file, the board ends with just its contract.
+    const scored = event.mode === "bidding" ? doubleDummyResult(board.doubleDummy, end.contract, end.declarer) : null;
     const done: ResultDto = {
       ...result,
       contract: contractCode(end.contract),
       declarer: end.declarer,
-      tricks: end.contract ? null : 0,
+      tricks: end.contract ? (scored?.tricks ?? null) : 0,
       enteredBy: me.slot,
       updatedAt: nowIso(),
     };
     await db.upsertResult(c.env.DB, event.code, done);
+    if (event.mode === "bidding" && done.tricks === null) {
+      await db.endWithoutPlay(c.env.DB, event.code, board.number, done.updatedAt);
+      done.onDevices = false;
+    }
     await push(c, event.code, { type: "result", result: done });
   }
   return c.json(dto);
