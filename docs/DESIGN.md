@@ -221,7 +221,7 @@ tablet or computer).
   **online** (bid and play on the devices; see "Playing online" below; `mode: "devices"` in the
   API). The screens call them **Real cards** and **Online**, and the same "?" explains both
   (`GameModeHelp`). There's no default: under its button, Start a game shows a "!" with what's
-  still to do ("Upload a game file and choose how you'll play the boards.") until both are done.
+  still to do ("Import a game file and choose how you'll play the boards.") until both are done.
 - **The owner runs the table.** See decision 2.
 - Your matchpoint % and nets (a board's, the tally's) are shown to one decimal, left off when it's
   zero: 96.3%, 62%, +92.6. A net comes from the % as shown, so "96.3 − 3.7" always nets +92.6, and
@@ -238,14 +238,14 @@ name ("?" until you set one). The avatar menu has the light/dark/system theme sw
 **Home:** splash image. On first use it asks for your **display name**; after that it shows your
 name (editable) and two actions: **Start a game** and **Join a game**.
 
-**Start a game:** upload a PBN file or a saved Common Game results page (see "Data sources"),
+**Start a game:** import a PBN file or a saved Common Game results page (see "Data sources"),
 choose **how the boards are played** (Real cards / Online, with a "?" explaining each), and
 choose the starting board. The app creates the game and shows its **join code** with a share
 button. It then goes to the lobby.
 
 **Join a game:** enter the code (or open a shared link). Goes to the lobby. In the lobby, when the
 owner is away or the name you're joining with is the owner's, it first asks: **Join as Marc
-(owner)** or **Join as a new player**. That's how the owner starts a game on a computer (to upload
+(owner)** or **Join as a new player**. That's how the owner starts a game on a computer (to import
 a Common Game page) and carries on from their phone: it's a seat request for the owner's seat.
 
 **Lobby:** kept compact so it fits a phone (a Pixel 9) without scrolling: the game's title, "Game
@@ -428,7 +428,7 @@ played. If a board somehow hasn't started, the owner has **Play online**.
 **Practice with bots** on Home: you as South, bots in the other three seats (`POST
 /api/events/practice`). The game is either **random deals** (36 boards dealt on the device by
 `providers/randomGame.ts`, with the usual dealer and vulnerability rotation, no field and no double
-dummy) or an uploaded game file, to compare with its field. The backend still falls back to the
+dummy) or an imported game file, to compare with its field. The backend still falls back to the
 built-in demo game when no game is sent, but the practice screen always sends one. No lobby: the
 seats are set and the first board's auction starts at once. **Bidding and play** (the default; game
 type `devices`) bids and plays each board on the devices. In **bidding only** (game type

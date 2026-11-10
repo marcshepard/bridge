@@ -1,15 +1,15 @@
-// Start a game: upload a game file, check what's in it, choose how the boards are played (real
+// Start a game: import a game file, check what's in it, choose how the boards are played (real
 // cards or online: no default, it's a real choice) and the starting board, create it.
 
-import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import PriorityHighIcon from "@mui/icons-material/PriorityHigh";
-import { Alert, Box, Button, Collapse, IconButton, Link, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Button, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useState } from "react";
 import { type GameFileV1, parseGameFile } from "../../providers/gameFile";
-import { ACCEPTED_FILES, fileToGameFile } from "../../providers/importFile";
+import { fileToGameFile } from "../../providers/importFile";
 import type { Game } from "../../providers/types";
 import { games } from "../../services";
 import type { GameMode } from "../../session/store";
+import { GameFileUpload } from "../components/GameFileUpload";
 import { GameModeHelp } from "../components/GameModeHelp";
 import { ChoiceGroup } from "../controls/ChoiceGroup";
 import { SheetDialog } from "../controls/SheetDialog";
@@ -25,40 +25,6 @@ interface Loaded {
   fileName: string;
   file: GameFileV1;
   game: Game;
-}
-
-/** Step-by-step help for getting a Common Game results page, shown under the "?" button. */
-function TcgHelp() {
-  return (
-    <Alert severity="info" icon={false}>
-      <Typography variant="subtitle2" component="p" sx={{ mb: 1 }}>
-        Getting a Common Game results page
-      </Typography>
-      <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 0.5 }}>
-        <li>
-          On a computer, go to{" "}
-          <Link href="https://thecommongame.com/" target="_blank" rel="noopener noreferrer">
-            thecommongame.com
-          </Link>{" "}
-          and choose <strong>Archived Common Game</strong>.
-        </li>
-        <li>Pick the date of the game, and open the results page that shows the boards and the scores.</li>
-        <li>
-          Save the page: press <strong>Ctrl+S</strong> (<strong>Cmd+S</strong> on a Mac) and save it as{" "}
-          <strong>Webpage, HTML only</strong>.
-        </li>
-        <li>Upload the saved .html file here.</li>
-      </Box>
-      <Typography variant="body2" sx={{ mt: 1 }}>
-        Phones can't easily save web pages, so start the game on the computer. To play on your phone instead,
-        join the game from your phone with the code and choose <strong>Join as</strong> yourself{" "}
-        <strong>(owner)</strong>. If the game is still open on the computer, tap <strong>Allow</strong> there.
-      </Typography>
-      <Typography variant="body2" sx={{ mt: 1 }}>
-        The page you save is the field you'll be compared with: the 299er page compares you with the 299ers.
-      </Typography>
-    </Alert>
-  );
 }
 
 /**
@@ -80,7 +46,6 @@ export function StartGame({ open, name, onClose, onCreated }: Props) {
   const [startBoard, setStartBoard] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
 
   async function load(f: File) {
     setError(null);
@@ -114,7 +79,7 @@ export function StartGame({ open, name, onClose, onCreated }: Props) {
   // Without the original field's results there's nothing to score against: worth a warning.
   const noField = !!loaded && loaded.game.boards.every((b) => b.field.length === 0);
   // What's still needed before the game can be created, said under the button.
-  const toDo = [...(loaded ? [] : ["upload a game file"]), ...(mode ? [] : ["choose how you'll play the boards"])];
+  const toDo = [...(loaded ? [] : ["import a game file"]), ...(mode ? [] : ["choose how you'll play the boards"])];
   const toDoText = toDo.join(" and ");
 
   return (
@@ -144,36 +109,17 @@ export function StartGame({ open, name, onClose, onCreated }: Props) {
       }
     >
       <Stack spacing={2}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
-          <Typography sx={{ flex: 1 }}>
-            Upload a PBN file, or a Common Game results page saved from your browser.
-          </Typography>
-          <IconButton
-            aria-label="How to save a Common Game results page"
-            aria-expanded={showHelp}
-            onClick={() => setShowHelp((s) => !s)}
-          >
-            <HelpOutlineIcon />
-          </IconButton>
-        </Stack>
-        <Collapse in={showHelp} unmountOnExit>
-          <TcgHelp />
-        </Collapse>
-        <Box>
-          <Button variant="outlined" component="label">
-            {loaded ? "Upload a different file" : "Upload a game file"}
-            <input
-              hidden
-              type="file"
-              accept={ACCEPTED_FILES}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void load(f);
-                e.target.value = "";
-              }}
-            />
-          </Button>
-        </Box>
+        <GameFileUpload
+          loaded={!!loaded}
+          onFile={(f) => void load(f)}
+          extraHelp={
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Phones can't easily save web pages, so start the game on the computer. To play on your phone instead,
+              join the game from your phone with the code and choose <strong>Join as</strong> yourself{" "}
+              <strong>(owner)</strong>. If the game is still open on the computer, tap <strong>Allow</strong> there.
+            </Typography>
+          }
+        />
 
         {error && <Alert severity="error">{error}</Alert>}
 

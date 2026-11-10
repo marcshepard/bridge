@@ -163,7 +163,7 @@ tests covered. Always say which tests you did and didn't run.
 12. **The sample data is synthetic.** Never present it as real results. Don't add real
     third-party game data (The Common Game, ACBL) to the repo without permission from its owner.
 13. **Keep the in-app help in sync with the code.** Help lives in `ui/components/HelpDialog.tsx`
-    (plus inline help such as the Common Game steps in `StartGame.tsx`). Whenever a change alters
+    (plus inline help such as the Common Game steps in `ui/components/GameFileUpload.tsx`). Whenever a change alters
     what players see or do (screens, steps, scoring), update the help in the same change. Write it
     for a complete newcomer: someone who has never used the app and may never have played
     duplicate. Plain words, short steps, a worked example where a number needs explaining.

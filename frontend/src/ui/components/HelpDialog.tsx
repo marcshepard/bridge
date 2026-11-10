@@ -27,7 +27,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
       <Heading>Getting started</Heading>
       <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
         <li>
-          <strong>Start a game:</strong> one person, the game's <strong>owner</strong>, uploads the game: a PBN
+          <strong>Start a game:</strong> one person, the game's <strong>owner</strong>, imports the game: a PBN
           file, or a Common Game results page saved from your browser. They choose how you'll play the boards:
           with <strong>real cards</strong> (everyone needs their own deck) or <strong>online</strong> (no
           cards needed). They get a join code to share with the others.
@@ -128,7 +128,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
       <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
         <li>
           On the first screen, tap <strong>Practice with bots</strong>. Choose <strong>Random deals</strong> (36
-          boards dealt fresh for you), or <strong>Upload a game</strong> (a PBN file or a saved Common Game page)
+          boards dealt fresh for you), or <strong>Import a game</strong> (a PBN file or a saved Common Game page)
           to play boards that other people have played, and see how you'd have done against them.
         </li>
         <li>
@@ -147,7 +147,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           out, which takes a moment.
         </li>
         <li>
-          Tap <strong>Next board</strong> to go on. With an uploaded game, the running tally at the top adds up how
+          Tap <strong>Next board</strong> to go on. With an imported game, the running tally at the top adds up how
           you're doing against the original field, as in a game with people. Random deals have no field (nobody
           else has played them), so you see your scores but no matchpoints.
         </li>
@@ -273,7 +273,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
       <Heading>Swapping a player, or changing devices</Heading>
       <Typography sx={{ mb: 1 }}>
         If someone has to drop out, someone else can take their seat. Or you can carry on from another device:
-        if your phone's battery dies, or if you started the game on a computer (to upload a Common Game page,
+        if your phone's battery dies, or if you started the game on a computer (to import a Common Game page,
         say) and want to play on your phone.
       </Typography>
       <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>

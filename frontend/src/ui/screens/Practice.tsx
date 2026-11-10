@@ -1,5 +1,5 @@
 // Practice with bots: you as South, bots in the other three seats, on freshly dealt random boards or
-// a game file you upload (to compare with its field). Bidding and play, or bidding only (each board
+// a game file you import (to compare with its field). Bidding and play, or bidding only (each board
 // goes from its auction to the bidding review). You always start in your own seat; "Bots bid for me"
 // on the bidding screen lets the bots take it over.
 
@@ -9,10 +9,11 @@ import { Alert, Box, Button, MenuItem, Stack, TextField, Typography } from "@mui
 import { useState } from "react";
 import { type SystemSettings, isDefault } from "../../core/bidding/system";
 import { type GameFileV1, parseGameFile } from "../../providers/gameFile";
-import { ACCEPTED_FILES, fileToGameFile } from "../../providers/importFile";
+import { fileToGameFile } from "../../providers/importFile";
 import { randomGameFile } from "../../providers/randomGame";
 import type { Game } from "../../providers/types";
 import { games } from "../../services";
+import { GameFileUpload } from "../components/GameFileUpload";
 import { ChoiceGroup } from "../controls/ChoiceGroup";
 import { SheetDialog } from "../controls/SheetDialog";
 
@@ -93,25 +94,13 @@ export function Practice({ open, name, onClose, onCreated, system, onSystem }: P
             setError(null);
           }}
           choices={[
-            { value: "random", label: "Random deals", sub: "Quick practice, no field" },
-            { value: "upload", label: "Upload a game", sub: "Score yourself against its field" },
+            { value: "random", label: "Random deals", sub: "Quick practice, no field to score against" },
+            { value: "upload", label: "Import a game", sub: "Score yourself against its field" },
           ]}
         />
         {source === "upload" && (
           <Stack spacing={2}>
-            <Button variant="outlined" component="label" sx={{ alignSelf: "flex-start" }}>
-              {loaded ? "Upload a different file" : "Upload a PBN file or Common Game page"}
-              <input
-                hidden
-                type="file"
-                accept={ACCEPTED_FILES}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void load(f);
-                  e.target.value = "";
-                }}
-              />
-            </Button>
+            <GameFileUpload loaded={!!loaded} onFile={(f) => void load(f)} />
             {loaded && (
               <>
                 <Alert severity={noDoubleDummy ? "warning" : "success"}>
@@ -136,7 +125,7 @@ export function Practice({ open, name, onClose, onCreated, system, onSystem }: P
           value={what}
           onChange={setWhat}
           choices={[
-            { value: "play", label: "Bidding and play", sub: "The whole hand: play or defend" },
+            { value: "play", label: "Bidding and play", sub: "Work on your bidding, play, and defense" },
             { value: "bidding", label: "Bidding only", sub: "Work on your bidding" },
           ]}
         />
