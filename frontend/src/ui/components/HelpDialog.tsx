@@ -4,9 +4,9 @@
 import { Box, Link, Typography } from "@mui/material";
 import type { ReactNode } from "react";
 import { SheetDialog } from "../controls/SheetDialog";
+import { FEEDBACK_EMAIL } from "../feedback";
 
 const LEARN_MORE = "https://en.wikipedia.org/wiki/Duplicate_bridge#Scoring";
-const FEEDBACK_EMAIL = "navia.apps@gmail.com";
 
 function Heading({ children }: { children: ReactNode }) {
   return (

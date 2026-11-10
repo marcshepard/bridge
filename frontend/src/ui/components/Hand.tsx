@@ -1,8 +1,9 @@
 import { Box, ButtonBase, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import type { Card } from "../../core/play";
-import { type Hand as HandT, type Strain, type Suit, SUIT_SYMBOLS } from "../../core/types";
+import { type Hand as HandT, type Seat, type Strain, type Suit, SEAT_NAMES, SUIT_SYMBOLS } from "../../core/types";
 import { StrainSymbol, SUIT_NAMES } from "../controls/BridgeText";
+import { PlayerName } from "../controls/PlayerName";
 import { handSuitOrder } from "../labels";
 
 /** "AKT4" → "A K 10 4" */
@@ -208,5 +209,41 @@ export function Hand({
         </Typography>
       ))}
     </Box>
+  );
+}
+
+/**
+ * A seat in the hand diagram: a heading strip, "West (Marc)", then the cards in suit rows (a long
+ * suit wraps, its next line under its first card).
+ */
+export function SeatHand({
+  seat,
+  name,
+  away = false,
+  hand,
+  trump,
+}: {
+  seat: Seat;
+  /** The player's name, shown after the seat; none in the dev replay. */
+  name?: string;
+  away?: boolean;
+  hand: HandT;
+  trump: Strain | null;
+}) {
+  return (
+    <>
+      <Typography
+        variant="subtitle2"
+        component="h3"
+        noWrap
+        sx={{ px: 1, py: 0.5, bgcolor: "action.hover", borderBottom: 1, borderColor: "divider" }}
+      >
+        {SEAT_NAMES[seat]} {name && <PlayerName name={`(${name})`} away={away} />}
+      </Typography>
+      {/* Centred as a block, with the suits lined up on the left inside it. */}
+      <Box sx={{ width: "fit-content", maxWidth: 1, mx: "auto", px: 1, py: 1 }}>
+        <Hand hand={hand} trump={trump} />
+      </Box>
+    </>
   );
 }

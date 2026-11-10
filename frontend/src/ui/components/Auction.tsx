@@ -4,7 +4,7 @@
 //
 // In the bidding review the calls can be tapped (each opens its explanation), and some carry a
 // small mark: a call of yours the bot would have made differently, a hard call, or a call no rule
-// covers yet.
+// covers yet. One call can be shaded instead (the reported call, in the dev replay).
 
 import { Box, Button, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
 import { type Call, isAuctionOver, seatOfCall } from "../../core/auction";
@@ -34,9 +34,11 @@ interface Props {
   onOpenCall?: (index: number) => void;
   /** A mark for some calls (by index). */
   marks?: (index: number) => CallMark | null;
+  /** A call to shade (by index). */
+  shaded?: number;
 }
 
-export function AuctionTable({ dealer, vul, names, calls, seat, onOpenCall, marks }: Props) {
+export function AuctionTable({ dealer, vul, names, calls, seat, onOpenCall, marks, shaded }: Props) {
   const offset = COLUMNS.indexOf(dealer);
   const over = isAuctionOver(calls);
   // The cells, row by row: blanks before the dealer, the calls, then the next place to call.
@@ -92,7 +94,7 @@ export function AuctionTable({ dealer, vul, names, calls, seat, onOpenCall, mark
                     py: onOpenCall ? 0 : undefined,
                     typography: "subtitle1",
                     fontWeight: s === seat ? "fontWeightBold" : undefined,
-                    ...(cell === "next" && { bgcolor: "action.selected" }),
+                    ...((cell === "next" || (cell && cell.index === shaded)) && { bgcolor: "action.selected" }),
                   }}
                   aria-label={onOpenCall ? undefined : label}
                 >

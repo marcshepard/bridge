@@ -11,6 +11,7 @@
 // here: it's seeded from the hand and the auction, so it gives the bot's answer at the table. The
 // rule of thumb shows until it's done.
 
+import MailOutlineIcon from "@mui/icons-material/MailOutlined";
 import { Alert, Box, Button, Chip, Stack, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import type { Call } from "../../core/auction";
@@ -23,6 +24,7 @@ import { type Seat, SEATS, SEAT_NAMES, SUITS, SUIT_SYMBOLS } from "../../core/ty
 import type { Board } from "../../providers/types";
 import { CallText, SuitString } from "../controls/BridgeText";
 import { SheetDialog } from "../controls/SheetDialog";
+import { bidFeedbackHref } from "../feedback";
 import { seatWithRelation } from "../labels";
 import { AuctionTable, type CallMark, MarkLegend } from "./Auction";
 
@@ -47,7 +49,11 @@ interface Props {
   meaningsOnly?: boolean;
 }
 
-export function BiddingReview({ board, calls, seat, names, bots, systems, onSystem, meaningsOnly = false }: Props) {
+/**
+ * Every call of the auction explained, with the hard calls settled by simulation as each finishes
+ * (the rule of thumb shows until then). `simulate: false` leaves the rule of thumb.
+ */
+export function useReviewedAuction(board: Board, calls: Call[], systems: TableSystems, simulate: boolean) {
   const plain = useMemo(() => reviewAuction(board.hands, { dealer: board.dealer, vul: board.vul }, calls, systems), [board, calls, systems]);
   // Hard calls, settled by simulation (by index), as each finishes.
   const [simulated, setSimulated] = useState<Record<number, Decision>>({});
@@ -55,7 +61,7 @@ export function BiddingReview({ board, calls, seat, names, bots, systems, onSyst
   useEffect(() => {
     setSimulated({});
     const hard = plain.map((r, i) => (r.bot.hard ? i : -1)).filter((i) => i >= 0);
-    if (meaningsOnly || !doubleDummy || hard.length === 0) return;
+    if (!simulate || !doubleDummy || hard.length === 0) return;
     let cancelled = false;
     setSimulating(true);
     void (async () => {
@@ -79,6 +85,11 @@ export function BiddingReview({ board, calls, seat, names, bots, systems, onSyst
     const bot = simulated[i];
     return bot ? { ...r, bot, agrees: sameCall(bot.call, r.call) } : r;
   });
+  return { review, simulating };
+}
+
+export function BiddingReview({ board, calls, seat, names, bots, systems, onSystem, meaningsOnly = false }: Props) {
+  const { review, simulating } = useReviewedAuction(board, calls, systems, !meaningsOnly);
   const [open, setOpen] = useState<number | null>(null);
   const isBot = (s: Seat) => bots.includes(s);
   const mine = (r: ReviewedCall) => r.seat === seat && !isBot(seat);
@@ -127,6 +138,12 @@ export function BiddingReview({ board, calls, seat, names, bots, systems, onSyst
           names={names}
           isBot={!meaningsOnly && isBot(review[open].seat)}
           isMine={!meaningsOnly && mine(review[open])}
+          feedbackHref={
+            // Disagreeing with the bot: its call, or its view of yours. Not while the hands are hidden.
+            !meaningsOnly && (isBot(review[open].seat) || mine(review[open]))
+              ? bidFeedbackHref({ board, calls, index: open, review: review[open], mine: mine(review[open]), systems })
+              : undefined
+          }
           onPrev={open > 0 ? () => setOpen(open - 1) : undefined}
           onNext={open < review.length - 1 ? () => setOpen(open + 1) : undefined}
           onClose={() => setOpen(null)}
@@ -142,6 +159,7 @@ function CallDialog({
   names,
   isBot,
   isMine,
+  feedbackHref,
   onPrev,
   onNext,
   onClose,
@@ -151,6 +169,8 @@ function CallDialog({
   names: Record<Seat, string>;
   isBot: boolean;
   isMine: boolean;
+  /** The bidding feedback email, when you can disagree with the bot here. */
+  feedbackHref?: string;
   onPrev?: () => void;
   onNext?: () => void;
   onClose: () => void;
@@ -188,62 +208,17 @@ function CallDialog({
           {name && !r.read.guessed && <Chip size="small" label={<SuitString text={name} />} sx={{ mt: 0.5 }} />}
         </Box>
 
-        {isBot && (
+        <BotVerdict r={r} isBot={isBot} isMine={isMine} />
+
+        {feedbackHref && (
           <Box>
-            <Typography variant="subtitle2" component="h3" color="text.secondary">
-              Why the bot bid it
-            </Typography>
-            <Typography>
-              <SuitString text={sentence(r.bot.reason)} />
+            <Button variant="outlined" component="a" href={feedbackHref} startIcon={<MailOutlineIcon />}>
+              Disagree? Email us
+            </Button>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Opens your email with this board and the bidding written out. Add what you'd bid, and why.
             </Typography>
           </Box>
-        )}
-
-        {isMine &&
-          (r.agrees ? (
-            <Alert severity="success">
-              The bot would bid the same: <SuitString text={r.bot.reason} />.
-            </Alert>
-          ) : (
-            <Alert severity="warning">
-              The bot would have bid <strong>{callName(r.bot.call)}</strong>
-              {r.bot.fallback ? "" : <>: <SuitString text={r.bot.reason} /></>}.
-              {!r.bot.fallback && (
-                <Box component="span" sx={{ display: "block", mt: 0.5 }}>
-                  {callName(r.bot.call)} means: <SuitString text={r.bot.meaning} />
-                </Box>
-              )}
-            </Alert>
-          ))}
-
-        {(isBot || (isMine && r.agrees) || (isMine && r.bot.simulation)) && r.bot.hard && (
-          <Alert severity="info">
-            {r.bot.simulation ? (
-              <>
-                A hard call, settled by simulation: {r.bot.simulation.deals} deals that fit the bidding, each candidate scored with
-                perfect play (double dummy) and compared at matchpoints.
-                <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
-                  {r.bot.simulation.results.map((x) => (
-                    <li key={callName(x.call)}>
-                      <strong>{callName(x.call)}</strong>: {Math.round(x.share * 100)}% of the matchpoints, {x.average >= 0 ? "+" : ""}
-                      {Math.round(x.average)} on average
-                    </li>
-                  ))}
-                </Box>
-              </>
-            ) : (
-              <>
-                A hard call: the rules don't settle it. The bot chose between {r.bot.hard.candidates.map(callName).join(", ")} by a rule of
-                thumb: <SuitString text={r.bot.hard.rule} />.
-              </>
-            )}
-          </Alert>
-        )}
-        {((isBot && r.bot.fallback) || (!isBot && r.read.guessed)) && (
-          <Alert severity="error">
-            No rule covers this position yet{isBot ? ", so the bot made the simplest call it could" : ", so it's read as natural"}. Worth
-            telling us about.
-          </Alert>
         )}
 
         {known.length > 0 && (
@@ -264,6 +239,75 @@ function CallDialog({
         )}
       </Stack>
     </SheetDialog>
+  );
+}
+
+/**
+ * The bot's side of a call: why it bid it (a bot's call), or whether it would have bid the same (yours),
+ * how a hard call was settled, and when no rule covers the position. In the call dialog, and in the
+ * dev replay of a reported call.
+ */
+export function BotVerdict({ r, isBot, isMine }: { r: ReviewedCall; isBot: boolean; isMine: boolean }) {
+  return (
+    <>
+      {isBot && (
+        <Box>
+          <Typography variant="subtitle2" component="h3" color="text.secondary">
+            Why the bot bid it
+          </Typography>
+          <Typography>
+            <SuitString text={sentence(r.bot.reason)} />
+          </Typography>
+        </Box>
+      )}
+
+      {isMine &&
+        (r.agrees ? (
+          <Alert severity="success">
+            The bot would bid the same: <SuitString text={r.bot.reason} />.
+          </Alert>
+        ) : (
+          <Alert severity="warning">
+            The bot would have bid <strong>{callName(r.bot.call)}</strong>
+            {r.bot.fallback ? "" : <>: <SuitString text={r.bot.reason} /></>}.
+            {!r.bot.fallback && (
+              <Box component="span" sx={{ display: "block", mt: 0.5 }}>
+                {callName(r.bot.call)} means: <SuitString text={r.bot.meaning} />
+              </Box>
+            )}
+          </Alert>
+        ))}
+
+      {(isBot || (isMine && r.agrees) || (isMine && r.bot.simulation)) && r.bot.hard && (
+        <Alert severity="info">
+          {r.bot.simulation ? (
+            <>
+              A hard call, settled by simulation: {r.bot.simulation.deals} deals that fit the bidding, each candidate scored with
+              perfect play (double dummy) and compared at matchpoints.
+              <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
+                {r.bot.simulation.results.map((x) => (
+                  <li key={callName(x.call)}>
+                    <strong>{callName(x.call)}</strong>: {Math.round(x.share * 100)}% of the matchpoints, {x.average >= 0 ? "+" : ""}
+                    {Math.round(x.average)} on average
+                  </li>
+                ))}
+              </Box>
+            </>
+          ) : (
+            <>
+              A hard call: the rules don't settle it. The bot chose between {r.bot.hard.candidates.map(callName).join(", ")} by a rule of
+              thumb: <SuitString text={r.bot.hard.rule} />.
+            </>
+          )}
+        </Alert>
+      )}
+      {((isBot && r.bot.fallback) || (!isBot && r.read.guessed)) && (
+        <Alert severity="error">
+          No rule covers this position yet{isBot ? ", so the bot made the simplest call it could" : ", so it's read as natural"}. Worth
+          telling us about.
+        </Alert>
+      )}
+    </>
   );
 }
 

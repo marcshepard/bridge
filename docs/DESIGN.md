@@ -504,6 +504,21 @@ The same goes for dev test players. A person who takes over a bot's seat stops b
   is needed from the test players: the owner enters the results and moves the table on.
 - **Several identities in one browser:** a dev-only URL option `?as=2` gives a tab its own player
   ID, so four tabs side by side behave like four players' devices for testing live sync.
+- **Replay a reported bid** (Home, dev builds only): paste the replay line from a bidding feedback
+  email (below) to see that board's whole auction with the reported call shaded, what the bot bids
+  there now and why, and the four hands. The line's settings are used for that view only.
+
+### Bidding feedback
+
+Players tell Marc when they think the bidding bot is wrong with a "Disagree? Email us" button in the
+bidding review's call dialog (a bot's call, or the bot's view of yours). It's a `mailto:` to the
+feedback address in the help, not the database: no backend, and reports arrive as email. The email
+(`ui/feedback.ts`) has the disputed call, the bot's reason (and simulation, for a hard call), the
+board, each side's settings that differ from SAYC, the auction, the hands, and a **replay line**
+(`providers/replayLine.ts`): board, dealer, vulnerability, settings diffs, the PBN deal and the
+whole auction with the reported call marked `*`. Simulated hard calls are seeded from the hand and
+the auction, so the line is all the bots need to bid it again. Card play has no feedback button
+yet: no play issues have come up.
 
 ### Not now
 

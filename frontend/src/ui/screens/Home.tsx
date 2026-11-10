@@ -3,14 +3,19 @@
 // at the top says which (its title, code, board, who's in it, when you were last there), with
 // Resume, and a close button that stops it being your current game. It's information, not the main
 // action: after hours away you're more likely here to start something new.
+//
+// In dev mode (`npm run dev`) only, a section at the bottom replays a reported bid from the replay
+// line in a bidding feedback email.
 
 import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import { Alert, Button, IconButton, Stack, TextField, Typography } from "@mui/material";
 import { useState } from "react";
+import { devMode } from "../../services";
 import type { CurrentGameInfo } from "../../session/store";
+import { ReplayReportDialog } from "../components/ReplayReportDialog";
 import { EditButton } from "../controls/EditButton";
-import { Screen } from "../controls/Layout";
+import { Screen, Section } from "../controls/Layout";
 import { formatJoinCode, timeAgo } from "../labels";
 
 /** The backend's limit (backend/src/index.ts). */
@@ -83,6 +88,7 @@ export function Home({ name, onName, onStart, onJoin, onPractice, onHelp, notice
   const [editing, setEditing] = useState(!name);
   const [draft, setDraft] = useState(name);
   const clean = draft.trim().replace(/\s+/g, " ");
+  const [replayOpen, setReplayOpen] = useState(false);
 
   return (
     <Screen>
@@ -160,6 +166,15 @@ export function Home({ name, onName, onStart, onJoin, onPractice, onHelp, notice
             </Button>
           </Stack>
         </>
+      )}
+
+      {devMode && (
+        <Section title="Dev mode" id="dev">
+          <Button variant="outlined" onClick={() => setReplayOpen(true)}>
+            Replay a reported bid
+          </Button>
+          <ReplayReportDialog open={replayOpen} onClose={() => setReplayOpen(false)} />
+        </Section>
       )}
     </Screen>
   );

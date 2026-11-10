@@ -14,18 +14,17 @@ import type { BoardComparison } from "../../core/compare";
 import { hcp } from "../../core/deal";
 import type { Call } from "../../core/auction";
 import type { Card, Claim } from "../../core/play";
-import { type Contract, type Hand as HandT, type Seat, SEATS, SEAT_NAMES, directionOf } from "../../core/types";
+import { type Contract, type Seat, SEATS, SEAT_NAMES, directionOf } from "../../core/types";
 import type { Board } from "../../providers/types";
 import type { TableSystems } from "../../core/bidding/system";
 import { BiddingReview } from "../components/BiddingReview";
 import { PlayReview } from "../components/PlayReview";
 import { BoardHeader } from "../components/BoardHeader";
-import { Hand } from "../components/Hand";
+import { Hand, SeatHand } from "../components/Hand";
 import { ContractText, ResultText, ScoreText } from "../controls/BridgeText";
 import { Compass } from "../controls/Compass";
 import { DetailButton } from "../controls/DetailButton";
 import { EditButton } from "../controls/EditButton";
-import { PlayerName } from "../controls/PlayerName";
 import { Panel, Screen, Section } from "../controls/Layout";
 import { type TabPanel, TabPanels } from "../controls/TabPanels";
 import { ScoreChip, type Tone } from "../controls/ScoreChip";
@@ -134,41 +133,6 @@ interface Props {
   onNext?: () => void;
 }
 
-/**
- * A seat in the hand diagram: a heading strip, "West (Marc)", then the cards in suit rows (a long
- * suit wraps, its next line under its first card).
- */
-function SeatHand({
-  seat,
-  name,
-  away,
-  hand,
-  trump,
-}: {
-  seat: Seat;
-  name: string;
-  away: boolean;
-  hand: HandT;
-  trump: Contract["strain"] | null;
-}) {
-  return (
-    <>
-      <Typography
-        variant="subtitle2"
-        component="h3"
-        noWrap
-        sx={{ px: 1, py: 0.5, bgcolor: "action.hover", borderBottom: 1, borderColor: "divider" }}
-      >
-        {SEAT_NAMES[seat]} <PlayerName name={`(${name})`} away={away} />
-      </Typography>
-      {/* Centred as a block, with the suits lined up on the left inside it. */}
-      <Box sx={{ width: "fit-content", maxWidth: 1, mx: "auto", px: 1, py: 1 }}>
-        <Hand hand={hand} trump={trump} />
-      </Box>
-    </>
-  );
-}
-
 export function PlayBoard(p: Props) {
   const { board, seat, comparison: c } = p;
   const dir = directionOf(seat);
@@ -262,7 +226,7 @@ export function PlayBoard(p: Props) {
   /**
    * Under the result: the bidding review with the four hands under it (you want both together), and
    * the play review (it has its own hands), as tabs, so a phone needn't scroll. Without a bidding
-   * review it's just the hands. Practice with a play opens on Play; otherwise, Bidding.
+   * review it's just the hands. It always opens on Bidding: the auction comes first.
    */
   const resultTabs = (trump: Contract["strain"] | null, playReview: React.ReactNode) => {
     const bidding = biddingReview ? (
@@ -278,7 +242,7 @@ export function PlayBoard(p: Props) {
       { id: "bidding", label: biddingReview ? "Bidding" : "Hands", content: bidding },
       { id: "play", label: "Play", content: playReview },
     ];
-    return <TabPanels tabs={tabs} initial={p.review?.inline ? "play" : "bidding"} label="The board after play" />;
+    return <TabPanels tabs={tabs} initial="bidding" label="The board after play" />;
   };
 
   // Bidding practice on a game file without double dummy: the auction's contract, unscored.
