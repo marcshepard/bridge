@@ -351,7 +351,7 @@ export function App() {
       {page}
 
       <StartGame open={dialog === "start"} name={name} onClose={() => setDialog(null)} onCreated={enter} />
-      <Practice open={dialog === "practice"} name={name} onClose={() => setDialog(null)} onCreated={enter} onSystem={() => setSystemOpen(true)} />
+      <Practice open={dialog === "practice"} name={name} onClose={() => setDialog(null)} onCreated={enter} system={mySystem} onSystem={() => setSystemOpen(true)} />
       {/* Its own state, so it opens over the practice dialog and closing it goes back there. */}
       <BiddingSystemDialog
         open={systemOpen}

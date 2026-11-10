@@ -46,7 +46,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           where everyone sits.
         </li>
         <li>
-          <strong>Practice with bots</strong> to practise your bidding on your own: you sit South, and bots
+          <strong>Practice with bots</strong> to practise bidding and play on your own: you sit South, and bots
           take the other three seats. See <strong>Practice with bots</strong> below.
         </li>
         <li>
@@ -121,29 +121,35 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
       <Heading>Practice with bots</Heading>
       <Typography sx={{ mb: 1 }}>
         Practise on your own. You sit South, a bot is your partner, and bots are your opponents. Choose{" "}
-        <strong>Bidding only</strong> (each board goes from the auction straight to its review) or{" "}
-        <strong>Bidding and play</strong> (you then play the hand, or defend; when your bot partner declares, you
-        watch as dummy).
+        <strong>Bidding and play</strong> (you bid, then play the hand or defend; when your bot partner declares,
+        you watch as dummy) or <strong>Bidding only</strong> (each board goes from the auction straight to its
+        review).
       </Typography>
       <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
         <li>
-          On the first screen, tap <strong>Practice with bots</strong>. Choose the <strong>Built-in game</strong>{" "}
-          (36 made-up boards), or <strong>Upload a game</strong> (a PBN file or a saved Common Game page).
+          On the first screen, tap <strong>Practice with bots</strong>. Choose <strong>Random deals</strong> (36
+          boards dealt fresh for you), or <strong>Upload a game</strong> (a PBN file or a saved Common Game page)
+          to play boards that other people have played, and see how you'd have done against them.
         </li>
         <li>
-          Choose <strong>I bid South</strong> (or <strong>I play South</strong>) to take your own seat, or{" "}
-          <strong>Watch the bots</strong> to let them do all four seats while you read why. You can switch at any
-          time with the switch on the bidding screen.
+          To make the bots bid the way you do, tap <strong>Configure bidding system</strong> and set your choices
+          (your 1NT range, weak twos and so on). Then tap <strong>Start practice</strong>.
+        </li>
+        <li>
+          Want to see how the bots would handle a hand? Turn on <strong>Bots bid for me</strong> (or{" "}
+          <strong>Bots bid and play for me</strong>) on the bidding screen, and they take your seat too while you
+          read why. It stays on for the rest of that practice until you turn it off.
         </li>
         <li>
           In <strong>Bidding only</strong>, when the auction ends the contract is scored as if everyone then played perfectly (double dummy): for
           example, if 4♠ by North takes 10 tricks with perfect play, it's scored as 4♠ made. When the game file
-          doesn't include these trick counts (Common Game pages don't), your device works them out, which takes
-          a moment.
+          doesn't include these trick counts (random deals and Common Game pages don't), your device works them
+          out, which takes a moment.
         </li>
         <li>
-          Tap <strong>Next board</strong> to go on. The running tally at the top adds up how you're doing against
-          the original field, as in a game with people.
+          Tap <strong>Next board</strong> to go on. With an uploaded game, the running tally at the top adds up how
+          you're doing against the original field, as in a game with people. Random deals have no field (nobody
+          else has played them), so you see your scores but no matchpoints.
         </li>
       </Box>
 
@@ -217,7 +223,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           refuses it if it could fail; when the rest of the tricks are surely its side's, a bot claims.
         </li>
         <li>
-          <strong>Your bidding system:</strong> tap your initial at the top right, then <strong>Bidding system</strong>,
+          <strong>Your bidding system:</strong> tap your initial at the top right, then <strong>Bidding system</strong> (or{" "}
+          <strong>Configure bidding system</strong> when you start a practice),
           to set the choices SAYC leaves open the way you play them: your 1NT range, weak twos, Jacoby 2NT, how far
           negative doubles go, and so on. Your bot partner bids the same, and your bids are compared with it in the
           review. Your choices are kept on this device and go with you into each game you start or join; a game keeps

@@ -423,16 +423,21 @@ played. If a board somehow hasn't started, the owner has **Play online**.
    you beat, they lost to, and ties count half for both). For display, round your side and show the
    other side as 100 minus that, so "50.5 / 49.5" never shows as "51 / 50".
 
-### Bidding practice
+### Practice with bots
 
-**Practice with bots** on Home: you as South, bots in the other three seats, on the built-in demo
-game or an uploaded game file (`POST /api/events/practice`; game type `bidding`). No lobby: the
-seats are set and the first board's auction starts at once. Each board is only bid: when the
-auction ends, the backend scores the contract with the game file's double-dummy tricks (a board
+**Practice with bots** on Home: you as South, bots in the other three seats (`POST
+/api/events/practice`). The game is either **random deals** (36 boards dealt on the device by
+`providers/randomGame.ts`, with the usual dealer and vulnerability rotation, no field and no double
+dummy) or an uploaded game file, to compare with its field. The backend still falls back to the
+built-in demo game when no game is sent, but the practice screen always sends one. No lobby: the
+seats are set and the first board's auction starts at once. **Bidding and play** (the default; game
+type `devices`) bids and plays each board on the devices. In **bidding only** (game type
+`bidding`) each board is only bid: when the auction ends, the backend scores the contract with the game file's double-dummy tricks (a board
 without them ends with just its contract, unscored), and the result screen shows the bidding
 review inline: the auction with every call tappable for its meaning and reason, and your calls
-compared with the bot's. "Bots bid for me" (remembered on the device per game) lets the bots bid
-your seat too, faster, so you can watch. The goals, design and stages are in [BOT.md](BOT.md).
+compared with the bot's. Every practice starts with you in your own seat; "Bots bid for me" ("Bots
+bid and play for me" with play) on the bidding screen, remembered on the device per game, lets the
+bots take your seat too, faster, so you can watch. The goals, design and stages are in [BOT.md](BOT.md).
 
 ### Bidding systems
 

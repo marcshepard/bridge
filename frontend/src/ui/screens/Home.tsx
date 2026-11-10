@@ -1,5 +1,5 @@
 // The first screen. On first use it asks for your display name; then it offers Start a game, Join a
-// game, Practice with bots (bidding practice on your own), and Start demo game (on your own, with
+// game, Practice with bots (bidding and play on your own), and Start demo game (on your own, with
 // bots, on a made-up game).
 
 import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";

@@ -1,13 +1,18 @@
-// Practice with bots: you as South, bots in the other three seats, on the built-in game or a game
-// file you upload. Bidding only (each board goes from its auction to the bidding review), or bidding
-// and play. You can bid (and play) your own seat, or watch the bots do all four.
+// Practice with bots: you as South, bots in the other three seats, on freshly dealt random boards or
+// a game file you upload (to compare with its field). Bidding and play, or bidding only (each board
+// goes from its auction to the bidding review). You always start in your own seat; "Bots bid for me"
+// on the bidding screen lets the bots take it over.
 
-import { Alert, Button, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import TuneIcon from "@mui/icons-material/Tune";
+import { Alert, Box, Button, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useState } from "react";
+import { type SystemSettings, isDefault } from "../../core/bidding/system";
 import { type GameFileV1, parseGameFile } from "../../providers/gameFile";
 import { ACCEPTED_FILES, fileToGameFile } from "../../providers/importFile";
+import { randomGameFile } from "../../providers/randomGame";
 import type { Game } from "../../providers/types";
-import { games, profile } from "../../services";
+import { games } from "../../services";
 import { ChoiceGroup } from "../controls/ChoiceGroup";
 import { SheetDialog } from "../controls/SheetDialog";
 
@@ -16,19 +21,19 @@ interface Props {
   name: string;
   onClose: () => void;
   onCreated: (code: string) => void;
+  /** Your bidding system, to say on its button whether you've changed anything. */
+  system: SystemSettings;
   /** Open the bidding system page. */
   onSystem: () => void;
 }
 
-type Source = "builtin" | "upload";
-type Who = "me" | "bots";
+type Source = "random" | "upload";
 
-export function Practice({ open, name, onClose, onCreated, onSystem }: Props) {
-  const [source, setSource] = useState<Source>("builtin");
+export function Practice({ open, name, onClose, onCreated, system, onSystem }: Props) {
+  const [source, setSource] = useState<Source>("random");
   const [loaded, setLoaded] = useState<{ fileName: string; file: GameFileV1; game: Game } | null>(null);
   const [startBoard, setStartBoard] = useState(1);
-  const [who, setWho] = useState<Who>("me");
-  const [what, setWhat] = useState<"bidding" | "play">("bidding");
+  const [what, setWhat] = useState<"bidding" | "play">("play");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -49,8 +54,9 @@ export function Practice({ open, name, onClose, onCreated, onSystem }: Props) {
     setBusy(true);
     setError(null);
     try {
-      const code = await games.createPractice(name, source === "upload" ? loaded!.file : null, source === "upload" ? startBoard : null, what === "play");
-      profile.setBotsBidForMe(code, who === "bots");
+      // Random deals are dealt here, fresh for each practice.
+      const upload = source === "upload";
+      const code = await games.createPractice(name, upload ? loaded!.file : randomGameFile(), upload ? startBoard : null, what === "play");
       onCreated(code);
     } catch (e) {
       setError((e as Error).message);
@@ -59,7 +65,7 @@ export function Practice({ open, name, onClose, onCreated, onSystem }: Props) {
     }
   }
 
-  const ready = source === "builtin" || !!loaded;
+  const ready = source === "random" || !!loaded;
   const noDoubleDummy = !!loaded && loaded.game.boards.some((b) => !b.doubleDummy?.tricks);
 
   return (
@@ -75,8 +81,8 @@ export function Practice({ open, name, onClose, onCreated, onSystem }: Props) {
     >
       <Stack spacing={2.5}>
         <Typography>
-          You sit South, with a bot as your partner and bots as your opponents. After each auction you see every hand, how the contract
-          scores, and why each bid was made.
+          You sit South, with a bot as your partner and bots as your opponents. After each board you see the bidding and scoring
+          reviews.
         </Typography>
 
         <ChoiceGroup<Source>
@@ -87,14 +93,14 @@ export function Practice({ open, name, onClose, onCreated, onSystem }: Props) {
             setError(null);
           }}
           choices={[
-            { value: "builtin", label: "Built-in game", sub: "36 made-up boards" },
-            { value: "upload", label: "Upload a game", sub: "PBN or Common Game page" },
+            { value: "random", label: "Random deals", sub: "Quick practice, no field" },
+            { value: "upload", label: "Upload a game", sub: "Score yourself against its field" },
           ]}
         />
         {source === "upload" && (
           <Stack spacing={2}>
             <Button variant="outlined" component="label" sx={{ alignSelf: "flex-start" }}>
-              {loaded ? "Upload a different file" : "Upload a game file"}
+              {loaded ? "Upload a different file" : "Upload a PBN file or Common Game page"}
               <input
                 hidden
                 type="file"
@@ -130,28 +136,36 @@ export function Practice({ open, name, onClose, onCreated, onSystem }: Props) {
           value={what}
           onChange={setWhat}
           choices={[
-            { value: "bidding", label: "Bidding only", sub: "Straight to the review" },
-            { value: "play", label: "Bidding and play", sub: "Then play or defend" },
+            { value: "play", label: "Bidding and play", sub: "The whole hand: play or defend" },
+            { value: "bidding", label: "Bidding only", sub: "Work on your bidding" },
           ]}
         />
 
-        <ChoiceGroup<Who>
-          label="Who bids?"
-          value={who}
-          onChange={setWho}
-          choices={[
-            { value: "me", label: what === "play" ? "I play South" : "I bid South", sub: "The bots take the rest" },
-            { value: "bots", label: "Watch the bots", sub: what === "play" ? "They bid and play all four" : "They bid all four seats" },
-          ]}
-        />
-        <Typography variant="body2" color="text.secondary">
-          You can switch between these at any time with <strong>Bots bid for me</strong> on the bidding screen.
-          {what === "play" && " It covers the play too."}
-        </Typography>
-
-        <Button variant="outlined" onClick={onSystem} sx={{ alignSelf: "flex-start" }}>
-          Bidding system: SAYC
-        </Button>
+        <Box>
+          <Typography variant="subtitle2" component="p" sx={{ mb: 0.5 }}>
+            Bidding system (SAYC)
+          </Typography>
+          <Button
+            variant="outlined"
+            size="large"
+            fullWidth
+            onClick={onSystem}
+            startIcon={<TuneIcon />}
+            endIcon={<ChevronRightIcon />}
+            sx={{ textAlign: "left", "& .MuiButton-endIcon": { ml: "auto" } }}
+          >
+            <Box>
+              <Typography variant="subtitle1" component="span" sx={{ display: "block", fontWeight: "fontWeightBold" }}>
+                Configure bidding system
+              </Typography>
+              {!isDefault(system) && (
+                <Typography variant="caption" component="span" color="text.secondary" sx={{ display: "block" }}>
+                  With your changes
+                </Typography>
+              )}
+            </Box>
+          </Button>
+        </Box>
 
         {error && <Alert severity="error">{error}</Alert>}
       </Stack>

@@ -3,9 +3,11 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { compareBoard, scoreField } from "../core/compare";
 import { handToString, parsePbnDeal } from "../core/deal";
+import { seeded } from "../core/random";
 import { scoreResult } from "../core/scoring";
 import { parseGameFile } from "./gameFile";
 import { pbnToGameFile } from "./pbn";
+import { randomGameFile } from "./randomGame";
 
 const DEAL = "N:AQ84.QT98.J.KQ43 K.KJ632.AT962.75 T76.54.753.AJT82 J9532.A7.KQ84.96";
 
@@ -173,5 +175,24 @@ describe("score-only field results in the game file", () => {
     const dd = parseGameFile(f).boards[0]!.doubleDummy!;
     expect(dd.tricks).toBeUndefined();
     expect(dd.par?.nsScore).toBe(110);
+  });
+});
+
+describe("random deals for practice", () => {
+  it("makes a valid game of 36 boards with no field", () => {
+    const file = randomGameFile(seeded(3));
+    const game = parseGameFile(file);
+    expect(game.boards).toHaveLength(36);
+    expect(game.warnings).toEqual([]);
+    expect(game.summary.title).toBe("Random deals");
+    expect(game.boards.every((b) => b.field.length === 0 && !b.doubleDummy)).toBe(true);
+    expect(game.boards[3]).toMatchObject({ number: 4, dealer: "W", vul: "Both" });
+  });
+
+  it("deals different boards each time", () => {
+    const a = randomGameFile(seeded(1));
+    const b = randomGameFile(seeded(2));
+    expect(a.boards[0]!.hands).not.toEqual(b.boards[0]!.hands);
+    expect(a.id).not.toBe(b.id);
   });
 });

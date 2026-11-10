@@ -37,7 +37,7 @@ export function BiddingSystemDialog(props: Props) {
   return (
     <SheetDialog
       open={props.open}
-      title={editing ? "Your bidding system: SAYC" : "This game's bidding system"}
+      title={editing ? "Configure bidding system" : "This game's bidding system"}
       onClose={props.onClose}
       actions={
         editing ? (

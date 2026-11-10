@@ -51,8 +51,9 @@ export interface GameStore {
    */
   createDemo(name: string): Promise<string>;
   /**
-   * Start bidding practice: you as South with three bots, bidding only (each contract is scored
-   * double dummy). On `game`, or the built-in demo game when null. Returns its join code.
+   * Start practice with bots: you as South with three bots. Bidding only (each contract is scored
+   * double dummy), or bidding and play with `play`. On `game` (the screen sends random deals or an
+   * upload), or the built-in demo game when null. Returns its join code.
    */
   createPractice(name: string, game: GameFileV1 | null, startBoard: number | null, play?: boolean): Promise<string>;
   /** Join a game that hasn't started; returns its normalised join code. */

@@ -5,7 +5,7 @@
 // A PBN deal string starts with the first seat, then the four hands clockwise:
 //     "N:AKQ2.JT9.876.543 J98.AKQ.5432.T9 ..."
 
-import { type Hand, type Seat, RANKS, SEATS, SUITS } from "./types";
+import { type Hand, type Seat, type Suit, type Vulnerability, RANKS, SEATS, SUITS } from "./types";
 
 export function parseHand(text: string): Hand {
   const parts = text.trim().toUpperCase().replace(/10/g, "T").split(".");
@@ -65,4 +65,41 @@ export function assertValidDeal(deal: Record<Seat, Hand>): void {
       }
     }
   }
+}
+
+/**
+ * A random deal: the 52 cards shuffled (Fisher–Yates) and dealt 13 to each seat. `rand` gives
+ * numbers in [0, 1); pass a seeded one for a repeatable deal.
+ */
+export function randomDeal(rand: () => number): Record<Seat, Hand> {
+  const cards: Array<[Suit, string]> = SUITS.flatMap((s) => [...RANKS].map((r): [Suit, string] => [s, r]));
+  for (let i = cards.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [cards[i], cards[j]] = [cards[j]!, cards[i]!];
+  }
+  const deal = {} as Record<Seat, Hand>;
+  SEATS.forEach((seat, k) => {
+    const hand: Hand = { S: "", H: "", D: "", C: "" };
+    for (const [s, r] of cards.slice(k * 13, k * 13 + 13)) hand[s] += r;
+    // High to low, the way every hand is kept.
+    for (const s of SUITS) hand[s] = [...hand[s]].sort((a, b) => RANKS.indexOf(a) - RANKS.indexOf(b)).join("");
+    deal[seat] = hand;
+  });
+  return deal;
+}
+
+/** The dealer of a duplicate board: North on board 1, then clockwise. */
+export function boardDealer(board: number): Seat {
+  return SEATS[(board - 1) % 4]!;
+}
+
+// The standard duplicate vulnerability, repeating every 16 boards.
+const BOARD_VUL: readonly Vulnerability[] = [
+  "None", "NS", "EW", "Both", "NS", "EW", "Both", "None",
+  "EW", "Both", "None", "NS", "Both", "None", "NS", "EW",
+];
+
+/** Who's vulnerable on a duplicate board, by its number. */
+export function boardVulnerability(board: number): Vulnerability {
+  return BOARD_VUL[(board - 1) % 16]!;
 }
