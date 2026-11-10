@@ -61,7 +61,7 @@ function TcgHelp({ extra }: { extra?: ReactNode }) {
       </Typography>
       <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 0.5 }}>
         <li>
-          On a computer, go to{" "}
+          Go to{" "}
           <Link href="https://thecommongame.com/" target="_blank" rel="noopener noreferrer">
             thecommongame.com
           </Link>{" "}
@@ -70,10 +70,28 @@ function TcgHelp({ extra }: { extra?: ReactNode }) {
         </li>
         <li>Pick the date of the game, and open the results page that shows the boards and the scores.</li>
         <li>
-          Save the page: press <strong>Ctrl+S</strong> (<strong>Cmd+S</strong> on a Mac) and save it as{" "}
-          <strong>Webpage, HTML only</strong>.
+          Save the page:
+          <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5, display: "grid", gap: 0.5 }}>
+            <li>
+              <strong>On a computer:</strong> press <strong>Ctrl+S</strong> (<strong>Cmd+S</strong> on a Mac) and save it
+              as <strong>Webpage, HTML only</strong>.
+            </li>
+            <li>
+              <strong>On an Android phone or tablet (Chrome):</strong> tap <strong>⋮</strong> at the top right, then the
+              download button (<strong>↓</strong>) at the top of the menu.
+            </li>
+            <li>
+              <strong>On an iPhone or iPad (Safari):</strong> tap the Share button, then <strong>Options</strong> under
+              the page's name, choose <strong>Web Archive</strong> and tap <strong>Done</strong>. Then tap{" "}
+              <strong>Save to Files</strong> and <strong>Save</strong>.
+            </li>
+          </Box>
         </li>
-        <li>Import the saved .html file here.</li>
+        <li>
+          Tap <strong>Import game file</strong> and pick the saved page. On Android it may not be in the list at first:
+          tap the search button and type <strong>mht</strong> to find it. On an iPhone or iPad, look in{" "}
+          <strong>Recents</strong>, or in the folder you saved it to.
+        </li>
       </Box>
       {extra}
       <Typography variant="body2" sx={{ mt: 1 }}>

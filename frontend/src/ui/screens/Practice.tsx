@@ -42,7 +42,7 @@ export function Practice({ open, name, onClose, onCreated, system, onSystem }: P
     setError(null);
     setLoaded(null);
     try {
-      const file = fileToGameFile(f.name, await f.text());
+      const file = fileToGameFile(f.name, new Uint8Array(await f.arrayBuffer()));
       const game = parseGameFile(file);
       setLoaded({ fileName: f.name, file, game });
       setStartBoard(game.boards[0]!.number);

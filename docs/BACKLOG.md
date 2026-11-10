@@ -40,29 +40,6 @@ sitting there in plain sight.
   during a claim; everything once the board has a result), and every screen that reads
   `board.hands` would cope with hands it doesn't have yet. Much more work than the problem deserves.
 
-## Start a game from a page saved on a phone
-
-Today a Common Game page has to be saved on a computer (Ctrl+S) and imported there; the phone then
-joins as the owner. Recommended: let the importer read the file a phone's browser saves, so the
-whole thing can be done on a phone:
-
-- **Android Chrome:** ⋮ → Download (↓) saves the page as `.mhtml` (the page's HTML wrapped in a
-  MIME message). Start a game → upload → pick it from Downloads.
-- **iPhone and iPad Safari:** Share → Save to Files → Web Archive saves a `.webarchive` (the HTML
-  inside a binary property list).
-- **The change:** `importFile.ts` recognises the two wrappers, takes the HTML out (decoding
-  quoted-printable or base64 as needed), and hands it to the existing `tcgPage.ts`. Plus a
-  fixture-based test for each, and the phone steps in Help next to the computer ones.
-- **First:** save one real page each way (Pixel and iPad) into `private/`, so the importer is
-  written against the real formats rather than guesses.
-- **If saving and picking still feels clunky:** prototype a bookmarklet that reads the boards from
-  the open page and hands them to Bridge Replay in one tap. The risk is the hand-off between the
-  two sites (their security settings may block some routes), so try it on a phone first.
-- **Not options:** the backend fetching the page (bot protection, and no permission), a browser
-  extension (Chrome on phones has none), Android's Share (it shares only the address), or copy and
-  paste (loses the structure). The real fix is still the Common Game agreeing to archived downloads
-  (asked; no reply yet).
-
 ## Bidding bot: gaps, to take on as feedback comes in
 
 The bots bid SAYC well enough to practise with (stages 1–3 in [BOT.md](BOT.md)). Bidding has no

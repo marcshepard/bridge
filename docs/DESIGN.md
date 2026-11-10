@@ -204,6 +204,16 @@ credit and links on every board, and offered them the code. If they agree, the l
 `TcgProvider`, or a script that converts their archive files into our format in
 `public/games/`. Neither needs changes elsewhere.
 
+Until then, players save an archived results page themselves and import it (the steps are under
+the "?" beside **Import game file**): on a computer with Ctrl+S as **Webpage, HTML only** (`.html`),
+with Chrome on Android, ⋮ → Download (`.mht`, a MIME message with the page inside it, which
+`providers/mhtml.ts` takes out), or with Safari on an iPhone or iPad, Share → Options → Web Archive →
+Save to Files (`.webarchive`, a binary property list, read by `providers/webarchive.ts`). Either
+way `tcgPage.ts` then reads the page. The screens hand `fileToGameFile` the file's bytes, since a
+Web Archive is binary. Not options: the backend fetching the page (bot protection, and no
+permission), a browser extension (Chrome on phones has none), Android's Share (it shares only the
+address), or copy and paste (loses the structure).
+
 **Your friend's parser** gets plugged in by having it emit our JSON format, or by writing a small
 importer next to `pbn.ts`.
 
@@ -732,7 +742,12 @@ Context carried over from earlier sessions, so a new session starts with it:
   - The TCG page's own "Download Board N PBN" links say "download unavailable".
   - Samples in `private/`: `The Common Game Top 50 Page.html` (the regular archive's results page
     for Fri 16 Oct 2026, saved with the in-app steps; the main test page) and
-    `261022HandRecord.pbn` (a hand record for a different set, 22 Oct 2026).
+    `261022HandRecord.pbn` (a hand record for a different set, 22 Oct 2026), and
+    `The Common Game Top 50 Page.mht` (the results page for Mon 9 Nov 2026, saved by
+    Chrome on an Android phone with ⋮ → Download: a MIME message whose first part is the page's
+    HTML, stored unencoded, followed by its images and stylesheets), and
+    `The Common Game Top 50 Page.webarchive` (the same page saved by Safari on an iPad: a binary
+    property list whose `WebMainResource` holds the HTML as UTF-8 bytes in `WebResourceData`).
 - **Hosting decisions:** Cloudflare Workers + D1 + Durable Objects, free tier; start on the free
   `bridge-replay.<account>.workers.dev` address. A custom domain later, possibly a subdomain of
   `navia-apps.com` (Marc buys domains from Cloudflare), though he may prefer a new name.

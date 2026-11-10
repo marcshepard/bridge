@@ -51,7 +51,7 @@ export function StartGame({ open, name, onClose, onCreated }: Props) {
     setError(null);
     setLoaded(null);
     try {
-      const file = fileToGameFile(f.name, await f.text());
+      const file = fileToGameFile(f.name, new Uint8Array(await f.arrayBuffer()));
       const game = parseGameFile(file);
       setLoaded({ fileName: f.name, file, game });
       setStartBoard(game.boards[0]!.number);
@@ -114,9 +114,9 @@ export function StartGame({ open, name, onClose, onCreated }: Props) {
           onFile={(f) => void load(f)}
           extraHelp={
             <Typography variant="body2" sx={{ mt: 1 }}>
-              Phones can't easily save web pages, so start the game on the computer. To play on your phone instead,
-              join the game from your phone with the code and choose <strong>Join as</strong> yourself{" "}
-              <strong>(owner)</strong>. If the game is still open on the computer, tap <strong>Allow</strong> there.
+              If you start the game on a computer and want to play on your phone instead, join the game from your
+              phone with the code and choose <strong>Join as</strong> yourself <strong>(owner)</strong>. If the game is
+              still open on the computer, tap <strong>Allow</strong> there.
             </Typography>
           }
         />
