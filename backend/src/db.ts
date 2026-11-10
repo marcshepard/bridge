@@ -26,6 +26,8 @@ export interface PlayerRow {
   is_bot: number;
   no_app: number;
   seat: Seat | null;
+  /** Their bidding system as JSON (see migration 0010); null for SAYC as it comes. */
+  system_json: string | null;
 }
 
 interface ResultRow {
@@ -79,9 +81,9 @@ export async function insertEvent(db: D1Database, e: EventRow, creator: PlayerRo
 function insertPlayerStmt(db: D1Database, code: string, p: PlayerRow, joinedAt: string) {
   return db
     .prepare(
-      "INSERT INTO players (event_code, player_id, slot, name, is_creator, is_bot, no_app, seat, joined_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO players (event_code, player_id, slot, name, is_creator, is_bot, no_app, seat, system_json, joined_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
-    .bind(code, p.player_id, p.slot, p.name, p.is_creator, p.is_bot, p.no_app, p.seat, joinedAt);
+    .bind(code, p.player_id, p.slot, p.name, p.is_creator, p.is_bot, p.no_app, p.seat, p.system_json, joinedAt);
 }
 
 export async function insertPlayer(db: D1Database, code: string, p: PlayerRow, joinedAt: string) {
@@ -90,7 +92,7 @@ export async function insertPlayer(db: D1Database, code: string, p: PlayerRow, j
 
 export async function getPlayers(db: D1Database, code: string): Promise<PlayerRow[]> {
   const { results } = await db
-    .prepare("SELECT player_id, slot, name, is_creator, is_bot, no_app, seat FROM players WHERE event_code = ? ORDER BY slot")
+    .prepare("SELECT player_id, slot, name, is_creator, is_bot, no_app, seat, system_json FROM players WHERE event_code = ? ORDER BY slot")
     .bind(code)
     .all<PlayerRow>();
   return results;

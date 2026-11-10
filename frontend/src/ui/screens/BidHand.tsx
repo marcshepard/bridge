@@ -11,7 +11,9 @@
 import { Box, Button, FormControlLabel, Switch, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { type Call, auctionResult, canCall, isAuctionOver, toCall } from "../../core/auction";
-import { chooseCall } from "../../core/bidding/bidder";
+import { chooseCall, chooseCallWithSimulation } from "../../core/bidding/bidder";
+import { doubleDummy } from "../../services";
+import type { TableSystems } from "../../core/bidding/system";
 import { hcp } from "../../core/deal";
 import { type Seat, type Strain, STRAINS, SEAT_NAMES } from "../../core/types";
 import type { Board } from "../../providers/types";
@@ -39,6 +41,8 @@ interface Props {
   bots: Seat[];
   /** The seats this device makes the bots' calls for (the owner's device: the bots, and in practice perhaps your own). */
   autoSeats: Seat[];
+  /** The card each side bids by. */
+  systems: TableSystems;
   /** Bidding practice: the "Bots bid for me" switch. */
   watch?: { on: boolean; onChange: (on: boolean) => void };
   /** The calls so far, in order. */
@@ -70,13 +74,22 @@ export function BidHand(p: Props) {
   // The bots' calls: after a pause (shorter when you're watching them bid your seat too). If the
   // call is refused (another device got there first, say), the next update starts the timer again.
   const watching = !!p.watch?.on;
+  // A hard call is decided by simulation (double dummy over deals that fit the auction), worked out
+  // during the pause, so the bot takes no longer unless the simulation does.
   useEffect(() => {
     if (!auto) return;
-    const timer = setTimeout(() => {
-      const decision = chooseCall(board.hands[caller], { dealer, vul: board.vul }, calls);
-      void p.onCall(calls.length + 1, decision.call).catch(() => {});
-    }, watching ? WATCH_DELAY_MS : BOT_DELAY_MS);
-    return () => clearTimeout(timer);
+    let cancelled = false;
+    const pause = new Promise((resolve) => setTimeout(resolve, watching ? WATCH_DELAY_MS : BOT_DELAY_MS));
+    const decision = chooseCallWithSimulation(board.hands[caller], { dealer, vul: board.vul }, calls, p.systems, doubleDummy).catch(
+      // If the solver fails, the rules of thumb still give a call.
+      () => chooseCall(board.hands[caller], { dealer, vul: board.vul }, calls, p.systems),
+    );
+    void Promise.all([decision, pause]).then(([d]) => {
+      if (!cancelled) void p.onCall(calls.length + 1, d.call).catch(() => {});
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [auto, calls.length, caller, watching]);
 
   const allowed = (call: Call) => mine && canCall(dealer, calls, call);

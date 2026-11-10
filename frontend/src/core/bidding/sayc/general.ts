@@ -2,7 +2,8 @@
 // contract from what the partnership has shown, and the fallback when no rule fits.
 
 import type { Call } from "../../auction";
-import { type Strain, type Suit, STRAINS, SUITS } from "../../types";
+import { type Contract, type Strain, type Suit, STRAINS, SUITS } from "../../types";
+import { contractTrickPoints } from "../../scoring";
 import { type HandFacts, isMajor, supportPoints } from "../evaluate";
 import type { CallRule } from "../model";
 import {
@@ -74,6 +75,19 @@ function trumpSuit(p: Position): Suit | null {
   return fits.at(-1) ?? suits.at(-1) ?? null;
 }
 
+/** Doubles that ask partner to bid: the doubled contract won't be played, so it isn't worth anything to us. */
+const BIDDING_DOUBLES = new Set(["Takeout double", "Negative double"]);
+
+/** Our contract, if the opponents have just doubled it for penalties (and nobody has bid since). */
+function doubledContract(p: Position): Contract | null {
+  const lb = lastBid(p);
+  if (!lb || !isOurs(p, lb.seat)) return null;
+  const after = p.read.slice(p.read.indexOf(lb) + 1).filter((r) => r.call.kind !== "pass");
+  const dbl = after.length === 1 && after[0]!.call.kind === "double" ? after[0]! : null;
+  if (!dbl || BIDDING_DOUBLES.has(dbl.rule?.name ?? "")) return null;
+  return { level: lb.call.level, strain: lb.call.strain, doubling: "X" };
+}
+
 /** "a 9+ card fit", "an 8+ card fit". */
 const aOrAn = (n: number) => (n === 8 || n === 11 ? "an" : "a");
 
@@ -100,11 +114,10 @@ function plan(p: Position, h: HandFacts): Plan {
   const fit = fitWith(p, h);
   // Support points (5/3/1 for shortness) only when raising partner's suit: they've shown 4+ and
   // we're not longer. In our own long suit the hand counts as declarer does (h.points); once
-  // partner has supported it, its short suits can ruff too, so declarer adds 3/2/1 for them (unless
-  // the settings already count shortness instead of length).
+  // partner has supported it, its short suits can ruff too, so declarer adds 3/2/1 for them.
   const raising = !!fit && ps.len[fit][0] >= 4 && h.len[fit] <= ps.len[fit][0];
   const supported = !!fit && !raising && ps.len[fit][0] >= 3;
-  const mine = raising ? supportPoints(h, fit!) : h.points + (supported && p.s.distribution === "length" ? h.shortnessPoints : 0);
+  const mine = raising ? supportPoints(h, fit!) : h.points + (supported ? h.shortnessPoints : 0);
   /** "a 9+ card hearts fit" with partner's support, or just "6 hearts" for a suit of our own. */
   const fitWords = (s: Suit) =>
     ps.len[s][0] >= 2 ? `${aOrAn(h.len[s] + ps.len[s][0])} ${h.len[s] + ps.len[s][0]}+ card ${SUIT_WORDS[s]} fit` : `${h.len[s]} ${SUIT_WORDS[s]}`;
@@ -147,6 +160,20 @@ function plan(p: Position, h: HandFacts): Plan {
     target = Math.min(7, h.tricks - 6);
     byTricks = true;
     why = `${why}, ${h.tricks} playing tricks by itself`;
+  }
+
+  // They've doubled our part score, and doubled it's already a game (3♥× is 180 trick points): pass.
+  // Bidding game instead can never score more, since we'd only bid it expecting to make it, and the
+  // doubled contract then scores more with a trick to spare. Only a slam is worth bidding on for.
+  const doubled = doubledContract(p);
+  if (doubled && target < 6) {
+    const trickPoints = contractTrickPoints(doubled).points;
+    if (trickPoints >= 100) {
+      return {
+        call: PASS,
+        why: `${callName({ kind: "bid", level: doubled.level, strain: doubled.strain })} doubled is already a game (${trickPoints / 2} doubled to ${trickPoints}), and scores more than bidding game would: pass`,
+      };
+    }
   }
 
   // Slam: ask for aces first, if there's a trump suit and room.

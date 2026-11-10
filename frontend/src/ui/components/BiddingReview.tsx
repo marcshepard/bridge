@@ -6,19 +6,27 @@
 //
 // What other people at the table bid is explained (its meaning) but not judged: feedback is only
 // for the player it's about.
+//
+// Hard calls are settled by simulation (double dummy over deals that fit the bidding), run again
+// here: it's seeded from the hand and the auction, so it gives the bot's answer at the table. The
+// rule of thumb shows until it's done.
 
 import { Alert, Box, Button, Chip, Stack, Typography } from "@mui/material";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Call } from "../../core/auction";
-import { type ReviewedCall, reviewAuction } from "../../core/bidding/bidder";
+import { type Decision, type ReviewedCall, decideWithSimulation, reviewAuction } from "../../core/bidding/bidder";
+import { doubleDummy } from "../../services";
 import { type Shown, rangeWords } from "../../core/bidding/model";
 import { callName } from "../../core/bidding/sayc/common";
+import { type TableSystems, isDefault } from "../../core/bidding/system";
 import { type Seat, SEATS, SEAT_NAMES, SUITS, SUIT_SYMBOLS } from "../../core/types";
 import type { Board } from "../../providers/types";
 import { CallText, SuitString } from "../controls/BridgeText";
 import { SheetDialog } from "../controls/SheetDialog";
 import { seatWithRelation } from "../labels";
 import { AuctionTable, type CallMark, MarkLegend } from "./Auction";
+
+const sameCall = (a: Call, b: Call) => a.kind === b.kind && (a.kind !== "bid" || (b.kind === "bid" && a.level === b.level && a.strain === b.strain));
 
 interface Props {
   board: Board;
@@ -28,12 +36,44 @@ interface Props {
   names: Record<Seat, string>;
   /** Seats held by bots. */
   bots: Seat[];
+  /** The card each side bids by. */
+  systems: TableSystems;
   /** Open the bidding system page. */
   onSystem: () => void;
 }
 
-export function BiddingReview({ board, calls, seat, names, bots, onSystem }: Props) {
-  const review = useMemo(() => reviewAuction(board.hands, { dealer: board.dealer, vul: board.vul }, calls), [board, calls]);
+export function BiddingReview({ board, calls, seat, names, bots, systems, onSystem }: Props) {
+  const plain = useMemo(() => reviewAuction(board.hands, { dealer: board.dealer, vul: board.vul }, calls, systems), [board, calls, systems]);
+  // Hard calls, settled by simulation (by index), as each finishes.
+  const [simulated, setSimulated] = useState<Record<number, Decision>>({});
+  const [simulating, setSimulating] = useState(false);
+  useEffect(() => {
+    setSimulated({});
+    const hard = plain.map((r, i) => (r.bot.hard ? i : -1)).filter((i) => i >= 0);
+    if (!doubleDummy || hard.length === 0) return;
+    let cancelled = false;
+    setSimulating(true);
+    void (async () => {
+      for (const i of hard) {
+        const r = plain[i]!;
+        try {
+          const d = await decideWithSimulation(r.position, board.hands[r.seat], doubleDummy);
+          if (cancelled) return;
+          setSimulated((s) => ({ ...s, [i]: d }));
+        } catch {
+          // The rule of thumb stands for this call.
+        }
+      }
+      if (!cancelled) setSimulating(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [plain]);
+  const review: ReviewedCall[] = plain.map((r, i) => {
+    const bot = simulated[i];
+    return bot ? { ...r, bot, agrees: sameCall(bot.call, r.call) } : r;
+  });
   const [open, setOpen] = useState<number | null>(null);
   const isBot = (s: Seat) => bots.includes(s);
   const mine = (r: ReviewedCall) => r.seat === seat && !isBot(seat);
@@ -54,12 +94,13 @@ export function BiddingReview({ board, calls, seat, names, bots, onSystem }: Pro
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         Tap a bid to see what it means and why it was made.
         {review.some(mine) && (differs === 0 ? " Every bid of yours matches the bots' system." : ` ${differs} of your bids differ from what the bot would bid.`)}
+        {simulating && " Working out the hard calls…"}
       </Typography>
       <AuctionTable dealer={board.dealer} vul={board.vul} names={names} calls={calls} seat={seat} onOpenCall={setOpen} marks={markOf} />
       <MarkLegend marks={marks} />
       <Box sx={{ mt: 1.5 }}>
         <Button variant="outlined" onClick={onSystem}>
-          Bidding system: SAYC
+          Bidding system: SAYC{isDefault(systems.NS) && isDefault(systems.EW) ? "" : ", with your choices"}
         </Button>
       </Box>
       {open !== null && review[open] && (
@@ -158,10 +199,27 @@ function CallDialog({
             </Alert>
           ))}
 
-        {(isBot || (isMine && r.agrees)) && r.bot.hard && (
+        {(isBot || (isMine && r.agrees) || (isMine && r.bot.simulation)) && r.bot.hard && (
           <Alert severity="info">
-            A hard call: the rules don't settle it. The bot chose between {r.bot.hard.candidates.map(callName).join(", ")} by a rule of
-            thumb: <SuitString text={r.bot.hard.rule} />. Later, a simulation of many possible deals will decide calls like this.
+            {r.bot.simulation ? (
+              <>
+                A hard call, settled by simulation: {r.bot.simulation.deals} deals that fit the bidding, each candidate scored with
+                perfect play (double dummy) and compared at matchpoints.
+                <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
+                  {r.bot.simulation.results.map((x) => (
+                    <li key={callName(x.call)}>
+                      <strong>{callName(x.call)}</strong>: {Math.round(x.share * 100)}% of the matchpoints, {x.average >= 0 ? "+" : ""}
+                      {Math.round(x.average)} on average
+                    </li>
+                  ))}
+                </Box>
+              </>
+            ) : (
+              <>
+                A hard call: the rules don't settle it. The bot chose between {r.bot.hard.candidates.map(callName).join(", ")} by a rule of
+                thumb: <SuitString text={r.bot.hard.rule} />.
+              </>
+            )}
           </Alert>
         )}
         {((isBot && r.bot.fallback) || (!isBot && r.read.guessed)) && (

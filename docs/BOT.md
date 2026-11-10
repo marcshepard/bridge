@@ -198,10 +198,30 @@ core/bidding/      pure, no I/O, used by the devices (to bid for bots, and for r
 
 ## Stages
 
-1. **Bidding bot, bidding review and bidding practice** (built, being tested by hand; details below).
-2. **Your SAYC settings:** editable on the settings page, kept on the device, sent with the game.
-3. **Double dummy in the app:** DDS in Web Workers, double-dummy scoring for games without it
-   (Common Game pages), and simulation for the hard calls.
+1. **Bidding bot, bidding review and bidding practice** (done; details below).
+2. **Your SAYC settings** (done): editable on the Bidding system page, kept
+   on the device, sent with each game you start or join and fixed there; each side bids by its own
+   card (a bot partner by its person's, bots on their own by SAYC as it comes). Choices the rules
+   don't act on yet (splinters, inverted minors, new minor forcing, fourth suit forcing, Roman Key
+   Card) are shown but can't be changed.
+3. **Double dummy in the app** (done): DDS 3.1.1 in WebAssembly
+   (`frontend/src/dds/`, our own entry points for a full table or one contract), in a pool of up to
+   4 Web Workers started when first needed, behind `DoubleDummySolver` in `core/`.
+   - **Scoring without double dummy in the file** (Common Game pages): in bidding practice the owner's
+     device solves the contract and saves the result, as an owner enters one with real cards.
+   - **Simulation for hard calls** (`core/bidding/simulate.ts`): deal hands that fit what the auction
+     has shown for the other three seats (HCP, suit lengths, balanced), solve each candidate's
+     contract on each deal, and score the candidates against each other at matchpoints; the best
+     wins (the rule of thumb's choice on a tie, or when fewer than 16 deals fit). 60 deals take about
+     0.6 s on one thread in Node, less with the workers. Seeded from the hand and the auction, so the
+     review runs it again and gets the bot's answer; the review shows each candidate's share.
+   - **The simplification:** each candidate is treated as the last call of the auction (everyone
+     passes after it). That suits the calls marked hard (compete, double or pass, late in a
+     contested auction), not early constructive ones.
+   - `npm run bidding-report -- --simulate` runs the bots with simulation, and scores boards whose
+     file has no double dummy.
+   Gaps in the bidding (conventions not used yet, judgment calls, sharper simulation) are listed in
+   the backlog, to take on as feedback comes in.
 4. **Card play by sampling,** replacing today's simple rules.
 5. **Play review** after the board, then feedback as you go and take-backs.
 6. **Bots on the fastest device,** with a backend fallback; bots in games with people ("Add a bot"

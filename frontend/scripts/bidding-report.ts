@@ -6,13 +6,18 @@
 //   npm run bidding-report                          the built-in demo game
 //   npm run bidding-report -- path/to/game.pbn      any game file the app can import
 //   npm run bidding-report -- game.pbn --board 14   one board
+//   npm run bidding-report -- --simulate            hard calls decided by simulation (double
+//                                                   dummy, as the bots do at the table); boards
+//                                                   without double dummy in the file get scored too
 //
 // Run from frontend/. The script is bundled with rolldown first (it imports the app's TypeScript).
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { auctionResult } from "../src/core/auction";
-import { botAuction } from "../src/core/bidding/bidder";
+import { type Decision, botAuction, botAuctionWithSimulation } from "../src/core/bidding/bidder";
+import { SAYC_DEFAULTS } from "../src/core/bidding/system";
+import { SyncSolver } from "../src/dds/syncSolver";
 import { callName } from "../src/core/bidding/sayc/common";
 import { doubleDummyResult } from "../src/core/bidding/result";
 import { compareBoard, scoreField } from "../src/core/compare";
@@ -26,6 +31,8 @@ import { fileToGameFile } from "../src/providers/importFile";
 const args = process.argv.slice(2);
 const boardArg = args.indexOf("--board");
 const only = boardArg >= 0 ? Number(args[boardArg + 1]) : null;
+const simulate = args.includes("--simulate");
+const solver = simulate ? new SyncSolver() : null;
 const file = args.find((a, i) => !a.startsWith("--") && (boardArg < 0 || i !== boardArg + 1)) ?? resolve(process.cwd(), "../backend/src/demo/demo-game.json");
 
 const text = readFileSync(file, "utf8");
@@ -39,7 +46,8 @@ const lines: string[] = [`Bidding report: ${game.summary.title} (${file})`, ""];
 
 for (const board of game.boards) {
   if (only !== null && board.number !== only) continue;
-  const decisions = botAuction(board.hands, { dealer: board.dealer, vul: board.vul });
+  const deal = { dealer: board.dealer, vul: board.vul };
+  const decisions: Decision[] = solver ? await botAuctionWithSimulation(board.hands, deal, SAYC_DEFAULTS, solver) : botAuction(board.hands, deal);
   const calls = decisions.map((d) => d.call);
   const end = auctionResult(board.dealer, calls);
   lines.push(`Board ${board.number}  dealer ${board.dealer}  vul ${board.vul}`);
@@ -50,12 +58,14 @@ for (const board of game.boards) {
     lines.push(`    ${seat}  ${callName(d.call).padEnd(8)} ${d.reason}${flags ? `  [${flags}]` : ""}`);
     if (d.hard) {
       hard++;
-      lines.push(`          hard call: chose between ${d.hard.candidates.map(callName).join(", ")} by ${d.hard.rule}`);
+      if (!d.simulation) lines.push(`          hard call: chose between ${d.hard.candidates.map(callName).join(", ")} by ${d.hard.rule}`);
     }
     if (d.fallback) fallbacks++;
     seat = SEATS[(SEATS.indexOf(seat) + 1) % 4]!;
   });
-  const result = end ? doubleDummyResult(board.doubleDummy, end.contract, end.declarer) : null;
+  // Without double dummy in the file, work it out (with --simulate, which loads the solver).
+  const dd = board.doubleDummy?.tricks || !solver ? board.doubleDummy : { ...board.doubleDummy, tricks: await solver.table(board.hands) };
+  const result = end ? doubleDummyResult(dd, end.contract, end.declarer) : null;
   const contract = end?.contract ? `${formatContract(end.contract)} by ${end.declarer}` : "Passed out";
   if (result) {
     const ns = scoreResult(result, board.vul);

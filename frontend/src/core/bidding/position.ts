@@ -156,6 +156,8 @@ const ARTIFICIAL = new Set([
   "Jordan 2NT",
   "2NT feature ask",
   "Feature",
+  "Gambling 3NT",
+  "Pass or correct",
 ]);
 
 /** Does this call name a suit its bidder holds (or, for notrump, a natural notrump bid)? */

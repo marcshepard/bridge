@@ -434,6 +434,28 @@ review inline: the auction with every call tappable for its meaning and reason, 
 compared with the bot's. "Bots bid for me" (remembered on the device per game) lets the bots bid
 your seat too, faster, so you can watch. The goals, design and stages are in [BOT.md](BOT.md).
 
+### Bidding systems
+
+Each player's bidding system (SAYC, with the choices it leaves open set their way) is kept on their
+device (`ProfileStore.biddingSystem`) and sent as `system` when they create, join or practise. The
+backend checks it with `parseSystemSettings` (anything not allowed falls back to SAYC) and stores
+it on the player; it's fixed from then on, and it's in the snapshot (`PublicPlayer.system`: not
+secret, opponents may know your agreements). Each side bids by one card (`tableSystems` in
+`session/session.ts`): the owner's on the owner's side, else the first person on that side, else
+SAYC as it comes. The bidder reads and chooses each call by the card of the side making it. The
+Bidding system page edits your card (from the avatar menu and the practice screen) or shows a game's
+two cards, read-only (from a bidding review).
+
+### Double dummy in the browser
+
+DDS (the double-dummy solver, Apache 2.0) is compiled to WebAssembly and committed in
+`frontend/src/dds/` (rebuilding: its README). `services.ts` wires `doubleDummy`, a pool of up to 4
+Web Workers started on first use, behind `DoubleDummySolver` (`core/doubleDummy.ts`), so core code
+uses it without knowing about workers. It's used for the bots' hard calls (simulation, see
+[BOT.md](BOT.md)) and to score bidding-practice contracts whose game file has no double dummy: the
+owner's device solves the contract and saves the result with `PUT /boards/:board`. The backend never
+runs it (its CPU allowance per request is far too small).
+
 ### Demo games
 
 **Start demo game** on Home lets someone try the app alone in the live app: `POST
@@ -512,7 +534,8 @@ The schema is `backend/migrations/0001_init.sql`. In short:
   `current_board` (the board the table is on; NULL means the start board), `created_at`,
   `expires_at` (30 days).
 - **players**: `player_id` (the device's secret key), `slot` (public handle 1–4, in join order),
-  `name`, `is_creator` (the owner), `is_bot`, `no_app` (a player without the app: their key is
+  `name`, `is_creator` (the owner), `is_bot`, `system_json` (their bidding system, checked with
+  `parseSystemSettings`; NULL for SAYC as it comes; migration 0010), `no_app` (a player without the app: their key is
   never handed out), `seat` (assigned when play starts).
 - **results**: one row per board per table: `contract`, `declarer`, `tricks`, `entered_by` (slot),
   `updated_at`, `on_devices` (the cards are played on the devices; with `tricks` NULL the board is
@@ -561,7 +584,7 @@ the player with `isCreator`; there's no separate host key.
 | `POST /api/events/:code/live-ticket` | A player | `{ ticket }`: a single-use pass to open the WebSocket, valid for a minute. Browsers can't send headers on a WebSocket, and the secret `playerId` mustn't appear in an address (addresses end up in logs) |
 | `GET /api/events/:code/live?ticket=` | A player (with a pass) | WebSocket for pushed updates |
 | `POST /api/events/:code/test-players` | Dev only | Fill the empty places with test players |
-| `POST /api/events/practice` | Anyone | `{ name, game?, startBoard? }` → bidding practice: you as South with three bots, bidding only, on `game` or the built-in demo game, from its first board unless `startBoard` says otherwise |
+| `POST /api/events/practice` | Anyone | `{ name, game?, startBoard?, system? }` → bidding practice: you as South with three bots, bidding only, on `game` or the built-in demo game, from its first board unless `startBoard` says otherwise |
 | `POST /api/events/demo` | Anyone | `{ name, mode }` → a demo game (the built-in made-up game from board 9) with three bots; you're the owner. The frontend asks for `cards` |
 
 Every write is validated in the Worker with the same `core/` functions the frontend uses (contract

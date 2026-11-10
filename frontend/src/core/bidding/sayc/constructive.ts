@@ -4,6 +4,7 @@
 import { type Suit, SUITS } from "../../types";
 import { type HandFacts, goodSuit, holding, isMajor, stopper, supportPoints, topHonours } from "../evaluate";
 import type { CallRule } from "../model";
+import type { SystemSettings } from "../system";
 import {
   type Bid,
   type Position,
@@ -42,6 +43,12 @@ function newSuitChoice(h: HandFacts, candidates: Suit[]): Suit | null {
   if (longest >= 5) return top[0]!; // SUITS order: higher-ranking first
   return top[top.length - 1]!; // four-card suits: the cheapest (up the line)
 }
+
+/** Opener's balanced rebid of 1NT: from 12 up to just below the 1NT opening. */
+const rebidLow = (s: SystemSettings): [number, number] => [12, s.oneNtMin - 1];
+/** Opener's balanced jump rebid in notrump: between the 1NT and 2NT openings. */
+const rebidHigh = (s: SystemSettings): [number, number] => [s.oneNtMax + 1, Math.max(s.oneNtMax + 1, s.twoNtMin - 1)];
+const rangeText = ([lo, hi]: [number, number]) => (lo === hi ? `${lo}` : `${lo}–${hi}`);
 
 // ---- Responder's first call ---------------------------------------------------------------------
 
@@ -174,7 +181,11 @@ function openerRebid(p: Position, o: Suit, r: Bid, rName: string | undefined, ga
   const rules: CallRule[] = [];
   const rs = r.strain;
   const rebidOwn = (h: HandFacts) => h.len[o] >= 6;
-  const balancedMin = (h: HandFacts) => h.balanced && h.hcp <= 14;
+  // Balanced hands that didn't open 1NT or 2NT: below the 1NT range (rebid 1NT), or between the two
+  // (jump to 2NT). With 15–17 and 20–21, that's 12–14 and 18–19.
+  const low = rebidLow(p.s);
+  const high = rebidHigh(p.s);
+  const balancedMin = (h: HandFacts) => h.balanced && h.hcp <= low[1];
 
   // Partner raised.
   if (rs === o && r.level === 2) {
@@ -210,7 +221,7 @@ function openerRebid(p: Position, o: Suit, r: Bid, rName: string | undefined, ga
   // Partner bid 1NT (6–10).
   if (rs === "NT" && r.level === 1) {
     rules.push(
-      rule(bid(2, "NT"), "18–19 HCP, balanced: invites 3NT.", (h) => h.balanced && h.hcp >= 18, { shows: { hcp: [18, 19], balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
+      rule(bid(2, "NT"), `${rangeText(high)} HCP, balanced: invites 3NT.`, (h) => h.balanced && h.hcp >= high[0], { shows: { hcp: high, balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
       rule(bid(3, o), `6+ ${SYMBOL[o]}, 16–18 points: invites game.`, (h) => rebidOwn(h) && h.points >= 16, { shows: { hcp: [15, 18], len: len(o, 6) }, why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${h.points} points` }),
     );
   } else if (r.level === 1) {
@@ -226,23 +237,23 @@ function openerRebid(p: Position, o: Suit, r: Bid, rName: string | undefined, ga
     // A new suit at the one level (up the line).
     for (const x of SUITS.filter((x) => x !== o && x !== t && cheapest(p, x) === 1)) {
       rules.push(
-        rule(bid(1, x), `4+ ${SYMBOL[x]}. Not forcing (but partner usually bids again).`, (h) => h.len[x] >= 4 && !(h.balanced && h.hcp <= 14 && !isMajor(x)) && SUITS.filter((y) => y !== o && y !== t && cheapest(p, y) === 1 && h.len[y] >= 4).at(-1) === x, {
+        rule(bid(1, x), `4+ ${SYMBOL[x]}. Not forcing (but partner usually bids again).`, (h) => h.len[x] >= 4 && !(h.balanced && h.hcp <= low[1] && !isMajor(x)) && SUITS.filter((y) => y !== o && y !== t && cheapest(p, y) === 1 && h.len[y] >= 4).at(-1) === x, {
           shows: { len: len(x, 4) },
           why: (h) => `${h.len[x]} ${SUIT_WORDS[x]}: show it at the one level`,
         }),
       );
     }
     rules.push(
-      rule(bid(2, "NT"), "18–19 HCP, balanced.", (h) => h.balanced && h.hcp >= 18, { shows: { hcp: [18, 19], balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
-      rule(bid(1, "NT"), "12–14 HCP, balanced.", balancedMin, { shows: { hcp: [12, 14], balanced: true }, why: (h) => `${hcpText(h)}, ${shapeText(h)}: too weak for 1NT opening, so rebid it` }),
+      rule(bid(2, "NT"), `${rangeText(high)} HCP, balanced.`, (h) => h.balanced && h.hcp >= high[0], { shows: { hcp: high, balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
+      rule(bid(1, "NT"), `${rangeText(low)} HCP, balanced.`, balancedMin, { shows: { hcp: low, balanced: true }, why: (h) => `${hcpText(h)}, ${shapeText(h)}: too weak for a 1NT opening, so rebid it` }),
     );
   } else {
     // Partner bid a new suit at the two level (10+, forcing).
     const t = rs as Suit;
     rules.push(
       rule(bid(3, t), `Raises: ${cards(isMajor(t) ? 3 : 4, t)}.`, (h) => h.len[t] >= (isMajor(t) ? 3 : 4), { shows: { len: len(t, isMajor(t) ? 3 : 4) }, why: (h) => `${h.len[t]} ${SUIT_WORDS[t]}: support` }),
-      rule(bid(2, "NT"), "12–14 HCP, balanced, stoppers in the unbid suits.", (h) => h.balanced && h.hcp <= 14, { shows: { hcp: [12, 14], balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
-      rule(bid(3, "NT"), "18–19 HCP, balanced.", (h) => h.balanced && h.hcp >= 18, { shows: { hcp: [18, 19], balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
+      rule(bid(2, "NT"), `${rangeText(low)} HCP, balanced, stoppers in the unbid suits.`, (h) => h.balanced && h.hcp <= low[1], { shows: { hcp: low, balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
+      rule(bid(3, "NT"), `${rangeText(high)} HCP, balanced.`, (h) => h.balanced && h.hcp >= high[0], { shows: { hcp: high, balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
     );
   }
 
@@ -402,16 +413,17 @@ function responderRebid(p: Position, o: Suit, r: Bid, rebid: Bid): CallRule[] {
   const ps = partnerShown(p);
   const rules: CallRule[] = [];
   const minOpener = Math.max(ps.hcp[0], 12);
-  // Opener rebid 1NT (12–14) after a one-level response.
+  // Opener rebid 1NT (below the 1NT opening range: 12–14 with 15–17) after a one-level response.
+  const low = rebidLow(p.s);
   if (rebid.strain === "NT" && rebid.level === 1) {
     const mine = r.strain as Suit;
     rules.push(
-      rule(bid(3, "NT"), "13+ HCP: game opposite 12–14.", (h) => h.hcp >= 13, { why: (h) => `${hcpText(h)} + 12–14 is enough for game` }),
+      rule(bid(3, "NT"), `${25 - low[0]}+ HCP: game opposite ${rangeText(low)}.`, (h) => h.hcp >= 25 - low[0], { why: (h) => `${hcpText(h)} + ${rangeText(low)} is enough for game` }),
       rule(bid(4, mine), `6+ ${SYMBOL[mine]} and game values.`, (h) => isMajor(mine) && h.len[mine] >= 6 && h.hcp >= 12, { why: (h) => `${h.len[mine]} ${SUIT_WORDS[mine]} and ${hcpText(h)}` }),
-      rule(bid(2, "NT"), "11–12 HCP: invites 3NT.", (h) => h.hcp >= 11, { shows: { hcp: [11, 12] }, why: (h) => `${hcpText(h)}: game if opener has 14` }),
+      rule(bid(2, "NT"), `${25 - low[1]}–${24 - low[0]} HCP: invites 3NT.`, (h) => h.hcp >= 25 - low[1], { shows: { hcp: [25 - low[1], 24 - low[0]] }, why: (h) => `${hcpText(h)}: game if opener has ${low[1]}` }),
       rule(bid(2, mine), `6+ ${SYMBOL[mine]}, weak: to play.`, (h) => h.len[mine] >= 6 && h.hcp <= 10, { shows: { hcp: [6, 10], len: len(mine, 6) }, why: (h) => `${h.len[mine]} ${SUIT_WORDS[mine]}: play in the long suit` }),
       rule(bid(2, o), `Back to opener's suit: weak, with ${SYMBOL[o]} support and an unbalanced hand.`, (h) => h.len[o] >= 4 && !h.semiBalanced && cheapest(p, o) === 2, { why: (h) => `${h.len[o]} ${SUIT_WORDS[o]}: the safer part score` }),
-      rule(PASS, "Weak: 1NT is high enough.", () => true, { why: (h) => `${hcpText(h)}: no game opposite 12–14` }),
+      rule(PASS, "Weak: 1NT is high enough.", () => true, { why: (h) => `${hcpText(h)}: no game opposite ${rangeText(low)}` }),
     );
     return rules;
   }

@@ -5,7 +5,7 @@ import { parseHand } from "../deal";
 import type { Seat, Vulnerability } from "../types";
 import { parseGameFile } from "../../providers/gameFile";
 import { botAuction, chooseCall, readAuction, reviewAuction } from "./bidder";
-import { describeSettings, SAYC_DEFAULTS } from "./system";
+import { type SystemSettings, describeSettings, isDefault, parseSystemSettings, SAYC_DEFAULTS } from "./system";
 import { evaluate, suitTricks } from "./evaluate";
 
 /** An auction written the way it's stored: "1H PASS 2H". */
@@ -69,10 +69,10 @@ describe("hand valuation", () => {
     expect(suitTricks(ranks)).toBe(tricks);
   });
 
-  it("counts the long-suit hand's shape by length points or by shortness, as the settings say", () => {
-    const hand = parseHand("AKQ32.KJ32.Q32."); // 15 HCP, a five-card suit, a void
-    expect(evaluate(hand, "length").points).toBe(16);
-    expect(evaluate(hand, "shortness").points).toBe(18);
+  it("counts length points from the start, and shortness separately for once there's a fit", () => {
+    const hand = evaluate(parseHand("AKQ32.KJ32.Q32.")); // 15 HCP, a five-card suit, a void
+    expect(hand.points).toBe(16);
+    expect(hand.shortnessPoints).toBe(3);
   });
 
   it("opens 2♣ with nine playing tricks, however few the HCP", () => {
@@ -299,5 +299,138 @@ describe("whole auctions on real game files", () => {
       // Reviewing the bots' own auction: every call is what the bot would bid.
       expect(reviewAuction(board.hands, deal, made).every((r) => r.agrees)).toBe(true);
     }
+  });
+});
+
+describe("your own bidding system", () => {
+  const card = (changes: Partial<SystemSettings>): SystemSettings => ({ ...SAYC_DEFAULTS, ...changes });
+
+  it("keeps only allowed choices when reading settings from storage or a request", () => {
+    const s = parseSystemSettings({ oneNtMin: 16, oneNtMax: 18, weakTwos: false, stayman: "yes", negativeDoublesThrough: "9S", splinters: true, oneNtWithFiveCardMajor: false });
+    expect([s.oneNtMin, s.oneNtMax]).toEqual([16, 18]);
+    expect(s.weakTwos).toBe(false);
+    expect(s.oneNtWithFiveCardMajor).toBe(false);
+    expect(s.stayman).toBe(true); // not a boolean: ignored
+    expect(s.negativeDoublesThrough).toBe("2S"); // not an option: ignored
+    expect(s.splinters).toBe(false); // not built, so not editable
+    expect(parseSystemSettings({ oneNtMin: 12, oneNtMax: 14 }).oneNtMin).toBe(15); // weak notrump isn't an option
+    expect(parseSystemSettings("junk")).toEqual(SAYC_DEFAULTS);
+    expect(isDefault(SAYC_DEFAULTS)).toBe(true);
+    expect(isDefault(s)).toBe(false);
+  });
+
+  it("opens by your 1NT range", () => {
+    const hand = parseHand("AQ4.KJ3.Q976.K82"); // 15 HCP, balanced
+    expect(callCode(chooseCall(hand, { dealer: "N", vul: "None" }, []).call)).toBe("1NT");
+    expect(callCode(chooseCall(hand, { dealer: "N", vul: "None" }, [], card({ oneNtMin: 16, oneNtMax: 18 })).call)).toBe("1D");
+  });
+
+  it("rebids 1NT up to just below your 1NT range", () => {
+    // 1♦–1♠: 15 balanced is a 1NT rebid with a 16–18 notrump, a 1NT opening with 15–17.
+    const d = chooseCall(parseHand("AQ4.KJ3.Q976.K82"), { dealer: "N", vul: "None" }, calls("1D PASS 1S PASS"), card({ oneNtMin: 16, oneNtMax: 18 }));
+    expect(callCode(d.call)).toBe("1NT");
+    expect(d.meaning).toMatch(/12–15/);
+  });
+
+  it("passes with a weak-two hand when weak twos are off", () => {
+    expect(bot("84.KQJ984.73.982")).toBe("2H");
+    expect(callCode(chooseCall(parseHand("84.KQJ984.73.982"), { dealer: "N", vul: "None" }, [], card({ weakTwos: false })).call)).toBe("PASS");
+  });
+
+  it("reads each side's calls by that side's card", () => {
+    const systems = { NS: card({ oneNtMin: 16, oneNtMax: 18 }), EW: SAYC_DEFAULTS };
+    const steps = readAuction({ dealer: "N", vul: "None" }, calls("1NT PASS PASS 1NT"), systems);
+    const shown = steps.at(-1)!.position.shown;
+    expect(shown.N.hcp).toEqual([16, 18]);
+    expect(steps[3]!.read!.meaning).not.toMatch(/16–18/); // West's 1NT is a balancing overcall, by EW's card
+  });
+});
+
+describe("3NT openings", () => {
+  const gambling = { ...SAYC_DEFAULTS, threeNt: "gambling" as const };
+  const solidClubs = "8.73.432.AKQJ982"; // 10 HCP, solid seven-card club suit, nothing outside
+  const gamble = "A84.73.43.AKQJ982"; // the same, with the ♠A: a side suit stopped
+  const big = "AKQ4.AKJ3.AQ7.K2"; // 26 HCP, balanced
+
+  it("opens 3NT with 25–27 balanced, or with a solid minor when it's gambling", () => {
+    const open = (hand: string, s = SAYC_DEFAULTS) => callCode(chooseCall(parseHand(hand), { dealer: "N", vul: "None" }, [], s).call);
+    expect(open(big)).toBe("3NT");
+    expect(open(solidClubs)).toBe("3C"); // nothing outside: a preempt, not a light 1♣
+    expect(open(solidClubs, gambling)).toBe("3C"); // no side stopper: not a gambling 3NT either
+    expect(open(gamble, gambling)).toBe("3NT");
+    expect(open(big, gambling)).toBe("2C");
+  });
+
+  it("answers a gambling 3NT: pass with stoppers, otherwise clubs to pass or correct", () => {
+    const answer = (hand: string) => callCode(chooseCall(parseHand(hand), { dealer: "N", vul: "None" }, calls("3NT PASS"), gambling).call);
+    expect(answer("KJ4.AQ73.K82.973")).toBe("PASS");
+    expect(answer("9874.Q73.K82.T97")).toBe("4C");
+    // Opener corrects to diamonds with the diamond suit.
+    expect(callCode(chooseCall(parseHand("8.73.AKQJ982.432"), { dealer: "N", vul: "None" }, calls("3NT PASS 4C PASS"), gambling).call)).toBe("4D");
+  });
+});
+
+describe("interference over our 1NT", () => {
+  const stolen = { ...SAYC_DEFAULTS, ntTwoClubs: "stolen" as const };
+  const deal = { dealer: "N", vul: "None" } as const;
+
+  it("keeps transfers on over a double, or turns them off, as the settings say", () => {
+    const hearts = parseHand("84.KJ873.Q98.982");
+    expect(callCode(chooseCall(hearts, deal, calls("1NT X")).call)).toBe("2D");
+    expect(callCode(chooseCall(hearts, deal, calls("1NT X"), { ...SAYC_DEFAULTS, ntDoubled: "off" }).call)).not.toBe("2D");
+  });
+
+  it("doubles their 2♣ as Stayman when it's a stolen bid, and opener answers it", () => {
+    const d = chooseCall(parseHand("KJ84.73.Q987.K82"), deal, calls("1NT 2C"), stolen);
+    expect(callCode(d.call)).toBe("X");
+    expect(d.name).toBe("Stayman");
+    expect(callCode(chooseCall(parseHand("AQ94.KJ3.Q97.K82"), deal, calls("1NT 2C X PASS"), stolen).call)).toBe("2S");
+    // With systems off, the double isn't Stayman.
+    expect(chooseCall(parseHand("KJ84.73.Q987.K82"), deal, calls("1NT 2C")).name).not.toBe("Stayman");
+  });
+
+  it("turns systems off when they bid 2♦ or higher", () => {
+    expect(callCode(chooseCall(parseHand("84.KJ873.Q98.982"), deal, calls("1NT 2D"), stolen).call)).not.toBe("2H");
+  });
+});
+
+describe("weak twos", () => {
+  it("need a good suit: two of the top three honours, or three of the top five", () => {
+    expect(bot("84.KQ9842.J3.982")).toBe("2H"); // ♥KQ: two of the top three
+    expect(bot("84.QJT984.K3.982")).toBe("2H"); // ♥QJT: three of the top five
+    expect(bot("84.KJ9842.Q3.982")).not.toBe("2H"); // ♥KJ: neither
+  });
+});
+
+describe("when they double our part score", () => {
+  it("passes when the doubled contract is already a game (Marc's board: 3♥ doubled)", () => {
+    // East passes, South 1♦, West 1♠, North negative double, East 2♠, South 3♥, West doubles.
+    const d = chooseCall(parseHand("K74.Q98765.2.K76"), { dealer: "E", vul: "EW" }, calls("PASS 1D 1S X 2S 3H X"));
+    expect(callCode(d.call)).toBe("PASS");
+    expect(d.reason).toMatch(/already a game/);
+  });
+});
+
+describe("a takeout double of our part score", () => {
+  it("isn't treated as doubled into game: the doubler's partner will bid", () => {
+    // Demo board 36: 1♥–2♦–3♦, East doubles for takeout. South mustn't pass "because 3♦ doubled is game".
+    const d = chooseCall(parseHand("T65.5.AK873.QJT8"), { dealer: "W", vul: "Both" }, calls("PASS 1H PASS 2D PASS 3D X"));
+    expect(d.reason).not.toMatch(/already a game/);
+  });
+});
+
+describe("overcalls over a conventional bid", () => {
+  const deal = { dealer: "N", vul: "None" } as const;
+  const over2C = (hand: string, vul: "None" | "EW" = "None") => callCode(chooseCall(parseHand(hand), { ...deal, vul }, calls("2C")).call);
+
+  it("shows a good suit naturally over a strong 2♣", () => {
+    expect(over2C("84.KQJ984.73.982")).toBe("2H"); // six hearts: length and tricks both say the two level
+    expect(over2C("8.AKQJ987.73.982")).toBe("4H"); // 7 playing tricks, non-vulnerable: overbid by 3
+    expect(over2C("8.AKQJ987.73.982", "EW")).toBe("3H"); // vulnerable: by 2, and seven cards say 3 too
+    expect(over2C("984.Q7.J73.K982")).toBe("PASS");
+  });
+
+  it("bids seven with a thirteen-card suit (the one-suit test deal)", () => {
+    expect(over2C(".AKQJT98765432..")).toBe("7H");
   });
 });

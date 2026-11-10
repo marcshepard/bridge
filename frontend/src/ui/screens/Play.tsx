@@ -15,6 +15,7 @@ import {
   fromStored,
   pendingContract,
   sessionFromShared,
+  tableSystems,
   tally as tallyOf,
 } from "../../session/session";
 import type { Game } from "../../providers/types";
@@ -22,8 +23,9 @@ import type { CallDto, ClaimDto, EventSnapshot, PlayDto, ResultDto } from "../..
 import { callCode, isAuctionOver, parseCall } from "../../core/auction";
 import { parseContract } from "../../core/contract";
 import { cardCode, parseCard } from "../../core/play";
-import { games, profile } from "../../services";
+import { doubleDummy, games, profile } from "../../services";
 import { BoardInfoDialog, BreakdownDialog, FieldDialog } from "../components/BoardDialogs";
+import { BiddingSystemDialog } from "../components/BiddingSystemDialog";
 import { TallyDialog } from "../components/TallyDialog";
 import { ResultText } from "../controls/BridgeText";
 import type { NoticeMessage } from "../controls/Notice";
@@ -53,11 +55,9 @@ interface Props {
   onClaim: (board: number, claim: ClaimDto | null) => void;
   /** Show a notice about something someone else did (see controls/Notice). */
   onNotice: (notice: NoticeMessage) => void;
-  /** Open the bidding system page. */
-  onSystem: () => void;
 }
 
-export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlayed, onClaim, onNotice, onSystem }: Props) {
+export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlayed, onClaim, onNotice }: Props) {
   const session = useMemo(
     () => sessionFromShared(game, seat, snapshot.startBoard, snapshot.results),
     [game, seat, snapshot.startBoard, snapshot.results],
@@ -68,6 +68,9 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
   // In practice, the bots can bid your seat too (remembered on this device, per game).
   const [watch, setWatch] = useState(() => practice && profile.botsBidForMe(snapshot.code));
   const bots = snapshot.players.filter((pl) => pl.isBot && pl.seat).map((pl) => pl.seat!);
+  // The card each side bids by (fixed when the game started), for the bots and the review.
+  const systems = useMemo(() => tableSystems(snapshot.players), [snapshot.players]);
+  const [cardsOpen, setCardsOpen] = useState(false);
   // The owner's device makes the bots' calls (and yours, when you're watching them).
   const autoSeats: Seat[] = isOwner ? [...bots, ...(practice && watch ? [seat] : [])] : [];
   const tableBoard = snapshot.currentBoard;
@@ -141,6 +144,28 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
   const shared = snapshot.results.find((r) => r.board === board.number);
   const enteredBy = shared ? (snapshot.players.find((p) => p.slot === shared.enteredBy)?.name ?? null) : null;
   const contract = pendingContract(snapshot.results, board.number);
+
+  // Bidding practice on a game file without double dummy (a Common Game page): the owner's device
+  // works out the contract's tricks with perfect play and saves the result, as the owner would
+  // enter it with real cards. Everyone else's screen waits for it.
+  const unscored = practice && !!shared && !shared.onDevices && shared.tricks === null && !!contract;
+  const [scoring, setScoring] = useState<"working" | "failed" | null>(null);
+  useEffect(() => {
+    if (!unscored || !contract) return setScoring(null);
+    if (!isOwner || !doubleDummy) return setScoring(doubleDummy && !isOwner ? "working" : "failed");
+    let cancelled = false;
+    setScoring("working");
+    void doubleDummy
+      .tricks([{ hands: board.hands, strain: contract.contract.strain, declarer: contract.declarer }])
+      .then(async ([tricks]) => {
+        if (cancelled) return;
+        onSaved(await games.saveResult(snapshot.code, board.number, toStored({ contract: contract.contract, declarer: contract.declarer, tricks: tricks! })));
+      })
+      .catch(() => !cancelled && setScoring("failed"));
+    return () => {
+      cancelled = true;
+    };
+  }, [unscored, board.number]);
 
   const position = order.indexOf(board.number);
   const next = order[order.indexOf(tableBoard) + 1] ?? null;
@@ -239,6 +264,7 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
             ? {
                 bots,
                 autoSeats,
+                systems,
                 ...(practice && {
                   watch: {
                     on: watch,
@@ -253,9 +279,10 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
               }
             : null
         }
+        scoring={scoring}
         review={
           !bidding && calls.length > 0 && isAuctionOver(calls) && (practice || comparison)
-            ? { calls, bots, inline: practice, onSystem }
+            ? { calls, bots, systems, inline: practice, onSystem: () => setCardsOpen(true) }
             : null
         }
         play={
@@ -307,6 +334,14 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
           onClose={() => setDialog(null)}
         />
       )}
+      <BiddingSystemDialog
+        open={cardsOpen}
+        onClose={() => setCardsOpen(false)}
+        cards={[
+          { label: "Your side", system: systems[directionOf(seat)] },
+          { label: "Opponents", system: systems[directionOf(seat) === "NS" ? "EW" : "NS"] },
+        ]}
+      />
       <TallyDialog
         open={dialog === "tally"}
         onClose={() => setDialog(null)}

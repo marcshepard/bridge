@@ -1,6 +1,8 @@
 // Structured auctions, uncontested: after a 1NT or 2NT opening (Stayman, Jacoby transfers,
-// invitations, Gerber), after a strong 2♣, and after a weak two or a three-level preempt.
-// With the opponents in the auction these give way to the competitive and general rules.
+// invitations, Gerber), after a gambling 3NT, after a strong 2♣, and after a weak two or a
+// three-level preempt. With the opponents in the auction these give way to the competitive and
+// general rules, except as the settings say over our 1NT: a double ignored ("systems on"), and a
+// 2♣ overcall answered by a double for Stayman ("stolen bid").
 
 import { type Suit } from "../../types";
 import { type HandFacts, goodSuit, holding, stopper, SUIT_WORDS } from "../evaluate";
@@ -8,6 +10,7 @@ import type { CallRule } from "../model";
 import {
   type Bid,
   type Position,
+  DOUBLE,
   PASS,
   bid,
   isBid,
@@ -37,7 +40,7 @@ interface NtBase {
 function ntBase(p: Position, codes: string[]): NtBase | null {
   if (codes[0] === "1NT") return { min: p.s.oneNtMin, max: p.s.oneNtMax, level: 2, start: 1, name: "1NT" };
   if (codes[0] === "2NT") return { min: p.s.twoNtMin, max: p.s.twoNtMax, level: 3, start: 1, name: "2NT" };
-  if (codes[0] === "2C" && codes[1] === "2D" && codes[2] === "2NT") return { min: 22, max: 24, level: 3, start: 3, name: "2♣ then 2NT" };
+  if (codes[0] === "2C" && codes[1] === "2D" && codes[2] === "2NT") return { min: p.s.twoNtMax + 1, max: p.s.twoNtMax + 3, level: 3, start: 3, name: "2♣ then 2NT" };
   return null;
 }
 
@@ -45,13 +48,39 @@ function ntBase(p: Position, codes: string[]): NtBase | null {
 const GAME = 25;
 const SLAM = 33;
 
+/**
+ * The opponents acted once, straight over our 1NT, in a way the settings say we play through: a
+ * double ("on": as if they'd passed), or a 2♣ overcall ("stolen": double is Stayman).
+ */
+function playThrough(p: Position): "on" | "stolen" | null {
+  const theirs = theirActions(p);
+  const first = ourActions(p)[0];
+  if (theirs.length !== 1 || !first || !isBid(first.call) || first.call.level !== 1 || first.call.strain !== "NT") return null;
+  const openingAt = p.read.indexOf(first);
+  if (p.read.indexOf(theirs[0]!) !== openingAt + 1) return null;
+  const c = theirs[0]!.call;
+  if (c.kind === "double" && p.s.ntDoubled === "on") return "on";
+  if (isBid(c) && c.level === 2 && c.strain === "C" && p.s.ntTwoClubs === "stolen") return "stolen";
+  return null;
+}
+
 export function structuredRules(p: Position): CallRule[] {
-  if (theirActions(p).length > 0) return [];
-  const codes = ourCodes(p);
+  const through = theirActions(p).length > 0 ? playThrough(p) : null;
+  if (theirActions(p).length > 0 && !through) return [];
+  // Over their 2♣, our double stands in for Stayman's 2♣.
+  const codes = ourCodes(p).map((c) => (through === "stolen" && c === "X" ? "2C" : c));
   const opener = ourActions(p)[0]!;
   const iOpened = opener.seat === p.seat;
   const nt = ntBase(p, codes);
+  if (nt && through === "stolen" && codes.length === 1 && !iOpened) {
+    return notrumpRules(p, [], nt, false).map((r) =>
+      isBid(r.call) && r.call.level === 2 && r.call.strain === "C"
+        ? { ...r, call: DOUBLE, name: "Stayman", meaning: "Stayman: their 2♣ took our bid, so double asks opener for a 4-card major." }
+        : r,
+    );
+  }
   if (nt) return notrumpRules(p, codes.slice(nt.start), nt, iOpened);
+  if (codes[0] === "3NT" && opener.rule?.name === "Gambling 3NT") return gamblingRules(codes, iOpened);
   if (codes[0] === "2C" && p.s.strongTwoClubs) return twoClubRules(p, codes, iOpened);
   const op = opener.call;
   if (isBid(op) && (opener.rule?.name === "Weak two" || opener.rule?.name === "Preempt")) {
@@ -326,7 +355,8 @@ function gerberAsker(p: Position, partnerHcp: [number, number]): CallRule[] {
 
 // ---- Strong 2♣ ----------------------------------------------------------------------------------
 
-function twoClubRules(_p: Position, codes: string[], iOpened: boolean): CallRule[] {
+function twoClubRules(p: Position, codes: string[], iOpened: boolean): CallRule[] {
+  const twoMax = p.s.twoNtMax;
   if (codes.length === 1 && !iOpened) {
     const positive = (h: HandFacts, s: Suit) => h.hcp >= 8 && h.len[s] >= 5 && goodSuit(h, s);
     return [
@@ -350,8 +380,8 @@ function twoClubRules(_p: Position, codes: string[], iOpened: boolean): CallRule
           }),
         ),
       ),
-      rule(bid(2, "NT"), "22–24 HCP, balanced. Not forcing.", (h) => h.balanced && h.hcp <= 24, { shows: { hcp: [22, 24], balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
-      rule(bid(3, "NT"), "25–27 HCP, balanced.", (h) => h.balanced, { shows: { hcp: [25, 27], balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
+      rule(bid(2, "NT"), `${twoMax + 1}–${twoMax + 3} HCP, balanced. Not forcing.`, (h) => h.balanced && h.hcp <= twoMax + 3, { shows: { hcp: [twoMax + 1, twoMax + 3], balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
+      rule(bid(3, "NT"), `${twoMax + 4}–${twoMax + 6} HCP, balanced.`, (h) => h.balanced, { shows: { hcp: [twoMax + 4, twoMax + 6], balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
       ...(["S", "H"] as Suit[]).map((s) =>
         rule(bid(2, s), `Natural: 5+ ${SYMBOL[s]}. Forcing to game.`, (h) => longestOf(h) === s, { shows: { len: len(s, 5) }, forcing: "game", why: (h) => `${h.len[s]} ${SUIT_WORDS[s]}, the longest suit` }),
       ),
@@ -417,3 +447,29 @@ function preemptRules(p: Position, codes: string[], op: Bid, iOpened: boolean): 
 }
 
 export { shapeText, cards, partner };
+
+// ---- Gambling 3NT -------------------------------------------------------------------------------
+
+/**
+ * Partner opened a gambling 3NT (a solid minor, nothing outside). Responder passes with the other
+ * suits stopped; otherwise bids clubs for opener to pass or correct to diamonds: 4♣ to stop, 5♣
+ * for game. Opener then names the minor.
+ */
+function gamblingRules(codes: string[], iOpened: boolean): CallRule[] {
+  if (codes.length === 1 && !iOpened) {
+    const stops = (h: HandFacts) => stopper(h, "S") && stopper(h, "H") && (stopper(h, "C") || stopper(h, "D"));
+    return [
+      rule(PASS, "To play in 3NT: the other suits are stopped.", stops, { why: () => "both majors and a minor stopped: partner's minor runs, 3NT should make" }),
+      rule(bid(5, "C"), "Pass or correct: game in opener's minor (opener bids 5♦ with diamonds).", (h) => h.hcp >= 12, { name: "Pass or correct", why: (h) => `${hcpText(h)}: enough for game in partner's minor` }),
+      rule(bid(4, "C"), "Pass or correct: play in opener's minor at the four level (opener bids 4♦ with diamonds).", () => true, { name: "Pass or correct", why: () => "not all the other suits stopped: run to partner's minor" }),
+    ];
+  }
+  if (codes.length === 2 && iOpened && (codes[1] === "4C" || codes[1] === "5C")) {
+    const level = Number(codes[1]![0]);
+    return [
+      rule(bid(level, "D"), "Corrects to diamonds: the solid suit is diamonds.", (h) => h.len.D >= 7, { why: () => "my long suit is diamonds" }),
+      rule(PASS, "Passes: the solid suit is clubs.", () => true, { why: () => "my long suit is clubs" }),
+    ];
+  }
+  return [];
+}

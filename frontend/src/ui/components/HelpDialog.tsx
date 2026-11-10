@@ -135,8 +135,9 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
         <li>
           When the auction ends, the contract is scored as if everyone then played perfectly (double dummy): for
-          example, if 4♠ by North takes 10 tricks with perfect play, it's scored as 4♠ made. Some game files,
-          like Common Game pages, don't include these trick counts, so their contracts aren't scored yet.
+          example, if 4♠ by North takes 10 tricks with perfect play, it's scored as 4♠ made. When the game file
+          doesn't include these trick counts (Common Game pages don't), your device works them out, which takes
+          a moment.
         </li>
         <li>
           Tap <strong>Next board</strong> to go on. The running tally at the top adds up how you're doing against
@@ -168,10 +169,14 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
       </Box>
       <Typography sx={{ mt: 1 }}>
         Some bids carry a small mark: <strong>≠</strong> for a bid of yours the bot would have made differently,{" "}
-        <strong>?</strong> for a hard call (the rules don't settle it, so the bot used a rule of thumb, which
-        says which), and <strong>!</strong> for a position no rule covers yet. Use <strong>Previous bid</strong>{" "}
+        <strong>?</strong> for a hard call, and <strong>!</strong> for a position no rule covers yet. A hard call is
+        one the rules don't settle, typically whether to compete, double or pass late in a contested auction. The
+        bot settles it by simulation: it deals many hands that fit what the bidding has shown, works out how each
+        choice would score with perfect play, and picks the one that does best at matchpoints. Tap the bid to see
+        the figures, for example <strong>Double: 58% of the matchpoints, Pass: 42%</strong> over 60 deals. Use <strong>Previous bid</strong>{" "}
         and <strong>Next bid</strong> to step through the auction. In a game with other people, only your own bids
-        are compared with the bot's.
+        are compared with the bot's. The <strong>Bidding system</strong> button under the auction shows the card each
+        side bid by in this game.
       </Typography>
 
       <Heading>Playing online</Heading>
@@ -200,8 +205,14 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
         <li>
           In a game with bots (robot players), the bots bid and play by themselves, after a short pause so you
-          can follow. They bid Standard American Yellow Card (SAYC), the system most club players learn: to see
-          its choices, tap your initial at the top right and then <strong>Bidding system</strong>.
+          can follow. They bid Standard American Yellow Card (SAYC), the system most club players learn.
+        </li>
+        <li>
+          <strong>Your bidding system:</strong> tap your initial at the top right, then <strong>Bidding system</strong>,
+          to set the choices SAYC leaves open the way you play them: your 1NT range, weak twos, Jacoby 2NT, how far
+          negative doubles go, and so on. Your bot partner bids the same, and your bids are compared with it in the
+          review. Your choices are kept on this device and go with you into each game you start or join; a game keeps
+          the card it started with. Bots with nobody on their side bid SAYC as it comes.
         </li>
         <li>
           After the board, tap <strong>Bidding review</strong> under the result to go through the auction: tap any

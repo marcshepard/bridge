@@ -3,6 +3,7 @@
 // Storage can be unavailable (private windows, blocked site data). Then everything still works for
 // the visit, from memory; it just isn't remembered after a reload.
 
+import { type SystemSettings, parseSystemSettings } from "../core/bidding/system";
 import type { ProfileStore } from "./store";
 
 interface Profile {
@@ -12,6 +13,8 @@ interface Profile {
   installBannerClosed: boolean;
   /** Practice games in which the bots bid your seat too. */
   botsBidForMe: string[];
+  /** Your bidding system; checked on reading, so an old or damaged one falls back to SAYC. */
+  biddingSystem: SystemSettings;
 }
 
 export class LocalProfileStore implements ProfileStore {
@@ -38,12 +41,13 @@ export class LocalProfileStore implements ProfileStore {
           currentGame: p.currentGame ?? null,
           installBannerClosed: p.installBannerClosed ?? false,
           botsBidForMe: p.botsBidForMe ?? [],
+          biddingSystem: parseSystemSettings(p.biddingSystem),
         };
       }
     } catch {
       // Unreadable or unavailable: start fresh.
     }
-    return { name: "", playerIds: {}, currentGame: null, installBannerClosed: false, botsBidForMe: [] };
+    return { name: "", playerIds: {}, currentGame: null, installBannerClosed: false, botsBidForMe: [], biddingSystem: parseSystemSettings(null) };
   }
 
   private write(): void {
@@ -85,6 +89,15 @@ export class LocalProfileStore implements ProfileStore {
 
   setCurrentGame(code: string | null): void {
     this.profile.currentGame = code;
+    this.write();
+  }
+
+  biddingSystem(): SystemSettings {
+    return this.profile.biddingSystem;
+  }
+
+  setBiddingSystem(system: SystemSettings): void {
+    this.profile.biddingSystem = parseSystemSettings(system);
     this.write();
   }
 

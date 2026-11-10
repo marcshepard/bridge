@@ -63,6 +63,31 @@ whole thing can be done on a phone:
   paste (loses the structure). The real fix is still the Common Game agreeing to archived downloads
   (asked; no reply yet).
 
+## Bidding bot: gaps, to take on as feedback comes in
+
+The bots bid SAYC well enough to practise with (stages 1–3 in [BOT.md](BOT.md)). Bidding has no
+end of conventions and judgment calls, so these wait for feedback from the people using it rather
+than being built in advance. Each fix the usual way: the board, a rule change, and a test built from
+that deal; `npm run bidding-report` to check nothing else got worse.
+
+- **On the card, not used yet** (shown as "Not used by the bots yet"): Roman Key Card Blackwood
+  (1430 or 3014), splinters, inverted minors, new minor forcing, fourth suit forcing (from the two
+  level).
+- **Other systems and conventions:** 2/1 game forcing as a second system (the design allows for
+  it), Lebensohl, a lead-directing double of an artificial bid, Drury.
+- **Judgment:**
+  - drop length points once partner shows shortness in the suit (a misfit), unless the suit runs
+    by itself;
+  - redouble when they double us into game and we have extras;
+  - preempts and weak jump overcalls as high as the highest of the cheapest level, length minus
+    four, and playing tricks plus 2 or 3 (as over a conventional bid already);
+  - with 3NT as 25–27, a gambling-type hand opens a preempt or one of a suit (check it suits).
+- **Simulation of hard calls:**
+  - use what passes rule out (didn't open, so under 12; didn't bid a major, so no five-card major);
+  - each candidate is treated as the last call of the auction; fine for late competitive calls,
+    not for constructive ones;
+  - a redouble as a candidate.
+
 ## To undo
 
 - **Demo board 9 is a test deal** (each hand a 13-card suit), to check the result screen's worst

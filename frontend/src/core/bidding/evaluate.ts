@@ -16,13 +16,12 @@ export interface HandFacts {
   semiBalanced: boolean;
   /** One point for each card over four in a suit. */
   lengthPoints: number;
-  /** Goren's count for the long-suit hand: 3 for a void, 2 for a singleton, 1 for a doubleton. */
-  shortnessPoints: number;
   /**
-   * HCP plus distribution, counted the way the settings say (length or shortness points): the
-   * measure for opening, overcalling and your own long suit. Raising partner counts support points
-   * instead (`supportPoints`).
+   * Shortness for the long-suit hand once partner supports its suit: 3 for a void, 2 for a
+   * singleton, 1 for a doubleton. (Raising partner's suit counts `supportPoints` instead.)
    */
+  shortnessPoints: number;
+  /** HCP plus length points: the measure for opening, overcalling and your own long suit. */
   points: number;
   /**
    * Playing tricks: what the hand takes on its own with its long suit as trumps. In a suit of five
@@ -36,10 +35,7 @@ export interface HandFacts {
 
 const HONOURS = "AKQJT";
 
-/** How the long-suit hand counts its distribution (a setting): length points, or Goren's 3/2/1 for short suits. */
-export type DistributionCount = "length" | "shortness";
-
-export function evaluate(hand: Hand, distribution: DistributionCount = "length"): HandFacts {
+export function evaluate(hand: Hand): HandFacts {
   const len = Object.fromEntries(SUITS.map((s) => [s, hand[s].length])) as Record<Suit, number>;
   const shape = SUITS.map((s) => len[s]).sort((a, b) => b - a);
   const key = shape.join("");
@@ -56,7 +52,7 @@ export function evaluate(hand: Hand, distribution: DistributionCount = "length")
     balanced: key === "4333" || key === "4432" || key === "5332",
     semiBalanced: ["4333", "4432", "5332", "5422", "6322"].includes(key),
     lengthPoints,
-    points: hcp + (distribution === "shortness" ? shortnessPoints : lengthPoints),
+    points: hcp + lengthPoints,
     aces: SUITS.filter((s) => hand[s].includes("A")).length,
     kings: SUITS.filter((s) => hand[s].includes("K")).length,
   };

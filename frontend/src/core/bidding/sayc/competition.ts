@@ -25,6 +25,7 @@ import {
   rhoCall,
   theirActions,
   theirSuits,
+  weVul,
 } from "../position";
 import { SUIT_WORDS, SYMBOL, callName, cards, hcpText, len, rule } from "./common";
 
@@ -93,7 +94,7 @@ function overcalls(p: Position): CallRule[] {
     return rules;
   }
 
-  if (!t) return [rule(PASS, "Nothing to show over their conventional bid.", () => true, { why: (h) => `${hcpText(h)}: pass` })];
+  if (!t) return overArtificial(p);
   const level = lb.call.level;
 
   if (level === 1) {
@@ -147,7 +148,7 @@ function overcalls(p: Position): CallRule[] {
     if (!b) continue;
     if (s.weakJumpOvercalls && !balance && b.level <= 3) {
       rules.push(
-        rule(bid(b.level + 1, x), `Weak jump overcall: 6 ${SYMBOL[x]}, 5–10 HCP. Like a weak two.`, (h) => h.len[x] >= 6 && h.hcp >= 5 && h.hcp <= 10 && decentSuit(h, x) && b.level + 1 <= 3, {
+        rule(bid(b.level + 1, x), `Weak jump overcall: a good 6-card ${SYMBOL[x]} suit, 5–10 HCP. Like a weak two.`, (h) => h.len[x] >= 6 && h.hcp >= 5 && h.hcp <= 10 && goodSuit(h, x) && b.level + 1 <= 3, {
           name: "Weak jump overcall",
           shows: { hcp: [5, 10], len: len(x, 6) },
           why: (h) => `${hcpText(h)} and ${holding(h, x)}: get in their way`,
@@ -168,6 +169,52 @@ function overcalls(p: Position): CallRule[] {
     );
   }
   rules.push(rule(PASS, "Nothing worth showing over their bid.", () => true, { why: (h) => `${hcpText(h)}: no suit or shape to compete with` }));
+  return rules;
+}
+
+/**
+ * Over a conventional bid (a strong 2♣, Stayman, a transfer): their bid names no suit they hold, so
+ * any suit can be shown, the named one included. A good five-card suit with 8+ HCP overcalls at the
+ * cheapest level; a good suit of six or more preempts, as high as the highest of: the cheapest
+ * level, its length less four (six cards: the two level, as a weak two; seven: three), and its
+ * playing tricks plus 2 vulnerable or 3 not (the rule of 2 and 3). Seven at most.
+ */
+function overArtificial(p: Position): CallRule[] {
+  const allowance = weVul(p) ? 2 : 3;
+  const qualifies = (h: HandFacts, x: Suit) => goodSuit(h, x) && (h.len[x] >= 6 || (h.len[x] >= 5 && h.hcp >= 8));
+  const suitFor = (h: HandFacts): Suit | null =>
+    SUITS.filter((x) => qualifies(h, x)).sort((a, b) => h.len[b] - h.len[a] || SUITS.indexOf(a) - SUITS.indexOf(b))[0] ?? null;
+  const levelFor = (h: HandFacts, x: Suit): number => {
+    const cheap = cheapest(p, x);
+    if (h.len[x] < 6) return cheap;
+    return Math.min(7, Math.max(cheap, h.len[x] - 4, h.tricks + allowance - 6));
+  };
+  const rules: CallRule[] = [];
+  for (const x of SUITS) {
+    const cheap = cheapest(p, x);
+    for (let level = cheap; level <= 7; level++) {
+      rules.push(
+        rule(
+          bid(level, x),
+          level === cheap
+            ? `Natural overcall: a good suit of 5+ ${SYMBOL[x]}. Their bid was conventional, so it doesn't stop us showing any suit.`
+            : `Preemptive: a long, good ${SYMBOL[x]} suit. The higher the bid, the longer the suit and the more tricks it takes.`,
+          (h) => suitFor(h) === x && levelFor(h, x) === level,
+          {
+            shows: { len: len(x, level === cheap ? 5 : 6) },
+            why: (h) => {
+              const lengthLevel = h.len[x] - 4;
+              const trickLevel = h.tricks + allowance - 6;
+              return level === cheap
+                ? `${holding(h, x)} and ${hcpText(h)}: show the suit`
+                : `${holding(h, x)}: ${h.len[x]} cards (the ${Math.min(7, lengthLevel)} level by length) and ${h.tricks} playing tricks (the ${Math.min(7, trickLevel)} level, overbidding by ${allowance} ${weVul(p) ? "vulnerable" : "not vulnerable"}): bid the higher`;
+            },
+          },
+        ),
+      );
+    }
+  }
+  rules.push(rule(PASS, "Nothing to show over their conventional bid.", () => true, { why: (h) => `${hcpText(h)}, no good long suit: pass` }));
   return rules;
 }
 

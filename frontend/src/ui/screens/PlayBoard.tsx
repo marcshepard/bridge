@@ -17,6 +17,7 @@ import type { Call } from "../../core/auction";
 import type { Card, Claim } from "../../core/play";
 import { type Contract, type Hand as HandT, type Seat, SEATS, SEAT_NAMES, directionOf } from "../../core/types";
 import type { Board } from "../../providers/types";
+import type { TableSystems } from "../../core/bidding/system";
 import { BiddingReview } from "../components/BiddingReview";
 import { BoardHeader } from "../components/BoardHeader";
 import { Hand } from "../components/Hand";
@@ -69,11 +70,18 @@ interface Props {
     /** Seats held by bots, and the seats this device makes the bots' calls for. */
     bots: Seat[];
     autoSeats: Seat[];
+    /** The card each side bids by. */
+    systems: TableSystems;
     /** Bidding practice: the "Bots bid for me" switch. */
     watch?: { on: boolean; onChange: (on: boolean) => void };
     calls: Call[];
     onCall: (seq: number, call: Call) => Promise<void>;
   } | null;
+  /**
+   * Bidding practice, a contract the game file can't score: "working" while double dummy works it
+   * out (on the owner's device), "failed" if it can't.
+   */
+  scoring?: "working" | "failed" | null;
   /**
    * The board's auction, once it's over, for the bidding review. In bidding practice (`inline`) the
    * review is part of the result screen; otherwise it opens from a button.
@@ -81,6 +89,7 @@ interface Props {
   review: {
     calls: Call[];
     bots: Seat[];
+    systems: TableSystems;
     inline: boolean;
     onSystem: () => void;
   } | null;
@@ -181,6 +190,7 @@ export function PlayBoard(p: Props) {
           away={p.away}
           bots={p.bidding.bots}
           autoSeats={p.bidding.autoSeats}
+          systems={p.bidding.systems}
           watch={p.bidding.watch}
           calls={p.bidding.calls}
           onCall={p.bidding.onCall}
@@ -236,7 +246,7 @@ export function PlayBoard(p: Props) {
   };
   const reviewSection = p.review && (
     <Section title="Bidding review" id="bidding-review" tight>
-      <BiddingReview board={board} calls={p.review.calls} seat={seat} names={p.names} bots={p.review.bots} onSystem={p.review.onSystem} />
+      <BiddingReview board={board} calls={p.review.calls} seat={seat} names={p.names} bots={p.review.bots} systems={p.review.systems} onSystem={p.review.onSystem} />
     </Section>
   );
 
@@ -253,8 +263,10 @@ export function PlayBoard(p: Props) {
           <Typography variant="h6" component="p">
             <ContractText contract={p.contract.contract} /> by {SEAT_NAMES[p.contract.declarer]}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Not scored: this game file has no double-dummy tricks, which a contract that was only bid needs for its score.
+          <Typography variant="body2" color="text.secondary" role="status">
+            {p.scoring === "working"
+              ? "Working out the score: the tricks this contract makes with perfect play (double dummy)…"
+              : "Not scored: this game file has no double-dummy tricks, and they couldn't be worked out on this device."}
           </Typography>
         </Paper>
         {reviewSection}
@@ -392,7 +404,7 @@ export function PlayBoard(p: Props) {
 
       {p.review && !p.review.inline && (
         <SheetDialog open={reviewOpen} title={`Bidding review: board ${board.number}`} onClose={() => setReviewOpen(false)}>
-          <BiddingReview board={board} calls={p.review.calls} seat={seat} names={p.names} bots={p.review.bots} onSystem={p.review.onSystem} />
+          <BiddingReview board={board} calls={p.review.calls} seat={seat} names={p.names} bots={p.review.bots} systems={p.review.systems} onSystem={p.review.onSystem} />
         </SheetDialog>
       )}
     </Screen>

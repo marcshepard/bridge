@@ -6,6 +6,7 @@
 import { Hono, type Context } from "hono";
 import { auctionResult, callCode, canCall, parseCall, toCall } from "../../frontend/src/core/auction";
 import { doubleDummyResult } from "../../frontend/src/core/bidding/result";
+import { parseSystemSettings } from "../../frontend/src/core/bidding/system";
 import { contractCode, tableResult } from "../../frontend/src/core/contract";
 import {
   cardCode,
@@ -132,6 +133,12 @@ async function push(c: Ctx, code: string, message: PushMessage) {
   c.executionCtx.waitUntil(hub(c.env, code).notify(message).catch((e) => console.error("push failed", e)));
 }
 
+/**
+ * A player's bidding system as stored: checked with the same rules the devices use (anything the
+ * rules don't allow is dropped), or null when none was sent (SAYC as it comes).
+ */
+const systemJson = (raw: unknown): string | null => (raw === undefined || raw === null ? null : JSON.stringify(parseSystemSettings(raw)));
+
 /** The game's owner only, or a 403 saying `what` is theirs to do. */
 function ownerOnly(me: db.PlayerRow, what: string) {
   if (!me.is_creator) throw new HttpError(403, `Only the game's owner can ${what}`);
@@ -174,7 +181,7 @@ function nextFreeSlot(players: db.PlayerRow[]): number | null {
 app.post("/events", async (c) => {
   if (Number(c.req.header("Content-Length") ?? 0) > MAX_GAME_BYTES) throw new HttpError(413, "Game file too large");
   const req = await body<CreateEventRequest>(c);
-  return c.json<JoinedResponse>(await createEvent(c, cleanName(req.name), req.game, req.startBoard, parseMode(req.mode)), 201);
+  return c.json<JoinedResponse>(await createEvent(c, cleanName(req.name), req.game, req.startBoard, parseMode(req.mode), systemJson(req.system)), 201);
 });
 
 /**
@@ -184,7 +191,7 @@ app.post("/events", async (c) => {
  */
 app.post("/events/demo", async (c) => {
   const req = await body<DemoRequest>(c);
-  const joined = await createEvent(c, cleanName(req.name), demoGame as unknown as GameFileV1, DEMO_START_BOARD, parseMode(req.mode));
+  const joined = await createEvent(c, cleanName(req.name), demoGame as unknown as GameFileV1, DEMO_START_BOARD, parseMode(req.mode), systemJson(req.system));
   await addBots(c, joined.code);
   return c.json<JoinedResponse>(joined, 201);
 });
@@ -200,7 +207,7 @@ app.post("/events/practice", async (c) => {
   const req = await body<PracticeRequest>(c);
   const file = req.game ?? (demoGame as unknown as GameFileV1);
   // From the first board unless asked otherwise (not the demo's board 9: practice is for working through a game).
-  const joined = await createEvent(c, cleanName(req.name), file, req.startBoard, "bidding");
+  const joined = await createEvent(c, cleanName(req.name), file, req.startBoard, "bidding", systemJson(req.system));
   await addBots(c, joined.code);
   // You're South; your partner North and the opponents are bots (slots 2–4 in join order).
   await db.setSeatsAndStart(c.env.DB, joined.code, new Map<number, Seat>([[1, "S"], [2, "W"], [3, "N"], [4, "E"]]));
@@ -216,6 +223,7 @@ async function createEvent(
   file: GameFileV1,
   start: number | undefined,
   mode: GameMode,
+  system: string | null,
 ): Promise<JoinedResponse> {
   let game;
   try {
@@ -229,7 +237,7 @@ async function createEvent(
   const now = new Date();
   const expires = new Date(now.getTime() + EVENT_LIFETIME_DAYS * 86_400_000);
   const playerId = newPlayerId();
-  const creator: db.PlayerRow = { player_id: playerId, slot: 1, name, is_creator: 1, is_bot: 0, no_app: 0, seat: null };
+  const creator: db.PlayerRow = { player_id: playerId, slot: 1, name, is_creator: 1, is_bot: 0, no_app: 0, seat: null, system_json: system };
 
   // Codes are random; retry on the (astronomically unlikely) collision.
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -289,6 +297,7 @@ app.get("/events/:code", async (c) => {
       noApp: p.no_app === 1,
       isBot: p.is_bot === 1,
       seat: p.seat,
+      system: p.system_json ? parseSystemSettings(JSON.parse(p.system_json)) : null,
       connected: connected.includes(p.slot),
     })),
     results,
@@ -305,7 +314,8 @@ app.get("/events/:code", async (c) => {
 /** Join a game that hasn't started yet. */
 app.post("/events/:code/players", async (c) => {
   const event = await loadEvent(c);
-  const name = cleanName((await body<JoinRequest>(c)).name);
+  const req = await body<JoinRequest>(c);
+  const name = cleanName(req.name);
   if (event.status !== "lobby") throw new HttpError(409, "This game has already started");
   const players = await db.getPlayers(c.env.DB, event.code);
   const slot = nextFreeSlot(players);
@@ -313,7 +323,7 @@ app.post("/events/:code/players", async (c) => {
 
   const playerId = newPlayerId();
   try {
-    await db.insertPlayer(c.env.DB, event.code, { player_id: playerId, slot, name, is_creator: 0, is_bot: 0, no_app: 0, seat: null }, nowIso());
+    await db.insertPlayer(c.env.DB, event.code, { player_id: playerId, slot, name, is_creator: 0, is_bot: 0, no_app: 0, seat: null, system_json: systemJson(req.system) }, nowIso());
   } catch (e) {
     if (String(e).includes("UNIQUE")) throw new HttpError(409, "Someone else just took that place; try again");
     throw e;
@@ -336,7 +346,7 @@ app.post("/events/:code/players/no-app", async (c) => {
   const name = cleanName((await body<JoinRequest>(c)).name);
   const slot = nextFreeSlot(players);
   if (slot === null) throw new HttpError(409, "This game already has 4 players");
-  const row = { player_id: newPlayerId(), slot, name, is_creator: 0, is_bot: 0, no_app: 1, seat: null };
+  const row = { player_id: newPlayerId(), slot, name, is_creator: 0, is_bot: 0, no_app: 1, seat: null, system_json: null };
   try {
     await db.insertPlayer(c.env.DB, event.code, row, nowIso());
   } catch (e) {
@@ -897,7 +907,7 @@ async function addBots(c: Ctx, code: string): Promise<number[]> {
   const players = await db.getPlayers(c.env.DB, code);
   const added: number[] = [];
   for (let slot = nextFreeSlot(players); slot !== null; slot = nextFreeSlot(players)) {
-    const row = { player_id: newPlayerId(), slot, name: `Bot ${slot}`, is_creator: 0, is_bot: 1, no_app: 0, seat: null };
+    const row = { player_id: newPlayerId(), slot, name: `Bot ${slot}`, is_creator: 0, is_bot: 1, no_app: 0, seat: null, system_json: null };
     await db.insertPlayer(c.env.DB, code, row, nowIso());
     players.push(row);
     added.push(slot);

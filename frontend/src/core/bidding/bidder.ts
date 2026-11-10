@@ -11,7 +11,19 @@ import { type Position, PASS, gameForced, gameLevel, isBid } from "./position";
 import { NO_RULE } from "./sayc/general";
 import { saycRules } from "./sayc";
 import { callName } from "./sayc/common";
-import { SAYC_DEFAULTS, type SystemSettings } from "./system";
+import { SAYC_DEFAULTS, type SystemSettings, type TableSystems } from "./system";
+import type { DoubleDummySolver } from "../doubleDummy";
+import { type Simulation, type SimulationOptions, simulateHardCall } from "./simulate";
+import { directionOf } from "../types";
+
+/**
+ * The card a call is read and chosen by: one card for the whole table, or one per side (each side's
+ * calls mean what that side's card says).
+ */
+export type Systems = SystemSettings | TableSystems;
+
+/** The card a seat bids by. */
+export const systemFor = (systems: Systems, seat: Seat): SystemSettings => ("NS" in systems ? systems[directionOf(seat)] : systems);
 
 export interface Deal {
   dealer: Seat;
@@ -30,10 +42,12 @@ export interface Decision {
   hard: CallRule["hard"] | null;
   /** No rule fits this position yet; the bot passed or made the cheapest natural bid. */
   fallback: boolean;
+  /** A hard call decided by simulation: the deals, and how each candidate did. */
+  simulation?: Simulation;
 }
 
 /** The position before call number `calls.length`, reading every call so far. */
-export function positionAt(deal: Deal, calls: Call[], settings: SystemSettings = SAYC_DEFAULTS): Position {
+export function positionAt(deal: Deal, calls: Call[], settings: Systems = SAYC_DEFAULTS): Position {
   return readAuction(deal, calls, settings).at(-1)!.position;
 }
 
@@ -48,9 +62,9 @@ export interface ReadStep {
  * Reads the auction call by call: the position each call was made in, what the rules say it means,
  * and what each hand has shown. The last step is the position after the last call.
  */
-export function readAuction(deal: Deal, calls: Call[], settings: SystemSettings = SAYC_DEFAULTS): ReadStep[] {
+export function readAuction(deal: Deal, calls: Call[], settings: Systems = SAYC_DEFAULTS): ReadStep[] {
   let position: Position = {
-    s: settings,
+    s: systemFor(settings, deal.dealer),
     dealer: deal.dealer,
     vul: deal.vul,
     seat: deal.dealer,
@@ -72,6 +86,7 @@ export function readAuction(deal: Deal, calls: Call[], settings: SystemSettings 
     position = {
       ...position,
       seat: nextSeat(position.seat),
+      s: systemFor(settings, nextSeat(position.seat)),
       calls: [...position.calls, call],
       read: [...position.read, read],
       shown: { ...position.shown, [position.seat]: shown },
@@ -116,13 +131,13 @@ function naturalShows(call: Call): ShowsPatch | undefined {
 }
 
 /** The bot's call for this hand at this point in the auction, with its meaning and reason. */
-export function chooseCall(hand: Hand, deal: Deal, calls: Call[], settings: SystemSettings = SAYC_DEFAULTS): Decision {
+export function chooseCall(hand: Hand, deal: Deal, calls: Call[], settings: Systems = SAYC_DEFAULTS): Decision {
   return decide(positionAt(deal, calls, settings), hand);
 }
 
 /** The bot's call for this hand in a position already read. */
 export function decide(p: Position, hand: Hand): Decision {
-  const h = evaluate(hand, p.s.distribution);
+  const h = evaluate(hand);
   const rule = saycRules(p).find((r) => r.when(h));
   if (!rule) {
     return { call: PASS, meaning: "Pass.", reason: "No rule for this position yet, so the bot passed.", name: null, hard: null, fallback: true };
@@ -145,6 +160,8 @@ export interface ReviewedCall {
   read: ReadCall;
   /** What the auction had shown about each hand before this call. */
   shownBefore: Record<Seat, Shown>;
+  /** The position the call was made in (to simulate a hard call for the review). */
+  position: Position;
   /** What the bot would have bid with this seat's hand here (the actual call, for a bot). */
   bot: Decision;
   /** The call matches what the bot would have bid. */
@@ -152,12 +169,12 @@ export interface ReviewedCall {
 }
 
 /** Every call of an auction, explained: its meaning, and what the bot would have bid in that seat. */
-export function reviewAuction(hands: Record<Seat, Hand>, deal: Deal, calls: Call[], settings: SystemSettings = SAYC_DEFAULTS): ReviewedCall[] {
+export function reviewAuction(hands: Record<Seat, Hand>, deal: Deal, calls: Call[], settings: Systems = SAYC_DEFAULTS): ReviewedCall[] {
   return readAuction(deal, calls, settings)
     .filter((step): step is Required<ReadStep> => !!step.read)
     .map(({ position, read }) => {
       const bot = decide(position, hands[position.seat]);
-      return { seat: position.seat, call: read.call, read, shownBefore: position.shown, bot, agrees: sameCall(bot.call, read.call) };
+      return { seat: position.seat, call: read.call, read, shownBefore: position.shown, position, bot, agrees: sameCall(bot.call, read.call) };
     });
 }
 
@@ -165,7 +182,7 @@ export function reviewAuction(hands: Record<Seat, Hand>, deal: Deal, calls: Call
  * The whole auction as the bots would bid it, all four seats (for "watch the bots" and the
  * report). Stops at the end of the auction, or after 60 calls as a safety net.
  */
-export function botAuction(hands: Record<Seat, Hand>, deal: Deal, settings: SystemSettings = SAYC_DEFAULTS): Decision[] {
+export function botAuction(hands: Record<Seat, Hand>, deal: Deal, settings: Systems = SAYC_DEFAULTS): Decision[] {
   const out: Decision[] = [];
   const calls: Call[] = [];
   let p = positionAt(deal, calls, settings);
@@ -175,6 +192,66 @@ export function botAuction(hands: Record<Seat, Hand>, deal: Deal, settings: Syst
     calls.push(d.call);
     if (isAuctionOver(calls)) break;
     p = positionAt(deal, calls, settings);
+  }
+  return out;
+}
+
+// ---- With simulation ------------------------------------------------------------------------------
+
+/**
+ * The bot's call, with any hard call decided by simulation (double dummy over deals that fit the
+ * auction). Without a solver, or when too few deals fit, the rule of thumb stands. On a tie the rule
+ * of thumb's choice stands too.
+ */
+export async function decideWithSimulation(p: Position, hand: Hand, solver: DoubleDummySolver | null, options?: SimulationOptions): Promise<Decision> {
+  const d = decide(p, hand);
+  if (!d.hard || !solver) return d;
+  const sim = await simulateHardCall(p, hand, d.hard.candidates, solver, options);
+  if (!sim) return d;
+  const rule = sim.results.find((r) => sameCall(r.call, d.call));
+  const best = rule && rule.share >= sim.results[0]!.share ? rule.call : sim.best;
+  const chosen = sim.results.find((r) => sameCall(r.call, best))!;
+  const meaning = sameCall(best, d.call) ? d.meaning : (saycRules(p).find((r) => sameCall(r.call, best))?.meaning ?? d.meaning);
+  const others = sim.results
+    .filter((r) => !sameCall(r.call, best))
+    .map((r) => `${callName(r.call)} ${Math.round(r.share * 100)}%`)
+    .join(", ");
+  return {
+    ...d,
+    call: best,
+    meaning,
+    reason: `In ${sim.deals} deals that fit the bidding, ${callName(best)} scored best: ${Math.round(chosen.share * 100)}% of the matchpoints against the other choices (${others})`,
+    simulation: sim,
+  };
+}
+
+/** chooseCall, with any hard call decided by simulation. */
+export async function chooseCallWithSimulation(
+  hand: Hand,
+  deal: Deal,
+  calls: Call[],
+  settings: Systems,
+  solver: DoubleDummySolver | null,
+  options?: SimulationOptions,
+): Promise<Decision> {
+  return decideWithSimulation(positionAt(deal, calls, settings), hand, solver, options);
+}
+
+/** botAuction, with hard calls decided by simulation (for the report). */
+export async function botAuctionWithSimulation(
+  hands: Record<Seat, Hand>,
+  deal: Deal,
+  settings: Systems,
+  solver: DoubleDummySolver,
+  options?: SimulationOptions,
+): Promise<Decision[]> {
+  const out: Decision[] = [];
+  const calls: Call[] = [];
+  for (let i = 0; i < 60 && !isAuctionOver(calls); i++) {
+    const p = positionAt(deal, calls, settings);
+    const d = await decideWithSimulation(p, hands[p.seat], solver, options);
+    out.push(d);
+    calls.push(d.call);
   }
   return out;
 }

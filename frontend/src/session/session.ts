@@ -7,6 +7,7 @@ import { compareBoard, scoreField, type BoardComparison } from "../core/compare"
 import { contractCode, parseContract, tableResult } from "../core/contract";
 import { type Contract, type Seat, type TableResult, directionOf } from "../core/types";
 import type { Game } from "../providers/types";
+import { SAYC_DEFAULTS, type SystemSettings, type TableSystems } from "../core/bidding/system";
 
 export interface StoredResult {
   contract: string; // "4S", "3NTX", "PASS"
@@ -167,4 +168,19 @@ export function tally(session: Session, game: Game): Tally {
     margin: toTenth(rows.reduce((s, r) => s + boardNet(r.comparison.mpPct), 0)),
     totalImps: rows.reduce((s, r) => s + r.comparison.impsVsDatum, 0),
   };
+}
+
+/**
+ * The card each side bids by: the owner's for the owner's side, otherwise the first person on that
+ * side (by place) who sent one; SAYC as it comes when nobody did (a side of bots, say). A bot
+ * partner therefore bids its person's card, and bot opponents bid plain SAYC.
+ */
+export function tableSystems(players: Array<{ seat: Seat | null; isBot: boolean; isCreator: boolean; slot: number; system: SystemSettings | null }>): TableSystems {
+  const cardFor = (side: "NS" | "EW"): SystemSettings => {
+    const people = players
+      .filter((p) => p.seat && directionOf(p.seat) === side && !p.isBot && p.system)
+      .sort((a, b) => Number(b.isCreator) - Number(a.isCreator) || a.slot - b.slot);
+    return people[0]?.system ?? SAYC_DEFAULTS;
+  };
+  return { NS: cardFor("NS"), EW: cardFor("EW") };
 }

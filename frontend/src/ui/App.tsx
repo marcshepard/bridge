@@ -212,6 +212,7 @@ export function App() {
   const install = useInstall();
   const [notice, setNotice] = useState<string | null>(null);
   const [systemOpen, setSystemOpen] = useState(false);
+  const [mySystem, setMySystem] = useState(() => profile.biddingSystem());
   const [leaveError, setLeaveError] = useState<string | null>(null);
 
   /** Back to Home, still holding your seat (you can rejoin with the code). */
@@ -307,7 +308,6 @@ export function App() {
         onPlayed={mergePlay}
         onClaim={mergeClaim}
         onNotice={setNews}
-        onSystem={() => setSystemOpen(true)}
       />
     );
   } else if (snapshot) {
@@ -353,7 +353,20 @@ export function App() {
       <StartGame open={dialog === "start"} name={name} onClose={() => setDialog(null)} onCreated={enter} />
       <Practice open={dialog === "practice"} name={name} onClose={() => setDialog(null)} onCreated={enter} onSystem={() => setSystemOpen(true)} />
       {/* Its own state, so it opens over the practice dialog and closing it goes back there. */}
-      <BiddingSystemDialog open={systemOpen} onClose={() => setSystemOpen(false)} />
+      <BiddingSystemDialog
+        open={systemOpen}
+        onClose={() => setSystemOpen(false)}
+        system={mySystem}
+        onChange={(s) => {
+          profile.setBiddingSystem(s);
+          setMySystem(profile.biddingSystem());
+        }}
+        note={
+          code && snapshot && snapshot.status !== "lobby"
+            ? "Kept on this device. The game you're in keeps the card it started with (see it from a bidding review); changes apply to the next game you start or join."
+            : undefined
+        }
+      />
       <JoinGame
         open={dialog === "join"}
         name={name}

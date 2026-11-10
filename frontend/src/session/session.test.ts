@@ -12,9 +12,12 @@ import {
   nextUnplayed,
   pendingContract,
   sessionFromShared,
+  tableSystems,
   tally,
   toStored,
 } from "./session";
+import { SAYC_DEFAULTS } from "../core/bidding/system";
+import type { Seat } from "../core/types";
 
 const game = parseGameFile(
   JSON.parse(readFileSync(resolve(__dirname, "../../public/games/sample-synthetic-01.json"), "utf-8")),
@@ -102,5 +105,29 @@ describe("sessions", () => {
   it("round-trips a stored result", () => {
     const r = tableResult("4SX", "N", 8);
     expect(toStored(r)).toEqual({ contract: "4SX", declarer: "N", tricks: 8 });
+  });
+});
+
+describe("tableSystems", () => {
+  const mine = { ...SAYC_DEFAULTS, oneNtMin: 16, oneNtMax: 18 };
+  const player = (slot: number, seat: Seat, o: { isBot?: boolean; isCreator?: boolean; system?: typeof mine | null } = {}) => ({
+    slot,
+    seat,
+    isBot: o.isBot ?? false,
+    isCreator: o.isCreator ?? false,
+    system: o.system ?? null,
+  });
+
+  it("gives your side your card, and a side of bots SAYC as it comes", () => {
+    const t = tableSystems([player(1, "S", { isCreator: true, system: mine }), player(2, "W", { isBot: true }), player(3, "N", { isBot: true }), player(4, "E", { isBot: true })]);
+    expect(t.NS).toEqual(mine);
+    expect(t.EW).toEqual(SAYC_DEFAULTS);
+  });
+
+  it("prefers the owner's card on their side, then the first person by place", () => {
+    const other = { ...SAYC_DEFAULTS, weakTwos: false };
+    const t = tableSystems([player(1, "N", { system: other }), player(2, "S", { isCreator: true, system: mine }), player(3, "E", { system: other }), player(4, "W")]);
+    expect(t.NS).toEqual(mine);
+    expect(t.EW).toEqual(other);
   });
 });

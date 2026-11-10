@@ -110,7 +110,7 @@ export function Practice({ open, name, onClose, onCreated, onSystem }: Props) {
                 <Alert severity={noDoubleDummy ? "warning" : "success"}>
                   <strong>{loaded.game.summary.title}</strong>: {loaded.game.boards.length} boards.
                   {noDoubleDummy &&
-                    " Some boards have no double-dummy tricks (Common Game pages don't include them), so their contracts can't be scored yet. The bidding review still works."}
+                    " Some boards have no double-dummy tricks (Common Game pages don't include them): your device works them out after each auction, to score the contract."}
                 </Alert>
                 <TextField select label="Start at board" value={startBoard} onChange={(e) => setStartBoard(Number(e.target.value))}>
                   {loaded.game.boards.map((b) => (

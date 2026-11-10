@@ -17,6 +17,7 @@ import type {
   SeatRequestStatus,
 } from "../../../backend/src/api-types";
 import type { GameFileV1 } from "../providers/gameFile";
+import type { SystemSettings } from "../core/bidding/system";
 
 export type {
   CallDto,
@@ -112,6 +113,12 @@ export interface ProfileStore {
   /** The game this device is in right now, so a reload goes straight back to it. */
   currentGame(): string | null;
   setCurrentGame(code: string | null): void;
+  /**
+   * Your bidding system (SAYC settings). It goes with you into each game you start or join, and is
+   * fixed there once the game starts.
+   */
+  biddingSystem(): SystemSettings;
+  setBiddingSystem(system: SystemSettings): void;
   /** In this practice game, the bots bid your seat too (you watch). */
   botsBidForMe(code: string): boolean;
   setBotsBidForMe(code: string, on: boolean): void;

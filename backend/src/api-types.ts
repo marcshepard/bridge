@@ -2,6 +2,7 @@
 
 import type { Seat } from "../../frontend/src/core/types";
 import type { GameFileV1 } from "../../frontend/src/providers/gameFile";
+import type { SystemSettings } from "../../frontend/src/core/bidding/system";
 
 export type EventStatus = "lobby" | "playing" | "ended";
 
@@ -32,6 +33,11 @@ export interface PublicPlayer {
   isBot: boolean;
   /** Assigned when play starts. */
   seat: Seat | null;
+  /**
+   * Their bidding system (SAYC settings), from their device when they joined; null for SAYC as it
+   * comes (bots, players without the app). Not secret: opponents are entitled to know your agreements.
+   */
+  system: SystemSettings | null;
   /** Has a live connection right now. */
   connected: boolean;
 }
@@ -135,10 +141,14 @@ export interface CreateEventRequest {
   game: GameFileV1;
   startBoard: number;
   mode: GameMode;
+  /** Your bidding system; left out, SAYC as it comes. */
+  system?: SystemSettings;
 }
 /** Joining a game (POST /events/:code/players), or adding a player without the app (the owner). */
 export interface JoinRequest {
   name: string;
+  /** Your bidding system, when joining; left out, SAYC as it comes. */
+  system?: SystemSettings;
 }
 /**
  * Starting bidding practice (POST /events/practice): you as South with three bots, bidding only.
@@ -148,11 +158,14 @@ export interface PracticeRequest {
   name: string;
   game?: GameFileV1;
   startBoard?: number;
+  /** Your bidding system, which your bot partner bids too; left out, SAYC as it comes. */
+  system?: SystemSettings;
 }
 /** Starting a demo game (POST /events/demo). */
 export interface DemoRequest {
   name: string;
   mode: GameMode;
+  system?: SystemSettings;
 }
 /** The owner moves the table to a board (original numbering). */
 export interface CurrentBoardRequest {

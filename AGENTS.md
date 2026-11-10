@@ -52,7 +52,8 @@ frontend/                 Vite + React 19 + MUI 9 + TypeScript (strict). All fro
     store.ts              GameStore and ProfileStore interfaces
     apiGameStore.ts       GameStore on the backend: HTTP API plus a WebSocket for live updates
     localProfile.ts       ProfileStore in localStorage: display name, player IDs, current game
-  src/services.ts         THE wiring point: which stores are used; dev mode and `?as=`
+  src/dds/                Double dummy: DDS in WebAssembly (committed build), Web Worker pool, Node solver
+  src/services.ts         THE wiring point: which stores and the double-dummy solver are used; dev mode and `?as=`
   src/ui/                 React screens/components (MUI). No data access except via services.ts.
     theme.ts              MUI theme: palette (light + dark), typography, component defaults
     controls/             Shared UI controls built on MUI. Reuse these before writing new UI.
@@ -87,7 +88,8 @@ against a running `npm run dev`), and `npm run deploy` (build and publish to Clo
 it, see "Deploying" in README.md).
 
 `npm run bidding-report` in `frontend/` has the bots bid every board of a game file (the demo game
-by default; `-- path/to/file`, `--board N`) and prints each auction with the reason for every call.
+by default; `-- path/to/file`, `--board N`, `--simulate` for hard calls by simulation) and prints each
+auction with the reason for every call.
 
 From the repo root: `python scripts/make_sample_game.py` regenerates the sample game (`--demo`: the
 demo game in `backend/src/demo/`), after

@@ -92,7 +92,7 @@ describe("creating a game", () => {
     expect(snap.json.status).toBe("lobby");
     expect(snap.json.startBoard).toBe(2);
     expect(snap.json.currentBoard).toBe(2);
-    expect(snap.json.players).toEqual([{ slot: 1, name: "Marc", isCreator: true, noApp: false, isBot: false, seat: null, connected: false }]);
+    expect(snap.json.players).toEqual([{ slot: 1, name: "Marc", isCreator: true, noApp: false, isBot: false, seat: null, system: null, connected: false }]);
     expect(snap.json.you).toEqual({ slot: 1, isCreator: true, seat: null });
   });
 
@@ -579,6 +579,27 @@ describe("bidding practice", () => {
     const res = await api<JoinedResponse>("POST", "/events/practice", { name: "Marc" });
     const snap = (await api<EventSnapshot>("GET", `/events/${res.json.code}`, undefined, res.json.playerId)).json;
     expect(snap).toMatchObject({ mode: "bidding", currentBoard: 1 });
+  });
+});
+
+describe("bidding systems", () => {
+  it("keeps each player's card, checked, and shows it in the snapshot", async () => {
+    const created = await api<JoinedResponse>("POST", "/events", { name: "Marc", game, startBoard: 1, mode: "devices", system: { oneNtMin: 16, oneNtMax: 18, weakTwos: false } });
+    const { code } = created.json;
+    // Ann sends a card with a choice the rules don't allow: it's dropped.
+    await api("POST", `/events/${code}/players`, { name: "Ann", system: { negativeDoublesThrough: "9S", michaels: false } });
+    await api("POST", `/events/${code}/players`, { name: "Bob" }); // no card: SAYC as it comes
+    const players = (await api<EventSnapshot>("GET", `/events/${code}`)).json.players;
+    expect(players[0]!.system).toMatchObject({ oneNtMin: 16, oneNtMax: 18, weakTwos: false });
+    expect(players[1]!.system).toMatchObject({ negativeDoublesThrough: "2S", michaels: false });
+    expect(players[2]!.system).toBeNull();
+  });
+
+  it("gives practice your card, and the bots none", async () => {
+    const me = (await api<JoinedResponse>("POST", "/events/practice", { name: "Marc", game, startBoard: 1, system: { weakTwos: false } })).json;
+    const players = (await api<EventSnapshot>("GET", `/events/${me.code}`)).json.players;
+    expect(players.find((p) => p.slot === me.slot)!.system).toMatchObject({ weakTwos: false });
+    expect(players.filter((p) => p.isBot).every((p) => p.system === null)).toBe(true);
   });
 });
 
