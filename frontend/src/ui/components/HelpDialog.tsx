@@ -120,8 +120,10 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
 
       <Heading>Practice with bots</Heading>
       <Typography sx={{ mb: 1 }}>
-        Practise your bidding on your own. You sit South, a bot is your partner, and bots are your opponents.
-        For now you only bid: each board goes from the auction straight to its review.
+        Practise on your own. You sit South, a bot is your partner, and bots are your opponents. Choose{" "}
+        <strong>Bidding only</strong> (each board goes from the auction straight to its review) or{" "}
+        <strong>Bidding and play</strong> (you then play the hand, or defend; when your bot partner declares, you
+        watch as dummy).
       </Typography>
       <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
         <li>
@@ -129,12 +131,12 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           (36 made-up boards), or <strong>Upload a game</strong> (a PBN file or a saved Common Game page).
         </li>
         <li>
-          Choose <strong>I bid South</strong> to bid your own hand, or <strong>Watch the bots</strong> to let them
-          bid all four seats while you read why. You can switch at any time with <strong>Bots bid for me</strong>{" "}
-          on the bidding screen.
+          Choose <strong>I bid South</strong> (or <strong>I play South</strong>) to take your own seat, or{" "}
+          <strong>Watch the bots</strong> to let them do all four seats while you read why. You can switch at any
+          time with the switch on the bidding screen.
         </li>
         <li>
-          When the auction ends, the contract is scored as if everyone then played perfectly (double dummy): for
+          In <strong>Bidding only</strong>, when the auction ends the contract is scored as if everyone then played perfectly (double dummy): for
           example, if 4♠ by North takes 10 tricks with perfect play, it's scored as 4♠ made. When the game file
           doesn't include these trick counts (Common Game pages don't), your device works them out, which takes
           a moment.
@@ -206,6 +208,13 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         <li>
           In a game with bots (robot players), the bots bid and play by themselves, after a short pause so you
           can follow. They bid Standard American Yellow Card (SAYC), the system most club players learn.
+        </li>
+        <li>
+          <strong>How the bots play:</strong> before each card, a bot deals the hands it can't see many times, in
+          ways that fit the bidding and the cards played so far, and works out which card does best with perfect
+          play on most of those deals. It leads and signals by its side's agreements (on the Bidding system page,
+          under <strong>Leads and signals</strong>). When you claim, a bot checks your claim the same way and
+          refuses it if it could fail; when the rest of the tricks are surely its side's, a bot claims.
         </li>
         <li>
           <strong>Your bidding system:</strong> tap your initial at the top right, then <strong>Bidding system</strong>,

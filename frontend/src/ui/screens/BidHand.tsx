@@ -44,7 +44,7 @@ interface Props {
   /** The card each side bids by. */
   systems: TableSystems;
   /** Bidding practice: the "Bots bid for me" switch. */
-  watch?: { on: boolean; onChange: (on: boolean) => void };
+  watch?: { on: boolean; onChange: (on: boolean) => void; label?: string };
   /** The calls so far, in order. */
   calls: Call[];
   /** Sends a call (`seq` is its number in the auction, from 1); rejects with the reason if it's refused. */
@@ -161,7 +161,7 @@ export function BidHand(p: Props) {
         <FormControlLabel
           sx={{ mt: 1 }}
           control={<Switch checked={p.watch.on} onChange={(e) => p.watch!.onChange(e.target.checked)} />}
-          label="Bots bid for me"
+          label={p.watch.label ?? "Bots bid for me"}
         />
       )}
 

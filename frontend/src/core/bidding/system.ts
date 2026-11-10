@@ -15,6 +15,12 @@ export type ThreeNtOpening = "balanced" | "gambling";
 export type NtDoubled = "on" | "off";
 /** After they overcall 2♣ over our 1NT: double is Stayman ("stolen bid"), or everything natural. */
 export type NtTwoClubs = "stolen" | "natural";
+/** From AK, lead the ace or the king. */
+export type LeadFromAk = "A" | "K";
+/** From a long suit with no sequence: fourth best, or third best from an even number and lowest from an odd. */
+export type LengthLeads = "fourth" | "thirdFifth";
+/** Standard: a high card encourages (or shows an even number); upside-down: a low card does. */
+export type SignalStyle = "standard" | "upsideDown";
 
 export interface SystemSettings {
   system: "SAYC";
@@ -43,6 +49,10 @@ export interface SystemSettings {
   threeNt: ThreeNtOpening;
   ntDoubled: NtDoubled;
   ntTwoClubs: NtTwoClubs;
+  leadFromAk: LeadFromAk;
+  lengthLeads: LengthLeads;
+  attitude: SignalStyle;
+  count: SignalStyle;
   /** 2NT over a major opening: game forcing raise with 4+ support. */
   jacoby2Nt: boolean;
   /** Jump to the four level in a short suit as a raise of partner's major. */
@@ -84,6 +94,10 @@ export const SAYC_DEFAULTS: SystemSettings = {
   threeNt: "balanced",
   ntDoubled: "on",
   ntTwoClubs: "natural",
+  leadFromAk: "A",
+  lengthLeads: "fourth",
+  attitude: "standard",
+  count: "standard",
   jacoby2Nt: true,
   splinters: false,
   invertedMinors: false,
@@ -338,6 +352,79 @@ export const SETTING_FIELDS: SettingField[] = [
     editable: false,
   },
 
+  {
+    kind: "choice",
+    id: "leadFromAk",
+    group: "Leads and signals",
+    label: "Lead from AK",
+    options: [
+      { value: "A", label: "Ace" },
+      { value: "K", label: "King" },
+    ],
+    get: (s) => s.leadFromAk,
+    set: (s, v) => ({ ...s, leadFromAk: v as LeadFromAk }),
+    help: () => "",
+    built: true,
+    editable: true,
+  },
+  {
+    kind: "fixed",
+    id: "sequences",
+    group: "Leads and signals",
+    label: "Sequences",
+    value: () => "Top card",
+    help: () => "From KQJ lead the K, from QJ10 the Q; from an interior sequence (KJ10, Q109) the top of the touching cards: J, 10.",
+    built: true,
+    editable: false,
+  },
+  {
+    kind: "choice",
+    id: "lengthLeads",
+    group: "Leads and signals",
+    label: "Leads from length",
+    options: [
+      { value: "fourth", label: "Fourth best" },
+      { value: "thirdFifth", label: "Third and fifth" },
+    ],
+    get: (s) => s.lengthLeads,
+    set: (s, v) => ({ ...s, lengthLeads: v as LengthLeads }),
+    help: (s) =>
+      s.lengthLeads === "fourth"
+        ? "From a suit of four or more with an honour, the fourth card from the top. From a doubleton, the top card."
+        : "From a suit with an honour, the third card from the top with an even number of cards, the lowest with an odd number. From a doubleton, the top card.",
+    built: true,
+    editable: true,
+  },
+  {
+    kind: "choice",
+    id: "attitude",
+    group: "Leads and signals",
+    label: "Attitude",
+    options: [
+      { value: "standard", label: "High encourages" },
+      { value: "upsideDown", label: "Low encourages" },
+    ],
+    get: (s) => s.attitude,
+    set: (s, v) => ({ ...s, attitude: v as SignalStyle }),
+    help: () => "When partner leads a suit, and for your first discard: whether you'd like the suit continued.",
+    built: true,
+    editable: true,
+  },
+  {
+    kind: "choice",
+    id: "count",
+    group: "Leads and signals",
+    label: "Count",
+    options: [
+      { value: "standard", label: "High-low: even" },
+      { value: "upsideDown", label: "Low-high: even" },
+    ],
+    get: (s) => s.count,
+    set: (s, v) => ({ ...s, count: v as SignalStyle }),
+    help: () => "When declarer leads a suit: whether you hold an even or odd number of cards in it.",
+    built: true,
+    editable: true,
+  },
   {
     kind: "fixed",
     id: "blackwood",

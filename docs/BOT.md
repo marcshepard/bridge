@@ -222,7 +222,8 @@ core/bidding/      pure, no I/O, used by the devices (to bid for bots, and for r
      file has no double dummy.
    Gaps in the bidding (conventions not used yet, judgment calls, sharper simulation) are listed in
    the backlog, to take on as feedback comes in.
-4. **Card play by sampling,** replacing today's simple rules.
+4. **Card play by sampling** (built, being tested by hand; details below), replacing the simple rules
+   (kept for devices without double dummy).
 5. **Play review** after the board, then feedback as you go and take-backs.
 6. **Bots on the fastest device,** with a backend fallback; bots in games with people ("Add a bot"
    in the lobby).
@@ -256,3 +257,36 @@ core/bidding/      pure, no I/O, used by the devices (to bid for bots, and for r
 - **Kept on the backend:** a board's auction stays in the snapshot once its result is in (it used
   to be dropped), so reviews work after a reload. Practice games are a new game type, "bidding
   only", created with three bots already seated.
+
+### Stage 4
+
+- **Choosing a card:** deal the hands the bot can't see, many times, keeping deals that fit what it
+  knows; solve every legal card on each with DDS (a new entry point: every card from a position in
+  the middle of a trick); play the card that's best on the most deals (matchpoints), ties broken by
+  average tricks. The same engine plays declarer (and dummy) and defence.
+- **What a bot knows:** its own hand; dummy after the opening lead; every card played and who has
+  shown out of a suit (hard facts); what the bidding showed (HCP and suit-length ranges, each side
+  read by its own card).
+- **Light bidding and false cards, by weight:** a deal that fits what a hand's bids showed counts in
+  full; one a little outside (up to 2 HCP light or heavy, a card short or long in a suit) counts a
+  third; further off, it's left out. So the bot allows for light openings and overcalls without
+  trusting them blindly, and always finds enough deals.
+- **Which of equal cards:** double dummy can't tell ♠Q from ♠J in ♠QJ. Sampling picks the group of
+  equal cards; rules pick the card in it: the opening lead by the leading agreements (top of a
+  sequence, A or K from AK, fourth best or third and fifth), a defender's card by the signalling
+  agreements (attitude when partner leads, count when declarer leads, the first discard), declarer
+  the lowest. When leads score within a whisker, partner's suit is preferred.
+- **Leads and signals** are on the card (the Bidding system page), with SAYC defaults; each side's
+  bots defend by their side's card.
+- **Claims:** a bot answers a claim by checking it on its deals (the claimer's hand is shown): it
+  accepts if the claimer's side takes the tricks claimed on every one, and refuses otherwise. A bot
+  declarer claims when the rest of the tricks are its side's on every deal.
+- **Repeatable:** seeded from the deal and the cards so far, so the play review (stage 5) can run a
+  decision again.
+- **Speed:** no solving when only one card is legal or all legal cards are equal; fewer deals as
+  the hand goes on is cheap anyway. It runs on the owner's device, in the bot's pause.
+- **Practice: Bidding and play**, with bots in the other three seats; when your bot partner
+  declares, you watch as dummy.
+- **Known limits** (as for bidding, listed rather than fixed now): double dummy assumes it will know
+  later what it has to guess now, and never plays for an opponent's mistake.
+

@@ -17,6 +17,7 @@ import type {
   SeatRequestStatus,
 } from "../../../backend/src/api-types";
 import type { GameFileV1 } from "../providers/gameFile";
+import type { Seat } from "../core/types";
 import type { SystemSettings } from "../core/bidding/system";
 
 export type {
@@ -53,7 +54,7 @@ export interface GameStore {
    * Start bidding practice: you as South with three bots, bidding only (each contract is scored
    * double dummy). On `game`, or the built-in demo game when null. Returns its join code.
    */
-  createPractice(name: string, game: GameFileV1 | null, startBoard: number | null): Promise<string>;
+  createPractice(name: string, game: GameFileV1 | null, startBoard: number | null, play?: boolean): Promise<string>;
   /** Join a game that hasn't started; returns its normalised join code. */
   join(code: string, name: string): Promise<string>;
   /** Everything about a game, including `you` when this device is one of its players. */
@@ -80,9 +81,9 @@ export interface GameStore {
   /** Play a card ("SA") as card number `seq` (1–52) on the board. Rejects with the reason if refused. */
   playCard(code: string, board: number, seq: number, card: string): Promise<PlayDto>;
   /** Claim this many of the tricks left on the board, for your side. */
-  claim(code: string, board: number, tricks: number): Promise<ClaimDto>;
+  claim(code: string, board: number, tricks: number, seat?: Seat): Promise<ClaimDto>;
   /** Accept or refuse the claim on the board (the claimer's opponents). Null once refused. */
-  answerClaim(code: string, board: number, accept: boolean): Promise<ClaimDto | null>;
+  answerClaim(code: string, board: number, accept: boolean, seat?: Seat): Promise<ClaimDto | null>;
   /** The claimer takes their claim back. */
   withdrawClaim(code: string, board: number): Promise<void>;
   /**

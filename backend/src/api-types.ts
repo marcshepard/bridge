@@ -160,6 +160,8 @@ export interface PracticeRequest {
   startBoard?: number;
   /** Your bidding system, which your bot partner bids too; left out, SAYC as it comes. */
   system?: SystemSettings;
+  /** Play the cards too (a game played on the devices); left out, bidding only. */
+  play?: boolean;
 }
 /** Starting a demo game (POST /events/demo). */
 export interface DemoRequest {
@@ -198,12 +200,18 @@ export interface PlayCardRequest {
   card: string;
 }
 
-/** Claim this many of the tricks still to play, for your side. */
+/**
+ * Claim this many of the tricks still to play, for your side. `seat`: the owner claiming for a bot
+ * (its seat); left out, for yourself.
+ */
 export interface ClaimRequest {
   tricks: number;
+  seat?: Seat;
 }
+/** Accept or refuse a claim. `seat`: the owner answering for a bot (its seat); left out, for yourself. */
 export interface AnswerClaimRequest {
   accept: boolean;
+  seat?: Seat;
 }
 
 /**

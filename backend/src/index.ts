@@ -197,17 +197,17 @@ app.post("/events/demo", async (c) => {
 });
 
 /**
- * Bidding practice: you as South, bots in the other three seats, on your game file or the built-in
- * demo game. No lobby: seats are set and the first board's auction starts straight away. Each board
- * is only bid; its contract is scored double dummy. Bots are allowed in the live app here, as in
- * the demo: it's a game for one person.
+ * Practice with bots: you as South, bots in the other three seats, on your game file or the built-in
+ * demo game. No lobby: seats are set and the first board's auction starts straight away. Bidding
+ * only (each contract scored double dummy), or, with `play`, bid and played on the devices. Bots
+ * are allowed in the live app here, as in the demo: it's a game for one person.
  */
 app.post("/events/practice", async (c) => {
   if (Number(c.req.header("Content-Length") ?? 0) > MAX_GAME_BYTES) throw new HttpError(413, "Game file too large");
   const req = await body<PracticeRequest>(c);
   const file = req.game ?? (demoGame as unknown as GameFileV1);
   // From the first board unless asked otherwise (not the demo's board 9: practice is for working through a game).
-  const joined = await createEvent(c, cleanName(req.name), file, req.startBoard, "bidding", systemJson(req.system));
+  const joined = await createEvent(c, cleanName(req.name), file, req.startBoard, req.play ? "devices" : "bidding", systemJson(req.system));
   await addBots(c, joined.code);
   // You're South; your partner North and the opponents are bots (slots 2–4 in join order).
   await db.setSeatsAndStart(c.env.DB, joined.code, new Map<number, Seat>([[1, "S"], [2, "W"], [3, "N"], [4, "E"]]));
@@ -640,30 +640,41 @@ app.post("/events/:code/boards/:board/cards", async (c) => {
 });
 
 /**
+ * The seat a claim or an answer is for: the caller's own, or (the owner only) a bot's, named in the
+ * request. Throws unless it's allowed.
+ */
+function actingSeat(me: db.PlayerRow, players: db.PlayerRow[], requested: unknown): Seat {
+  if (requested === undefined || requested === null || requested === me.seat) {
+    if (!me.seat) throw new HttpError(403, "You're not at the table");
+    return me.seat;
+  }
+  const bot = players.find((p) => p.seat === requested && p.is_bot === 1);
+  if (!bot || me.is_creator !== 1) throw new HttpError(403, "Only the game's owner acts for a bot");
+  return bot.seat!;
+}
+
+/**
  * Claim: say how many of the tricks still to play your side will take. Your cards are shown to
- * everyone, and play stops until it's answered. Declarer or a defender can claim (not dummy).
+ * everyone, and play stops until it's answered. Declarer or a defender can claim (not dummy). The
+ * owner's device claims for a bot, and answers for bots: they check a claim before accepting it.
  */
 app.post("/events/:code/boards/:board/claim", async (c) => {
   const event = await loadEvent(c);
   const players = await db.getPlayers(c.env.DB, event.code);
   const me = caller(c, players);
-  const { board, result, declarer, claim, state } = await liveBoard(c, event);
-  if (!me.seat || me.seat === dummyOf(declarer)) throw new HttpError(403, "Dummy can't claim");
+  const { board, declarer, claim, state } = await liveBoard(c, event);
+  const req = await body<ClaimRequest>(c);
+  const seat = actingSeat(me, players, req.seat);
+  if (seat === dummyOf(declarer)) throw new HttpError(403, "Dummy can't claim");
   if (claim) throw new HttpError(409, "There's already a claim");
   if (isComplete(state)) throw new HttpError(409, "All the cards have been played");
-  const req = await body<ClaimRequest>(c);
   const left = tricksLeft(state);
   if (!Number.isInteger(req.tricks) || req.tricks < 0 || req.tricks > left) {
     throw new HttpError(400, `Claim between 0 and ${left} tricks`);
   }
-  // Bots accept every claim straight away.
-  const bots = claimAnswerers(me.seat, declarer).filter((s) => players.some((p) => p.seat === s && p.is_bot === 1));
-  const made: ClaimDto = { board: board.number, seat: me.seat, tricks: req.tricks, acceptedBy: bots };
+  const made: ClaimDto = { board: board.number, seat, tricks: req.tricks, acceptedBy: [] };
   await db.insertClaim(c.env.DB, event.code, made, nowIso());
-  if (bots.length) await db.setClaimAccepted(c.env.DB, event.code, board.number, bots);
   await push(c, event.code, { type: "claim", board: board.number, claim: made });
-  // Against bots alone, the claim is accepted at once: that's the result.
-  if (claimAccepted(made, declarer)) await finishBoard(c, event.code, result, finalTricks(state, made)!, me.slot);
   return c.json(made);
 });
 
@@ -674,20 +685,22 @@ app.post("/events/:code/boards/:board/claim", async (c) => {
  */
 app.post("/events/:code/boards/:board/claim/answer", async (c) => {
   const event = await loadEvent(c);
-  const me = caller(c, await db.getPlayers(c.env.DB, event.code));
+  const players = await db.getPlayers(c.env.DB, event.code);
+  const me = caller(c, players);
   const { board, result, declarer, claim, state } = await liveBoard(c, event);
   if (!claim) throw new HttpError(409, "There's no claim to answer");
   if (claimAccepted(claim, declarer)) throw new HttpError(409, "The claim has already been accepted");
-  if (!me.seat || !claimAnswerers(claim.seat, declarer).includes(me.seat)) {
+  const req = await body<AnswerClaimRequest>(c);
+  const seat = actingSeat(me, players, req.seat);
+  if (!claimAnswerers(claim.seat, declarer).includes(seat)) {
     throw new HttpError(403, "Only the claimer's opponents answer a claim");
   }
-  const req = await body<AnswerClaimRequest>(c);
   if (!req.accept) {
     await db.deleteClaim(c.env.DB, event.code, board.number);
     await push(c, event.code, { type: "claim", board: board.number, claim: null });
     return c.json(null);
   }
-  const answered: ClaimDto = { ...claim, acceptedBy: [...new Set([...claim.acceptedBy, me.seat])] };
+  const answered: ClaimDto = { ...claim, acceptedBy: [...new Set([...claim.acceptedBy, seat])] };
   await db.setClaimAccepted(c.env.DB, event.code, board.number, answered.acceptedBy);
   await push(c, event.code, { type: "claim", board: board.number, claim: answered });
   if (claimAccepted(answered, declarer)) await finishBoard(c, event.code, result, finalTricks(state, answered)!, me.slot);

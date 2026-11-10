@@ -2,7 +2,7 @@
 // needed. A batch of contracts is split between them, so a simulation of many deals runs on several
 // processor cores at once while the page stays responsive.
 
-import type { DoubleDummyJob, DoubleDummySolver, DoubleDummyTable } from "../core/doubleDummy";
+import type { CardPlayJob, CardScore, DoubleDummyJob, DoubleDummySolver, DoubleDummyTable } from "../core/doubleDummy";
 import type { Hand, Seat } from "../core/types";
 import type { WorkerRequest, WorkerResponse, WorkerTask } from "./worker";
 
@@ -42,22 +42,30 @@ export class WorkerPoolSolver implements DoubleDummySolver {
     });
   }
 
-  async tricks(jobs: DoubleDummyJob[]): Promise<number[]> {
+  /** Splits a batch between the workers: each takes the next chunk as soon as it's free. */
+  private async spread<J, R>(jobs: J[], run: (w: Worker, chunk: J[]) => Promise<R[]>): Promise<R[]> {
     const workers = this.pool();
-    const results = new Array<number>(jobs.length);
+    const results = new Array<R>(jobs.length);
     let next = 0;
-    // Each worker takes the next chunk as soon as it's free.
     await Promise.all(
       workers.map(async (w) => {
         while (next < jobs.length) {
           const start = next;
           next += CHUNK;
-          const out = (await this.send(w, { kind: "tricks", jobs: jobs.slice(start, start + CHUNK) })) as number[];
-          out.forEach((t, i) => (results[start + i] = t));
+          const out = await run(w, jobs.slice(start, start + CHUNK));
+          out.forEach((r, i) => (results[start + i] = r));
         }
       }),
     );
     return results;
+  }
+
+  tricks(jobs: DoubleDummyJob[]): Promise<number[]> {
+    return this.spread(jobs, async (w, chunk) => (await this.send(w, { kind: "tricks", jobs: chunk })) as number[]);
+  }
+
+  cards(jobs: CardPlayJob[]): Promise<CardScore[][]> {
+    return this.spread(jobs, async (w, chunk) => (await this.send(w, { kind: "cards", jobs: chunk })) as CardScore[][]);
   }
 
   async table(hands: Record<Seat, Hand>): Promise<DoubleDummyTable> {

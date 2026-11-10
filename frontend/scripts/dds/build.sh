@@ -28,8 +28,8 @@ SOURCES+=("$HERE/bridge_dds.cpp")
   -sINITIAL_MEMORY=67108864 \
   -sSTACK_SIZE=8388608 \
   -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createDdsModule \
-  -sEXPORTED_FUNCTIONS="['_bd_table','_bd_tricks','_malloc','_free']" \
-  -sEXPORTED_RUNTIME_METHODS="['getValue','stringToUTF8']" \
+  -sEXPORTED_FUNCTIONS="['_bd_table','_bd_tricks','_bd_cards','_malloc','_free']" \
+  -sEXPORTED_RUNTIME_METHODS="['getValue','setValue','stringToUTF8']" \
   -sENVIRONMENT=web,worker,node \
   -o "$OUT/dds.js"
 

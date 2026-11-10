@@ -1,6 +1,6 @@
 // Practice with bots: you as South, bots in the other three seats, on the built-in game or a game
-// file you upload. For now, bidding only: each board goes from its auction to the bidding review.
-// You can bid your own seat, or watch the bots bid all four.
+// file you upload. Bidding only (each board goes from its auction to the bidding review), or bidding
+// and play. You can bid (and play) your own seat, or watch the bots do all four.
 
 import { Alert, Button, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useState } from "react";
@@ -28,6 +28,7 @@ export function Practice({ open, name, onClose, onCreated, onSystem }: Props) {
   const [loaded, setLoaded] = useState<{ fileName: string; file: GameFileV1; game: Game } | null>(null);
   const [startBoard, setStartBoard] = useState(1);
   const [who, setWho] = useState<Who>("me");
+  const [what, setWhat] = useState<"bidding" | "play">("bidding");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -48,7 +49,7 @@ export function Practice({ open, name, onClose, onCreated, onSystem }: Props) {
     setBusy(true);
     setError(null);
     try {
-      const code = await games.createPractice(name, source === "upload" ? loaded!.file : null, source === "upload" ? startBoard : null);
+      const code = await games.createPractice(name, source === "upload" ? loaded!.file : null, source === "upload" ? startBoard : null, what === "play");
       profile.setBotsBidForMe(code, who === "bots");
       onCreated(code);
     } catch (e) {
@@ -126,11 +127,11 @@ export function Practice({ open, name, onClose, onCreated, onSystem }: Props) {
 
         <ChoiceGroup<"bidding" | "play">
           label="What to practise"
-          value="bidding"
-          onChange={() => {}}
+          value={what}
+          onChange={setWhat}
           choices={[
             { value: "bidding", label: "Bidding only", sub: "Straight to the review" },
-            { value: "play", label: "Bidding and play", sub: "Coming later", disabled: true },
+            { value: "play", label: "Bidding and play", sub: "Then play or defend" },
           ]}
         />
 
@@ -139,12 +140,13 @@ export function Practice({ open, name, onClose, onCreated, onSystem }: Props) {
           value={who}
           onChange={setWho}
           choices={[
-            { value: "me", label: "I bid South", sub: "The bots bid the rest" },
-            { value: "bots", label: "Watch the bots", sub: "They bid all four seats" },
+            { value: "me", label: what === "play" ? "I play South" : "I bid South", sub: "The bots take the rest" },
+            { value: "bots", label: "Watch the bots", sub: what === "play" ? "They bid and play all four" : "They bid all four seats" },
           ]}
         />
         <Typography variant="body2" color="text.secondary">
           You can switch between these at any time with <strong>Bots bid for me</strong> on the bidding screen.
+          {what === "play" && " It covers the play too."}
         </Typography>
 
         <Button variant="outlined" onClick={onSystem} sx={{ alignSelf: "flex-start" }}>

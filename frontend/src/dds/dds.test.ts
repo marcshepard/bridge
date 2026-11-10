@@ -22,3 +22,39 @@ describe("double dummy (DDS in WebAssembly)", () => {
     jobs.forEach((j, i) => expect(tricks[i], `${j.declarer} ${j.strain}`).toBe(b.doubleDummy!.tricks![j.declarer][j.strain]));
   });
 });
+
+describe("every card from a position", () => {
+  it("scores each opening lead; the best equals the defence's tricks in the table", async () => {
+    const b = boards[0]!;
+    const table = await solver.table(b.hands);
+    const [scores] = await solver.cards([{ hands: b.hands, trump: "H", leader: "S", trick: [] }]);
+    const sCards = Object.values(b.hands.S).join("").length;
+    expect(scores!.length).toBe(sCards); // every card of South's, equal ones listed one by one
+    expect(Math.max(...scores!.map((s) => s.tricks))).toBe(13 - table.E.H);
+  });
+
+  it("solves part-way through a trick", async () => {
+    const b = boards[0]!;
+    // South leads a card; now West (next) is to play: it scores for East–West's side.
+    const [leads] = await solver.cards([{ hands: b.hands, trump: "H", leader: "S", trick: [] }]);
+    const lead = leads![0]!.card;
+    const hands = { ...b.hands, S: { ...b.hands.S, [lead.suit]: b.hands.S[lead.suit].replace(lead.rank, "") } };
+    const [follows] = await solver.cards([{ hands, trump: "H", leader: "S", trick: [lead] }]);
+    // West's best play leaves North–South with what the lead was worth.
+    expect(13 - Math.max(...follows!.map((s) => s.tricks))).toBe(leads![0]!.tricks);
+  });
+});
+
+describe("freak deals", () => {
+  it("solves a contract when each hand is nearly one suit (DDS 3.1.1's quick mode gets these wrong)", async () => {
+    const hands = {
+      N: { S: "AKQJT9876543", H: "2", D: "", C: "" },
+      E: { S: "2", H: "AKQJT9876543", D: "", C: "" },
+      S: { S: "", H: "", D: "", C: "AKQJT98765432" },
+      W: { S: "", H: "", D: "AKQJT98765432", C: "" },
+    };
+    const table = await solver.table(hands);
+    const [tricks] = await solver.tricks([{ hands, strain: "H", declarer: "E" }]);
+    expect(tricks).toBe(table.E.H);
+  });
+});

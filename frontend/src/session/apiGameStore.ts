@@ -28,6 +28,7 @@ import type {
   SeatRequestStatus,
 } from "../../../backend/src/api-types";
 import type { GameFileV1 } from "../providers/gameFile";
+import type { Seat } from "../core/types";
 import type { GameStore, LiveMessage, ProfileStore } from "./store";
 
 /** A request the backend turned down, with its own plain-English reason. */
@@ -99,8 +100,8 @@ export class ApiGameStore implements GameStore {
     return this.remember(await this.request<JoinedResponse>("POST", "/events/demo", undefined, req));
   }
 
-  async createPractice(name: string, game: GameFileV1 | null, startBoard: number | null): Promise<string> {
-    const req: PracticeRequest = { name, ...(game && { game }), ...(startBoard !== null && { startBoard }), system: this.profile.biddingSystem() };
+  async createPractice(name: string, game: GameFileV1 | null, startBoard: number | null, play = false): Promise<string> {
+    const req: PracticeRequest = { name, ...(game && { game }), ...(startBoard !== null && { startBoard }), system: this.profile.biddingSystem(), ...(play && { play }) };
     return this.remember(await this.request<JoinedResponse>("POST", "/events/practice", undefined, req));
   }
 
@@ -162,13 +163,15 @@ export class ApiGameStore implements GameStore {
     return this.request<PlayDto>("POST", `/events/${code}/boards/${board}/cards`, code, body);
   }
 
-  claim(code: string, board: number, tricks: number): Promise<ClaimDto> {
-    const body: ClaimRequest = { tricks };
+  /** `seat`: the owner claiming for a bot. */
+  claim(code: string, board: number, tricks: number, seat?: Seat): Promise<ClaimDto> {
+    const body: ClaimRequest = { tricks, ...(seat && { seat }) };
     return this.request<ClaimDto>("POST", `/events/${code}/boards/${board}/claim`, code, body);
   }
 
-  answerClaim(code: string, board: number, accept: boolean): Promise<ClaimDto | null> {
-    const body: AnswerClaimRequest = { accept };
+  /** `seat`: the owner answering for a bot. */
+  answerClaim(code: string, board: number, accept: boolean, seat?: Seat): Promise<ClaimDto | null> {
+    const body: AnswerClaimRequest = { accept, ...(seat && { seat }) };
     return this.request<ClaimDto | null>("POST", `/events/${code}/boards/${board}/claim/answer`, code, body);
   }
 

@@ -73,7 +73,7 @@ interface Props {
     /** The card each side bids by. */
     systems: TableSystems;
     /** Bidding practice: the "Bots bid for me" switch. */
-    watch?: { on: boolean; onChange: (on: boolean) => void };
+    watch?: { on: boolean; onChange: (on: boolean) => void; label?: string };
     calls: Call[];
     onCall: (seq: number, call: Call) => Promise<void>;
   } | null;
@@ -100,11 +100,13 @@ interface Props {
     playsForBots: boolean;
     /** The auction, when the board was bid on the devices. */
     calls: Call[];
+    /** The card each side bids and signals by. */
+    systems: TableSystems;
     cards: Card[];
     claim: Claim | null;
     onPlay: (seq: number, card: Card) => Promise<void>;
-    onClaim: (tricks: number) => Promise<void>;
-    onAnswerClaim: (accept: boolean) => Promise<void>;
+    onClaim: (tricks: number, seat?: Seat) => Promise<void>;
+    onAnswerClaim: (accept: boolean, seat?: Seat) => Promise<void>;
     onWithdrawClaim: () => Promise<void>;
   } | null;
   /** Correct the result (the owner only; without it the result is plain text). */
@@ -211,6 +213,7 @@ export function PlayBoard(p: Props) {
           bots={p.play.bots}
           playsForBots={p.play.playsForBots}
           calls={p.play.calls}
+          systems={p.play.systems}
           cards={p.play.cards}
           claim={p.play.claim}
           onPlay={p.play.onPlay}

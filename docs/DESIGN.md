@@ -470,9 +470,10 @@ the owner (the bots need nothing).
 
 Bots are marked (`players.is_bot`, `isBot` in the snapshot; migration 0006). When a board's cards
 are played on the devices, the creator's device plays the bots' cards after a two-second pause,
-using the robot rules in `core/bot.ts` (second hand low, third hand high, win cheaply fourth hand,
-ruff low, discard from the shortest suit, standard opening leads, else random); the backend lets
-the creator play a bot's turn, and a bot declarer's dummy. Bots accept every claim straight away.
+chosen by sampling with double dummy (`core/cardplay/`, see [BOT.md](BOT.md); the simple rules in
+`core/bot.ts` where double dummy isn't available); the backend lets the creator play a bot's turn,
+and a bot declarer's dummy. The creator's device also answers claims for bots (each bot checks the
+claim on its deals first) and claims for them (when their side's tricks are certain).
 The same goes for dev test players. A person who takes over a bot's seat stops being a bot.
 
 ### Dev mode: simulated players
@@ -575,8 +576,8 @@ the player with `isCreator`; there's no separate host key.
 | `POST /api/events/:code/boards/:board/play` | Owner | Start a board on the devices by hand: its auction, or its cards when the contract is already in (one board at a time) |
 | `POST /api/events/:code/boards/:board/calls` | The player whose turn it is (the creator for a bot) | `{ seq, call }`: make a call ("1H", "3NT", "PASS", "X", "XX"). `seq` is its number in the auction, so a double tap can't call twice. Checked with `core/auction.ts`; the last pass saves the contract (or the passed-out result) |
 | `POST /api/events/:code/boards/:board/cards` | The player whose turn it is (declarer for dummy) | `{ seq, card }`: play a card. `seq` is its number on the board, so a double tap can't play twice. Checked with `core/play.ts` |
-| `POST /api/events/:code/boards/:board/claim` | A player, not dummy | `{ tricks }`: claim that many of the tricks left. Play stops until it's answered |
-| `POST /api/events/:code/boards/:board/claim/answer` | The claimer's opponents, not dummy | `{ accept }`. A refusal ends the claim |
+| `POST /api/events/:code/boards/:board/claim` | A player, not dummy (the owner for a bot) | `{ tricks, seat? }`: claim that many of the tricks left (`seat`: the bot's). Play stops until it's answered |
+| `POST /api/events/:code/boards/:board/claim/answer` | The claimer's opponents, not dummy (the owner for a bot) | `{ accept, seat? }`. A refusal ends the claim |
 | `DELETE /api/events/:code/boards/:board/claim` | The claimer | Take the claim back (until it's accepted) |
 | `GET /api/events/:code/results?since=` | A player | Results changed at or after a timestamp, and the current board (catching up after a reconnect) |
 | `POST /api/events/:code/end` | Owner | End the game |
@@ -584,7 +585,7 @@ the player with `isCreator`; there's no separate host key.
 | `POST /api/events/:code/live-ticket` | A player | `{ ticket }`: a single-use pass to open the WebSocket, valid for a minute. Browsers can't send headers on a WebSocket, and the secret `playerId` mustn't appear in an address (addresses end up in logs) |
 | `GET /api/events/:code/live?ticket=` | A player (with a pass) | WebSocket for pushed updates |
 | `POST /api/events/:code/test-players` | Dev only | Fill the empty places with test players |
-| `POST /api/events/practice` | Anyone | `{ name, game?, startBoard?, system? }` → bidding practice: you as South with three bots, bidding only, on `game` or the built-in demo game, from its first board unless `startBoard` says otherwise |
+| `POST /api/events/practice` | Anyone | `{ name, game?, startBoard?, system?, play? }` → practice: you as South with three bots, bidding only (or, with `play`, bid and played on the devices), on `game` or the built-in demo game, from its first board unless `startBoard` says otherwise |
 | `POST /api/events/demo` | Anyone | `{ name, mode }` → a demo game (the built-in made-up game from board 9) with three bots; you're the owner. The frontend asks for `cards` |
 
 Every write is validated in the Worker with the same `core/` functions the frontend uses (contract

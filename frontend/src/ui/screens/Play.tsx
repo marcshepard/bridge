@@ -65,14 +65,16 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
   const order = session.boardOrder;
   const isOwner = snapshot.you?.isCreator ?? false;
   const practice = snapshot.mode === "bidding";
-  // In practice, the bots can bid your seat too (remembered on this device, per game).
-  const [watch, setWatch] = useState(() => practice && profile.botsBidForMe(snapshot.code));
   const bots = snapshot.players.filter((pl) => pl.isBot && pl.seat).map((pl) => pl.seat!);
+  // On your own with three bots (practice): the bots can bid, and play, your seat too
+  // (remembered on this device, per game).
+  const withBotsOnly = isOwner && bots.length === 3;
+  const [watch, setWatch] = useState(() => withBotsOnly && profile.botsBidForMe(snapshot.code));
   // The card each side bids by (fixed when the game started), for the bots and the review.
   const systems = useMemo(() => tableSystems(snapshot.players), [snapshot.players]);
   const [cardsOpen, setCardsOpen] = useState(false);
   // The owner's device makes the bots' calls (and yours, when you're watching them).
-  const autoSeats: Seat[] = isOwner ? [...bots, ...(practice && watch ? [seat] : [])] : [];
+  const autoSeats: Seat[] = isOwner ? [...bots, ...(withBotsOnly && watch ? [seat] : [])] : [];
   const tableBoard = snapshot.currentBoard;
   // The owner looking back at an earlier board (from the tally); everyone else stays on the table's.
   const [lookingAt, setLookingAt] = useState<number | null>(null);
@@ -265,8 +267,9 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
                 bots,
                 autoSeats,
                 systems,
-                ...(practice && {
+                ...(withBotsOnly && {
                   watch: {
+                    label: snapshot.mode === "devices" ? "Bots bid and play for me" : "Bots bid for me",
                     on: watch,
                     onChange: (on: boolean) => {
                       setWatch(on);
@@ -288,14 +291,16 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
         play={
           !practice && !bidding && (live || ending === board.number) && playContract
             ? {
-                bots: snapshot.players.filter((pl) => pl.isBot && pl.seat).map((pl) => pl.seat!),
+                // Watching: the bots play your cards too.
+                bots: withBotsOnly && watch ? [...bots, seat] : bots,
                 playsForBots: isOwner,
                 calls,
+                systems,
                 cards,
                 claim: snapshot.claims.find((k) => k.board === board.number) ?? null,
                 onPlay: async (seq, card) => onPlayed(await games.playCard(snapshot.code, board.number, seq, cardCode(card))),
-                onClaim: async (tricks) => onClaim(board.number, await games.claim(snapshot.code, board.number, tricks)),
-                onAnswerClaim: async (accept) => onClaim(board.number, await games.answerClaim(snapshot.code, board.number, accept)),
+                onClaim: async (tricks, seat) => onClaim(board.number, await games.claim(snapshot.code, board.number, tricks, seat)),
+                onAnswerClaim: async (accept, seat) => onClaim(board.number, await games.answerClaim(snapshot.code, board.number, accept, seat)),
                 onWithdrawClaim: async () => {
                   await games.withdrawClaim(snapshot.code, board.number);
                   onClaim(board.number, null);

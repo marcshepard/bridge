@@ -7,7 +7,11 @@
 import { Alert, Box, Button, ButtonBase, Paper, Stack, Typography } from "@mui/material";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { Call } from "../../core/auction";
-import { chooseCard } from "../../core/bot";
+import { playContext } from "../../core/cardplay/context";
+import { decideCard } from "../../core/cardplay/decide";
+import { botClaim, checkClaim } from "../../core/cardplay/claims";
+import type { TableSystems } from "../../core/bidding/system";
+import { doubleDummy } from "../../services";
 import { formatContract } from "../../core/contract";
 import { describeResult } from "../../core/describe";
 import {
@@ -61,6 +65,8 @@ interface Props {
   playsForBots: boolean;
   /** The auction, when the board was bid on the devices (empty when the contract was entered by hand). */
   calls: Call[];
+  /** The card each side bids and signals by (for the bots' leads and signals). */
+  systems: TableSystems;
   /** The cards played so far, in order. */
   cards: Card[];
   /** The claim made on this board, if any. */
@@ -68,9 +74,11 @@ interface Props {
   /** Sends a card (`seq` is its number on the board, 1–52); rejects with the reason if it's refused. */
   onPlay: (seq: number, card: Card) => Promise<void>;
   /** Claim this many of the tricks left, for your side. */
-  onClaim: (tricks: number) => Promise<void>;
+  /** Claim (`seat`: the owner's device claiming for a bot). */
+  onClaim: (tricks: number, seat?: Seat) => Promise<void>;
   /** Accept or refuse the claim (the claimer's opponents). */
-  onAnswerClaim: (accept: boolean) => Promise<void>;
+  /** Answer a claim (`seat`: the owner's device answering for a bot). */
+  onAnswerClaim: (accept: boolean, seat?: Seat) => Promise<void>;
   /** The claimer takes the claim back. */
   onWithdrawClaim: () => Promise<void>;
 }
@@ -182,14 +190,52 @@ export function PlayHand(p: Props) {
   const waitingFor = turn === dummy ? declarer : turn;
 
   // The bots: on the creator's device, a bot's card (or a bot declarer's dummy card) goes after a
-  // pause, chosen by the simple robot rules. The backend takes the first card for each turn, so a
-  // repeat can't play twice.
+  // pause. It's chosen by sampling with double dummy (core/cardplay), worked out during the pause; the
+  // simple robot rules if double dummy isn't available. The backend takes the first card for each
+  // turn, so a repeat can't play twice.
   const botTurn = !over && !claim && p.playsForBots && p.bots.includes(waitingFor);
+  const context = useMemo(() => playContext({ dealer: board.dealer, vul: board.vul }, p.calls, p.systems), [board, p.calls, p.systems]);
+  // A bot considers claiming once a board (when its side's tricks are certain, it claims instead of
+  // playing on); refused, it plays on.
+  const claimTried = useRef(new Set<string>());
   useEffect(() => {
     if (!botTurn) return;
-    const timer = setTimeout(() => void p.onPlay(cards.length + 1, chooseCard(state)).catch(() => {}), BOT_DELAY_MS);
-    return () => clearTimeout(timer);
+    let cancelled = false;
+    const pause = new Promise((resolve) => setTimeout(resolve, BOT_DELAY_MS));
+    const key = `${board.number}-${waitingFor}`;
+    void (async () => {
+      if (doubleDummy && !claimTried.current.has(key)) {
+        const n = await botClaim(state, context, doubleDummy).catch(() => null);
+        if (n !== null) {
+          claimTried.current.add(key);
+          await pause;
+          if (!cancelled) void p.onClaim(n, waitingFor).catch(() => {});
+          return;
+        }
+      }
+      const [d] = await Promise.all([decideCard(state, context, doubleDummy).catch(() => decideCard(state, context, null)), pause]);
+      if (!cancelled) void p.onPlay(cards.length + 1, d.card).catch(() => {});
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [botTurn, state]);
+
+  // A claim the bots have to answer: the owner's device checks it for each of them in turn.
+  const botAnswerer = claim && p.playsForBots ? claimAnswerers(claim.seat, declarer).find((s) => p.bots.includes(s) && !claim.acceptedBy.includes(s)) : undefined;
+  useEffect(() => {
+    if (!claim || !botAnswerer) return;
+    let cancelled = false;
+    const pause = new Promise((resolve) => setTimeout(resolve, BOT_DELAY_MS));
+    void (async () => {
+      const verdict = doubleDummy ? await checkClaim(state, claim, botAnswerer, context, doubleDummy).catch(() => ({ accept: true })) : { accept: true };
+      await pause;
+      if (!cancelled) void p.onAnswerClaim(verdict.accept, botAnswerer).catch(() => {});
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [claim?.seat, claim?.tricks, botAnswerer]);
   const resultText =
     tricks === null
       ? ""
