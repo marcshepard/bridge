@@ -31,7 +31,6 @@ import type {
   ClaimRequest,
   CreateEventRequest,
   CurrentBoardRequest,
-  DemoRequest,
   EventSnapshot,
   GameMode,
   JoinedResponse,
@@ -53,7 +52,6 @@ import * as db from "./db";
 import type { Env } from "./env";
 import type { Seat } from "../../frontend/src/core/types";
 import { newJoinCode, newPlayerId, normaliseJoinCode } from "./ids";
-import demoGame from "./demo/demo-game.json";
 import { assignSeats } from "./seats";
 
 export { EventHub } from "./hub";
@@ -62,8 +60,6 @@ const MAX_PLAYERS = 4;
 const EVENT_LIFETIME_DAYS = 30;
 const MAX_NAME_LENGTH = 30;
 const MAX_GAME_BYTES = 512 * 1024;
-/** Demo games start part-way through, to show that a game needn't start at board 1. */
-const DEMO_START_BOARD = 9;
 /** A seat request nobody answers lapses after this long. */
 const REQUEST_LIFETIME_MINUTES = 10;
 /** At most this many seat requests can wait at once in a game, so nobody can flood the table. */
@@ -185,29 +181,17 @@ app.post("/events", async (c) => {
 });
 
 /**
- * A demo game, for trying the app alone: the built-in synthetic game (made-up results), starting at
- * board 9 to show a game needn't start at 1, with the other three places filled by bots. You land
- * in the lobby to pick partners. Bots are allowed here in the live app because the game is ours.
- */
-app.post("/events/demo", async (c) => {
-  const req = await body<DemoRequest>(c);
-  const joined = await createEvent(c, cleanName(req.name), demoGame as unknown as GameFileV1, DEMO_START_BOARD, parseMode(req.mode), systemJson(req.system));
-  await addBots(c, joined.code);
-  return c.json<JoinedResponse>(joined, 201);
-});
-
-/**
- * Practice with bots: you as South, bots in the other three seats, on your game file or the built-in
- * demo game. No lobby: seats are set and the first board's auction starts straight away. Bidding
- * only (each contract scored double dummy), or, with `play`, bid and played on the devices. Bots
- * are allowed in the live app here, as in the demo: it's a game for one person.
+ * Practice with bots: you as South, bots in the other three seats, on the game file sent (random
+ * deals or an imported game). No lobby: seats are set and the first board's auction starts straight
+ * away. Bidding only (each contract scored double dummy), or, with `play`, bid and played on the
+ * devices. Bots are allowed in the live app here: it's a game for one person.
  */
 app.post("/events/practice", async (c) => {
   if (Number(c.req.header("Content-Length") ?? 0) > MAX_GAME_BYTES) throw new HttpError(413, "Game file too large");
   const req = await body<PracticeRequest>(c);
-  const file = req.game ?? (demoGame as unknown as GameFileV1);
-  // From the first board unless asked otherwise (not the demo's board 9: practice is for working through a game).
-  const joined = await createEvent(c, cleanName(req.name), file, req.startBoard, req.play ? "devices" : "bidding", systemJson(req.system));
+  if (!req.game) throw new HttpError(400, "Send a game file to practise on");
+  // From the first board unless asked otherwise.
+  const joined = await createEvent(c, cleanName(req.name), req.game, req.startBoard, req.play ? "devices" : "bidding", systemJson(req.system));
   await addBots(c, joined.code);
   // You're South; your partner North and the opponents are bots (slots 2–4 in join order).
   await db.setSeatsAndStart(c.env.DB, joined.code, new Map<number, Seat>([[1, "S"], [2, "W"], [3, "N"], [4, "E"]]));

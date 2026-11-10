@@ -192,7 +192,7 @@ full deck, so nobody sees what's left, and the four hands never overlap.
 | Source | Deals | Field results | Status |
 |---|---|---|---|
 | Synthetic sample (`scripts/make_sample_game.py`) | random | **simulated** | Bundled, for development and tests (24 boards, small fields) |
-| Synthetic demo (`make_sample_game.py --demo`) | random | **simulated** | Built into the backend for **Start demo game**: 36 boards, a few hundred made-up tables per board (far fewer on the last six), double dummy, made-up commentary on boards 9 and 16 |
+| Synthetic demo (`make_sample_game.py --demo`) | random | **simulated** | Used by the bot and double-dummy tests and `npm run bidding-report` (no longer in the app): 36 boards, a few hundred made-up tables per board (far fewer on the last six), double dummy, made-up commentary on boards 9 and 16 |
 | PBN import | yes | if the file has a `[ScoreTable]` or per-table results | Works for any PBN file the user has |
 | JSON import (our format) | yes | yes | Works. Your friend's parser can emit this |
 | The Common Game archives | yes | yes (large national field) | **Asked for permission.** Their site sits behind Cloudflare bot protection, so automated fetching isn't possible or appropriate. |
@@ -241,12 +241,27 @@ tablet or computer).
 
 ### Screens
 
-**Header (every screen):** app icon, help, and an avatar showing the first letter of your display
-name ("?" until you set one). The avatar menu has the light/dark/system theme switch and
+**Header (every screen):** app icon and name, help, and an avatar showing the first letter of your
+display name ("?" until you set one). While a game is on screen, the icon and name are one button
+that goes Home, keeping the game current. The avatar menu has the light/dark/system theme switch and
 **Leave game** (enabled only while you're in a game).
 
-**Home:** splash image. On first use it asks for your **display name**; after that it shows your
-name (editable) and two actions: **Start a game** and **Join a game**.
+**Home:** On first use it asks for your **display name**; after that it shows your name (editable)
+and the actions **Start a game**, **Join a game** and **Practice with bots**. With a game current,
+an information note at the top says which: "Your last game: The Common Game 11/9/26 · code
+K7PM-3QXT", then "Board 12 of 36, with Ann, Bob and Carol · 2 days ago" ("Your last practice:",
+with no code or names, for practice). It has **Resume** and a close button (✕: no longer your
+current game; the seat is kept). A note rather than a banner-button on purpose: after hours away
+you're more likely starting something new, so going back shouldn't look like the main action.
+
+**Where the app opens:** straight into your current game if it was on screen within the last 6
+hours (`RESUME_WITHIN_MS` in `App.tsx`; a phone that slept mid-session), otherwise on Home with that
+note. The profile keeps the current game's code, a summary for the note (`CurrentGameInfo`:
+title, board, board count, the other people's names, practice or not) and when it was last on
+screen (`ProfileStore.noteInGame`, updated with each live update and when the page is hidden), so
+the note shows at once, offline too; bringing
+the page back after longer than that also goes Home. Starting or joining a game makes it current;
+**Leave game** stops it being current.
 
 **Start a game:** import a PBN file or a saved Common Game results page (see "Data sources"),
 choose **how the boards are played** (Real cards / Online, with a "?" explaining each), and
@@ -380,15 +395,13 @@ played. If a board somehow hasn't started, the owner has **Play online**.
   meant for a neighbour can't play it. Unplayable cards are greyed out and say why when tapped. When
   only one card is legal it's picked already: one tap plays it. No undo (a card shown to partner
   can't be taken back).
-- **The trick:** a fixed-size compass in the middle. A finished trick stays open (face up) on each
-  device until it's closed there: you tap it, you lead to the next trick, or 30 seconds pass. The
-  next lead doesn't close it, so a quick leader can't cut short your look (the rules let you see
-  the last trick until your side plays to the next one). While it's open you can lead but not
-  follow ("Close trick 4 first"), and if someone else leads, a warning toast ("Trick 5 has
-  started", with **Close trick 4**) stays until you close it. Closed, it lies face down and can be
-  tapped open again until the next lead. Dummy can't ask to see a trick: dummy's stays face up
-  until the next lead, then closes by itself, and can't be tapped. The last trick stays open, and
-  anyone can tap it shut and open.
+- **The trick:** a fixed-size compass in the middle. Friendlier than tournament rules: a finished
+  trick shows face up for 2 seconds (`TURN_OVER_MS`), then turns over by itself, or as soon as
+  anyone plays to the next trick. The bots' lead waits until it has turned over, so it lands on a
+  clear table. Anyone, dummy included, can tap **See trick N** (an outlined button under the trick's
+  caption) at any time to look at the last trick again (the current trick's cards are hidden
+  meanwhile); **Hide trick N** or playing a card goes back. The board's last trick stays face up,
+  and can be hidden and shown the same way.
 - **Claims:** a player (not dummy) claims how many of the tricks left their side will take. Their
   hand is shown to everyone and play stops. The claimer's opponents answer, but never dummy: when a
   defender claims, declarer answers alone. One refusal ends the claim and play goes on; the
@@ -438,8 +451,7 @@ played. If a board somehow hasn't started, the owner has **Play online**.
 **Practice with bots** on Home: you as South, bots in the other three seats (`POST
 /api/events/practice`). The game is either **random deals** (36 boards dealt on the device by
 `providers/randomGame.ts`, with the usual dealer and vulnerability rotation, no field and no double
-dummy) or an imported game file, to compare with its field. The backend still falls back to the
-built-in demo game when no game is sent, but the practice screen always sends one. No lobby: the
+dummy) or an imported game file, to compare with its field; the request must send one. No lobby: the
 seats are set and the first board's auction starts at once. **Bidding and play** (the default; game
 type `devices`) bids and plays each board on the devices. In **bidding only** (game type
 `bidding`) each board is only bid: when the auction ends, the backend scores the contract with the game file's double-dummy tricks (a board
@@ -471,17 +483,11 @@ uses it without knowing about workers. It's used for the bots' hard calls (simul
 owner's device solves the contract and saves the result with `PUT /boards/:board`. The backend never
 runs it (its CPU allowance per request is far too small).
 
-### Demo games
+### Bots at the table
 
-**Start demo game** on Home lets someone try the app alone in the live app: `POST
-/api/events/demo` creates a game from the synthetic demo game built into the backend
-(`backend/src/demo/demo-game.json`), starting at board 9 (to show a game needn't start at 1), and
-fills the other three places with Bot 2, Bot 3 and Bot 4. The player lands in the lobby to pick
-partners. Bots are allowed here even though test players are off in the live app, because the
-game file is ours. No Common Game data is used (see AGENTS.md); bots still show as away.
-
-The demo game is played with real cards: you deal yourself each board and enter any result, as
-the owner (the bots need nothing).
+Practice games (and dev test players) put bots in seats. A "Start demo game" on Home (the made-up
+demo game from board 9, with bots, played with real cards) was removed once practice and importing
+from a phone covered trying the app alone.
 
 Bots are marked (`players.is_bot`, `isBot` in the snapshot; migration 0006). When a board's cards
 are played on the devices, the creator's device plays the bots' cards after a two-second pause,
@@ -602,8 +608,7 @@ the player with `isCreator`; there's no separate host key.
 | `POST /api/events/:code/live-ticket` | A player | `{ ticket }`: a single-use pass to open the WebSocket, valid for a minute. Browsers can't send headers on a WebSocket, and the secret `playerId` mustn't appear in an address (addresses end up in logs) |
 | `GET /api/events/:code/live?ticket=` | A player (with a pass) | WebSocket for pushed updates |
 | `POST /api/events/:code/test-players` | Dev only | Fill the empty places with test players |
-| `POST /api/events/practice` | Anyone | `{ name, game?, startBoard?, system?, play? }` → practice: you as South with three bots, bidding only (or, with `play`, bid and played on the devices), on `game` or the built-in demo game, from its first board unless `startBoard` says otherwise |
-| `POST /api/events/demo` | Anyone | `{ name, mode }` → a demo game (the built-in made-up game from board 9) with three bots; you're the owner. The frontend asks for `cards` |
+| `POST /api/events/practice` | Anyone | `{ name, game, startBoard?, system?, play? }` → practice: you as South with three bots, bidding only (or, with `play`, bid and played on the devices), on `game` (random deals or an imported game), from its first board unless `startBoard` says otherwise |
 
 Every write is validated in the Worker with the same `core/` functions the frontend uses (contract
 parses, tricks 0–13, board exists in the game). Errors come back as `{ "error": "message" }` with

@@ -46,16 +46,11 @@ export interface GameStore {
    */
   create(name: string, game: GameFileV1, startBoard: number, mode: GameMode): Promise<string>;
   /**
-   * Start a demo game: the built-in made-up game from board 9, played with real cards, with bots in
-   * the other three places. You join it as the first player; returns its join code.
-   */
-  createDemo(name: string): Promise<string>;
-  /**
    * Start practice with bots: you as South with three bots. Bidding only (each contract is scored
-   * double dummy), or bidding and play with `play`. On `game` (the screen sends random deals or an
-   * upload), or the built-in demo game when null. Returns its join code.
+   * double dummy), or bidding and play with `play`. On `game` (random deals or an imported game).
+   * Returns its join code.
    */
-  createPractice(name: string, game: GameFileV1 | null, startBoard: number | null, play?: boolean): Promise<string>;
+  createPractice(name: string, game: GameFileV1, startBoard: number | null, play?: boolean): Promise<string>;
   /** Join a game that hasn't started; returns its normalised join code. */
   join(code: string, name: string): Promise<string>;
   /** Everything about a game, including `you` when this device is one of its players. */
@@ -104,6 +99,18 @@ export interface GameStore {
   subscribe(code: string, onMessage: (message: LiveMessage) => void): () => void;
 }
 
+/** What Home says about your current game, saved while it's on screen. */
+export interface CurrentGameInfo {
+  title: string;
+  /** The board the table is on, and how many there are. */
+  board: number;
+  boardCount: number;
+  /** The other people at the table (not bots), by name. */
+  others: string[];
+  /** A practice game: you and three bots. */
+  practice: boolean;
+}
+
 /** Who you are on this device: no accounts, just a display name and a key per game joined. */
 export interface ProfileStore {
   name(): string;
@@ -112,9 +119,18 @@ export interface ProfileStore {
   playerId(code: string): string | null;
   setPlayerId(code: string, playerId: string): void;
   forget(code: string): void;
-  /** The game this device is in right now, so a reload goes straight back to it. */
+  /**
+   * The game this device is in right now: a reload goes straight back to it if it was on screen
+   * recently, and otherwise Home offers to continue it.
+   */
   currentGame(): string | null;
   setCurrentGame(code: string | null): void;
+  /** What's known about the current game, once it's been on screen. */
+  currentGameInfo(): CurrentGameInfo | null;
+  /** When the current game was last on screen (ms since 1970), or null if never. */
+  lastInGameAt(): number | null;
+  /** The current game is on screen now, as described. */
+  noteInGame(info: CurrentGameInfo): void;
   /**
    * Your bidding system (SAYC settings). It goes with you into each game you start or join, and is
    * fixed there once the game starts.

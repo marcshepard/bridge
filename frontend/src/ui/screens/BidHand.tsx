@@ -37,7 +37,7 @@ interface Props {
   names: Record<Seat, string>;
   /** Players with no live connection right now: the auction waits for them. */
   away: Record<Seat, boolean>;
-  /** Seats held by bots (practice and demo games, dev test players). */
+  /** Seats held by bots (practice games, dev test players). */
   bots: Seat[];
   /** The seats this device makes the bots' calls for (the owner's device: the bots, and in practice perhaps your own). */
   autoSeats: Seat[];

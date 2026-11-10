@@ -4,7 +4,7 @@
 // When the play is over (the last card, or a claim accepted) it shows how the contract went, while
 // the backend saves the result; a moment later every device moves on to the result screen.
 
-import { Alert, Box, Button, ButtonBase, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Paper, Stack, Typography } from "@mui/material";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { Call } from "../../core/auction";
 import { playContext } from "../../core/cardplay/context";
@@ -39,7 +39,6 @@ import type { Board } from "../../providers/types";
 import { BiddingReview } from "../components/BiddingReview";
 import { Hand, HandTiles } from "../components/Hand";
 import { ContractText, SUIT_NAMES } from "../controls/BridgeText";
-import { Notice } from "../controls/Notice";
 import { NumberStepper } from "../controls/NumberStepper";
 import { PlayerName } from "../controls/PlayerName";
 import { PlayingCard } from "../controls/PlayingCard";
@@ -48,8 +47,8 @@ import { TurnStrip } from "../controls/TurnStrip";
 import { relationTo } from "../labels";
 import { rememberDecision } from "../botMemory";
 
-/** How long a finished trick stays open (face up) if you don't close it: plenty of time to look. */
-const OPEN_MS = 30_000;
+/** How long a finished trick stays face up before it turns over by itself. */
+const TURN_OVER_MS = 2000;
 /** How long a bot waits before playing, so everyone can follow the trick. */
 const BOT_DELAY_MS = 2000;
 
@@ -61,7 +60,7 @@ interface Props {
   names: Record<Seat, string>;
   /** Players with no live connection right now: play waits for them. */
   away: Record<Seat, boolean>;
-  /** Seats held by bots (demo games). They're never "away": the creator's device plays for them. */
+  /** Seats held by bots (practice games, dev test players). They're never "away": the creator's device plays for them. */
   bots: Seat[];
   /** This device plays the bots' cards (it's the game creator's). */
   playsForBots: boolean;
@@ -105,41 +104,37 @@ export function PlayHand(p: Props) {
   const yours = (s: Seat) => (s === seat && seat !== dummy) || (s === dummy && seat === declarer);
   const dummyShown = state.tricks[0]!.cards.length > 0;
 
-  // A finished trick stays open (face up) on this device, even after the next lead, until it's
-  // closed: you tap it, you lead to the next trick, or OPEN_MS passes. Until you close it you can't
-  // follow to the next trick (you haven't seen its cards). Closed, you can tap it open again until
-  // the next lead. Dummy has no reason to look back (the rules don't let dummy ask to see a trick):
-  // dummy's closes by itself at the next lead and can't be tapped. The last trick stays open, and
-  // anyone can tap it shut and open again.
+  // A friendly game, not strict duplicate: each trick shows face up as it's won, then turns over
+  // by itself after TURN_OVER_MS, or as soon as anyone plays to the next trick. Anyone, dummy too,
+  // can tap "See trick N" under the trick to look back at the last one at any time; the current
+  // trick's cards are hidden while they look, and "Hide trick N" (or playing a card) goes back to
+  // it. The board's last trick stays face up, and can be hidden and shown again.
   const finished = finishedTricks(state).length;
   const allPlayed = isComplete(state);
   const nextStarted = finished > 0 && !allPlayed && currentTrick(state).cards.length > 0;
-  const [openTrick, setOpenTrick] = useState<number | null>(null);
-  const isOpen = finished > 0 && openTrick === finished;
-  // Each trick opens as it's won (not on arriving mid-board, e.g. after a reload).
+  const [showing, setShowing] = useState<{ trick: number; how: "won" | "look" } | null>(null);
+  const isOpen = finished > 0 && showing?.trick === finished;
+  // Just won and not yet turned over: the bots wait for it before leading.
+  const justWon = isOpen && showing?.how === "won" && !allPlayed;
+  // Each trick shows as it's won (not on arriving mid-board, e.g. after a reload).
   const seen = useRef(finished);
   useEffect(() => {
-    if (finished > seen.current) setOpenTrick(finished);
+    if (finished > seen.current) setShowing({ trick: finished, how: "won" });
     seen.current = finished;
   }, [finished]);
   useEffect(() => {
-    if (!isOpen || allPlayed || seat === dummy) return;
-    const timer = setTimeout(() => setOpenTrick(null), OPEN_MS);
+    if (!justWon) return;
+    if (nextStarted) {
+      setShowing(null);
+      return;
+    }
+    const timer = setTimeout(() => setShowing(null), TURN_OVER_MS);
     return () => clearTimeout(timer);
-  }, [isOpen, allPlayed, seat, dummy, openTrick]);
-  useEffect(() => {
-    if (seat === dummy && nextStarted) setOpenTrick(null);
-  }, [seat, dummy, nextStarted]);
-  const canToggle = finished > 0 && (allPlayed || (seat !== dummy && (isOpen || !nextStarted)));
-  const closeTrick = () => {
-    setOpenTrick(null);
-    setHint(null); // e.g. "Close trick 4 first"
-  };
-  // Someone else has led to the next trick while yours is still open: close it before you follow.
-  const mustClose = isOpen && nextStarted && seat !== dummy;
+  }, [justWon, nextStarted, finished]);
+  const toggleTrick = finished > 0 ? () => setShowing(isOpen ? null : { trick: finished, how: "look" }) : undefined;
 
   // When you have only one card you can play, it's picked for you: one tap plays it.
-  const onlyCard = !over && !claim && !mustClose && yours(turn) ? legalCards(state, turn) : [];
+  const onlyCard = !over && !claim && yours(turn) ? legalCards(state, turn) : [];
   const preselect = onlyCard.length === 1 ? onlyCard[0]! : null;
 
   /** Runs one action against the backend, showing why if it's refused. */
@@ -159,18 +154,14 @@ export function PlayHand(p: Props) {
   const playFor = (s: Seat) =>
     !over && !claim && busy === null && turn === s && yours(s)
       ? {
-          canPlay: (card: Card) => !mustClose && legalCards(state, s).some((c) => sameCard(c, card)),
+          canPlay: (card: Card) => legalCards(state, s).some((c) => sameCard(c, card)),
           onPlay: (card: Card) => {
-            // Leading to the next trick closes the last one.
-            closeTrick();
+            // Playing a card goes back to the trick in play.
+            setShowing(null);
             void act("Playing your card…", () => p.onPlay(cards.length + 1, card));
           },
           preselect,
           onBlocked: () => {
-            if (mustClose) {
-              setHint(`Close trick ${finished} first: tap it`);
-              return;
-            }
             const led = currentTrick(state).cards[0]!.card.suit;
             setHint(`Follow suit: play a ${SUIT_NAMES[led].slice(0, -1)} ${SUIT_SYMBOLS[led]}`);
           },
@@ -195,7 +186,8 @@ export function PlayHand(p: Props) {
   // pause. It's chosen by sampling with double dummy (core/cardplay), worked out during the pause; the
   // simple robot rules if double dummy isn't available. The backend takes the first card for each
   // turn, so a repeat can't play twice.
-  const botTurn = !over && !claim && p.playsForBots && p.bots.includes(waitingFor);
+  // A bot's lead waits until the trick just won has turned over, so it lands on a clear table.
+  const botTurn = !over && !claim && !justWon && p.playsForBots && p.bots.includes(waitingFor);
   const context = useMemo(() => playContext({ dealer: board.dealer, vul: board.vul }, p.calls, p.systems), [board, p.calls, p.systems]);
   // A bot considers claiming once a board (when its side's tricks are certain, it claims instead of
   // playing on); refused, it plays on.
@@ -389,12 +381,7 @@ export function PlayHand(p: Props) {
         {edge(at("partner"))}
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 1, alignItems: "center" }}>
           {edge(at("lho"))}
-          <TrickView
-            state={state}
-            seat={seat}
-            open={isOpen}
-            onToggle={canToggle ? () => (isOpen ? closeTrick() : setOpenTrick(finished)) : undefined}
-          />
+          <TrickView state={state} seat={seat} open={isOpen} onToggle={toggleTrick} />
           {edge(at("rho"))}
         </Box>
         <SeatBox
@@ -411,22 +398,6 @@ export function PlayHand(p: Props) {
           )}
         </Stack>
       </Stack>
-
-      {/* Someone has led to the next trick while yours is still open: it stays until you close it. */}
-      <Notice
-        notice={
-          mustClose
-            ? {
-                key: `trick-${finished}`,
-                text: `Trick ${finished + 1} has started`,
-                severity: "warning",
-                persistent: true,
-                action: { label: `Close trick ${finished}`, onClick: closeTrick },
-              }
-            : null
-        }
-        onClose={closeTrick}
-      />
 
       <SheetDialog
         open={showAuction}
@@ -509,8 +480,9 @@ function SeatBox({ title, active, children }: { title: string; active: boolean; 
 
 /**
  * The trick in the middle, each card on its player's side. The last finished trick shows while it's
- * open (face up), even after the next lead; closed, it lies face down until the next lead. Tap it
- * to close it, or to open it again (when `onToggle` is given).
+ * open (face up), even after the next lead; closed, it lies face down until the next lead. Under it,
+ * "See trick N" / "Hide trick N" (when `onToggle` is given) shows or hides the last trick, during
+ * the next trick too.
  */
 function TrickView({
   state,
@@ -522,7 +494,7 @@ function TrickView({
   seat: Seat;
   /** The last finished trick is open (face up) on this device. */
   open: boolean;
-  /** Present when you can close or open it. */
+  /** Present once a trick has been won: shows or hides the last one. */
   onToggle?: () => void;
 }) {
   const now = currentTrick(state);
@@ -572,41 +544,53 @@ function TrickView({
     </Box>
   );
 
+  const lastNumber = last ? state.tricks.indexOf(last) + 1 : 0;
   const caption = showingLast
-    ? `Trick ${number}: ${SEAT_NAMES[winner!]} won it${onToggle ? ` · ${faceUp ? "tap to close" : "tap to see it"}` : ""}`
+    ? `Trick ${number}: ${SEAT_NAMES[winner!]} won it`
     : `Trick ${number}${trick.cards.length > 0 ? ` · ${SEAT_NAMES[trick.leader]} led` : ""}`;
+  // Face up: the last trick is showing, so the button hides it again.
+  const lastShowing = showingLast && faceUp;
 
   return (
     <Box sx={{ textAlign: "center" }}>
-      {showingLast && onToggle ? (
-        <ButtonBase
-          onClick={onToggle}
-          aria-label={
-            faceUp ? `Trick ${number}, won by ${SEAT_NAMES[winner!]}. Close it` : `Trick ${number}, face down. Show it`
-          }
-          sx={{
-            display: "block",
-            borderRadius: 1,
-            "&.Mui-focusVisible": {
-              outline: (t) => `${t.spacing(0.25)} solid ${t.palette.primary.main}`,
-            },
-          }}
-        >
-          {table}
-        </ButtonBase>
-      ) : (
-        <Box role="group" aria-label={`Trick ${number}`}>
-          {table}
-        </Box>
-      )}
-      <Typography
-        variant="caption"
-        component="p"
-        color="text.secondary"
-        sx={{ mt: 0.5, maxWidth: (t) => t.spacing(17), mx: "auto" }}
+      <Box role="group" aria-label={`Trick ${number}`}>
+        {table}
+      </Box>
+      {/* Side by side where there's room. On a narrow phone the middle column stays as narrow as the
+          table, so East's and West's cards keep their space, and the button wraps under the words. */}
+      <Box
+        sx={(t) => ({
+          mt: 0.5,
+          mx: "auto",
+          maxWidth: { xs: t.spacing(17), sm: "none" },
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
+          alignItems: "center",
+          columnGap: 1,
+          rowGap: 0.5,
+        })}
       >
-        {caption}
-      </Typography>
+        <Typography variant="body2" component="p" color="text.secondary">
+          {caption}
+        </Typography>
+        {onToggle && (
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={onToggle}
+            // About the height of the words beside it, with the usual 44px tap area around it.
+            sx={(t) => ({
+              minHeight: t.spacing(3.5),
+              py: 0,
+              position: "relative",
+              "&::before": { content: '""', position: "absolute", inset: `-${t.spacing(0.75)} 0` },
+            })}
+          >
+            {lastShowing ? `Hide trick ${lastNumber}` : `See trick ${lastNumber}`}
+          </Button>
+        )}
+      </Box>
     </Box>
   );
 }

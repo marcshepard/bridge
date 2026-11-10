@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parseGameFile } from "../providers/gameFile";
 import { games, profile } from "../services";
 import { ApiError } from "../session/apiGameStore";
-import type { CallDto, ClaimDto, EventSnapshot, PlayDto, ResultDto } from "../session/store";
+import type { CallDto, ClaimDto, CurrentGameInfo, EventSnapshot, PlayDto, ResultDto } from "../session/store";
 import { AppHeader } from "./controls/AppHeader";
 import { Screen } from "./controls/Layout";
 import { Notice, type NoticeMessage } from "./controls/Notice";
@@ -44,6 +44,29 @@ const isLive = (r: ResultDto) => r.onDevices && r.tricks === null;
 
 /** While the live connection is down, check this often whether you still have your seat. */
 const OFFLINE_CHECK_MS = 10_000;
+/**
+ * Back within this long, the app opens straight into your game (a phone that slept mid-session);
+ * after longer, on Home, with a note about it (and Resume).
+ */
+const RESUME_WITHIN_MS = 6 * 60 * 60 * 1000;
+
+/** What Home's note says about a game you're in: its title, board, who else is there. */
+function gameInfo(snapshot: EventSnapshot, mySlot: number): CurrentGameInfo {
+  const others = snapshot.players.filter((p) => p.slot !== mySlot);
+  return {
+    title: snapshot.title,
+    board: snapshot.currentBoard,
+    boardCount: snapshot.game.boards.length,
+    others: others.filter((p) => !p.isBot).map((p) => p.name),
+    practice: others.length > 0 && others.every((p) => p.isBot),
+  };
+}
+
+/** Was the current game on screen recently enough to open straight back into it? */
+function recentlyInGame(): boolean {
+  const at = profile.lastInGameAt();
+  return at !== null && Date.now() - at < RESUME_WITHIN_MS;
+}
 /** How long the live connection is down before the header says "Reconnecting". */
 const RECONNECTING_AFTER_MS = 5_000;
 /** How long another player's device has been gone before they show as away. */
@@ -211,7 +234,8 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
 export function App() {
   const [name, setName] = useState(profile.name());
   const [linkCode] = useState(takeJoinCodeFromUrl);
-  const [code, setCode] = useState<string | null>(() => profile.currentGame());
+  // The game on screen (null: Home). Your current game stays in the profile when you go Home.
+  const [code, setCode] = useState<string | null>(() => (recentlyInGame() ? profile.currentGame() : null));
   const [dialog, setDialog] = useState<Dialog>(() => (linkCode !== null && profile.name() ? "join" : null));
   const install = useInstall();
   const [notice, setNotice] = useState<string | null>(null);
@@ -219,7 +243,13 @@ export function App() {
   const [mySystem, setMySystem] = useState(() => profile.biddingSystem());
   const [leaveError, setLeaveError] = useState<string | null>(null);
 
-  /** Back to Home, still holding your seat (you can rejoin with the code). */
+  /** To Home with your game still current: Home's note about it has Resume. */
+  function showHome() {
+    setDialog(null);
+    setNotice(null);
+    setCode(null);
+  }
+  /** Back to Home, still holding your seat (you can rejoin with the code), and no longer current. */
   function goHome(why: string | null) {
     profile.setCurrentGame(null);
     setCode(null);
@@ -259,6 +289,29 @@ export function App() {
   const game = useMemo(() => (gameJson ? parseGameFile(gameJson) : null), [snapshot?.code]);
   const mySeat = snapshot?.you?.seat ?? null;
 
+  // While you're in a game on screen, remember so, with what Home's note about it says.
+  const inGame = useMemo(() => (code && snapshot?.you ? gameInfo(snapshot, snapshot.you.slot) : null), [code, snapshot]);
+  const inGameRef = useRef(inGame);
+  inGameRef.current = inGame;
+  useEffect(() => {
+    if (inGame) profile.noteInGame(inGame);
+  }, [inGame]);
+  // Put away and brought back after a long time (a phone left asleep overnight): go Home, as if
+  // the app had just been opened.
+  const onScreen = inGame !== null;
+  useEffect(() => {
+    if (!onScreen) return;
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        if (inGameRef.current) profile.noteInGame(inGameRef.current);
+      } else if (!recentlyInGame()) showHome();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [onScreen]);
+  // Bumped when Home's note is closed, so Home shows the profile as it now is.
+  const [, setNoteClosed] = useState(0);
+
   function enter(c: string) {
     setDialog(null);
     setNotice(null);
@@ -296,8 +349,22 @@ export function App() {
         onStart={() => setDialog("start")}
         onJoin={() => setDialog("join")}
         onPractice={() => setDialog("practice")}
-        onDemo={async () => enter(await games.createDemo(name))}
         onHelp={() => setDialog("help")}
+        lastGame={
+          profile.currentGame()
+            ? {
+                code: profile.currentGame()!,
+                info: profile.currentGameInfo(),
+                at: profile.lastInGameAt(),
+                onGoBack: () => enter(profile.currentGame()!),
+                onClose: () => {
+                  // Your seat is kept: the join code still takes you back.
+                  profile.setCurrentGame(null);
+                  setNoteClosed((n) => n + 1);
+                },
+              }
+            : undefined
+        }
       />
     );
   } else if (snapshot && snapshot.status === "playing" && game && mySeat) {
@@ -346,6 +413,7 @@ export function App() {
       <AppHeader
         name={name}
         onHelp={() => setDialog("help")}
+        onHome={code ? showHome : undefined}
         onLeaveGame={code && snapshot ? () => setDialog("leave") : undefined}
         onInstall={install.canInstall ? () => setDialog("install") : undefined}
         onSystem={() => setSystemOpen(true)}

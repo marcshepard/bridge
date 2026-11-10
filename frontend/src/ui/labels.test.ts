@@ -12,6 +12,7 @@ import {
   sameName,
   seatAndPlayer,
   seatRequestNews,
+  timeAgo,
   vulnerableShort,
 } from "./labels";
 
@@ -125,5 +126,24 @@ describe("a hand's suits side by side", () => {
     expect(handSuitOrder("H")).toEqual(["H", "S", "D", "C"]);
     expect(handSuitOrder("D")).toEqual(["D", "S", "H", "C"]);
     expect(handSuitOrder("C")).toEqual(["C", "H", "S", "D"]);
+  });
+});
+
+describe("how long ago", () => {
+  // Local times, so "yesterday" means the day before on this device.
+  const at = (day: number, hour: number, minute = 0) => new Date(2026, 10, day, hour, minute).getTime();
+  const now = at(10, 9, 30);
+
+  it.each([
+    [at(10, 9, 30), "just now"],
+    [at(10, 9, 29), "a minute ago"],
+    [at(10, 9, 5), "25 minutes ago"],
+    [at(10, 8, 15), "an hour ago"],
+    [at(10, 1), "8 hours ago"],
+    [at(9, 23), "yesterday"],
+    [at(9, 8), "yesterday"],
+    [at(7, 20), "3 days ago"],
+  ])("%s → %s", (then, words) => {
+    expect(timeAgo(then, now)).toBe(words);
   });
 });

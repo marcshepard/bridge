@@ -27,7 +27,7 @@ export interface PublicPlayer {
    */
   noApp: boolean;
   /**
-   * A bot (practice and demo games, dev test players). On the devices the owner's device bids and
+   * A bot (practice games, dev test players). On the devices the owner's device bids and
    * plays for it, by the rules in core/bidding and core/bot.ts.
    */
   isBot: boolean;
@@ -154,23 +154,17 @@ export interface JoinRequest {
   system?: SystemSettings;
 }
 /**
- * Starting bidding practice (POST /events/practice): you as South with three bots, bidding only.
- * `game` is the game file to practise on; left out, the built-in demo game.
+ * Starting practice with bots (POST /events/practice): you as South with three bots, on `game`
+ * (random deals or an imported game), bidding only or, with `play`, bidding and play.
  */
 export interface PracticeRequest {
   name: string;
-  game?: GameFileV1;
+  game: GameFileV1;
   startBoard?: number;
   /** Your bidding system, which your bot partner bids too; left out, SAYC as it comes. */
   system?: SystemSettings;
   /** Play the cards too (a game played on the devices); left out, bidding only. */
   play?: boolean;
-}
-/** Starting a demo game (POST /events/demo). */
-export interface DemoRequest {
-  name: string;
-  mode: GameMode;
-  system?: SystemSettings;
 }
 /** The owner moves the table to a board (original numbering). */
 export interface CurrentBoardRequest {

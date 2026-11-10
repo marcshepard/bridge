@@ -1,4 +1,5 @@
-// The bar at the top of every screen: app icon and name, help, and your avatar. The avatar menu
+// The bar at the top of every screen: app icon and name (in a game, one button that goes Home, your
+// game staying current), help, and your avatar. The avatar menu
 // holds the Dark mode switch, the bidding system the bots use, "Leave game", and "Install to home
 // screen" until the app is installed.
 // While this device's live connection to the game is down, a small no-signal icon ("Reconnecting")
@@ -10,6 +11,7 @@ import {
   AppBar,
   Avatar,
   Box,
+  ButtonBase,
   Divider,
   IconButton,
   ListItemText,
@@ -26,6 +28,8 @@ import { useEffect, useId, useState } from "react";
 interface Props {
   name: string;
   onHelp: () => void;
+  /** Present only while a game is on screen: the app icon and name go Home. */
+  onHome?: () => void;
   /** Present only while you're in a game. */
   onLeaveGame?: () => void;
   /** Present only while the app isn't installed (it's in a browser tab). */
@@ -36,7 +40,23 @@ interface Props {
   onSystem: () => void;
 }
 
-export function AppHeader({ name, onHelp, onLeaveGame, onInstall, onSystem, reconnecting = false }: Props) {
+const BRAND = { display: "flex", alignItems: "center", gap: 1, minWidth: 0, color: "inherit" } as const;
+
+/** The app icon and name. */
+function Brand() {
+  return (
+    <>
+      <Box component="span" aria-hidden sx={{ typography: "h5", lineHeight: 1 }}>
+        ♠
+      </Box>
+      <Typography variant="h6" component="span" noWrap sx={{ minWidth: 0 }}>
+        Bridge Replay
+      </Typography>
+    </>
+  );
+}
+
+export function AppHeader({ name, onHelp, onHome, onLeaveGame, onInstall, onSystem, reconnecting = false }: Props) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const { mode, setMode } = useColorScheme();
   const dark = mode === "dark";
@@ -51,12 +71,30 @@ export function AppHeader({ name, onHelp, onLeaveGame, onInstall, onSystem, reco
     // Static: the app fills the window and only the screen below scrolls (see App.tsx).
     <AppBar position="static">
       <Toolbar sx={{ gap: 1 }}>
-        <Box component="span" aria-hidden sx={{ typography: "h5", lineHeight: 1 }}>
-          ♠
+        {/* The app icon and name, as is usual for a site's logo, take you Home. */}
+        <Box sx={{ flex: 1, minWidth: 0, display: "flex" }}>
+          {onHome ? (
+            <ButtonBase
+              onClick={onHome}
+              aria-label="Home"
+              sx={{
+                ...BRAND,
+                minHeight: (t) => t.spacing(5.5),
+                px: 1,
+                mx: -1,
+                borderRadius: 1,
+                "&.Mui-focusVisible": { outline: "2px solid currentColor" },
+                "&:hover": { bgcolor: "action.hover" },
+              }}
+            >
+              <Brand />
+            </ButtonBase>
+          ) : (
+            <Box sx={BRAND}>
+              <Brand />
+            </Box>
+          )}
         </Box>
-        <Typography variant="h6" component="p" noWrap sx={{ flex: 1, minWidth: 0 }}>
-          Bridge Replay
-        </Typography>
         {/* The same no-signal icon as an away player's; the word too where there's room. */}
         <Box role="status" aria-live="polite">
           {reconnecting && (

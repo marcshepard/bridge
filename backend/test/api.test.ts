@@ -601,10 +601,8 @@ describe("bidding practice", () => {
     expect(snap.results).toMatchObject([{ board: 1, contract: "", onDevices: true }]);
   });
 
-  it("practises on the built-in demo game when no game file is sent", async () => {
-    const res = await api<JoinedResponse>("POST", "/events/practice", { name: "Marc" });
-    const snap = (await api<EventSnapshot>("GET", `/events/${res.json.code}`, undefined, res.json.playerId)).json;
-    expect(snap).toMatchObject({ mode: "bidding", currentBoard: 1 });
+  it("needs a game file to practise on", async () => {
+    expect((await api("POST", "/events/practice", { name: "Marc" })).status).toBe(400);
   });
 });
 
@@ -876,18 +874,6 @@ describe("deleting and test players", () => {
     const res = await api<{ added: number[] }>("POST", `/events/${code}/test-players`);
     expect(res.json.added).toEqual([2, 3, 4]);
     const snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
-    expect(snap.players.map((p) => p.name)).toEqual(["Marc", "Bot 2", "Bot 3", "Bot 4"]);
-  });
-
-  it("starts a demo game at board 9 with three bots (allowed in the live app too)", async () => {
-    const res = await api<JoinedResponse>("POST", "/events/demo", { name: "Marc", mode: "devices" });
-    expect(res.status).toBe(201);
-    const snap = (await api<EventSnapshot>("GET", `/events/${res.json.code}`, undefined, res.json.playerId)).json;
-    expect(snap.title).toBe("Demo game (made-up results)");
-    expect(snap.startBoard).toBe(9);
-    expect(snap.mode).toBe("devices");
-    expect(snap.status).toBe("lobby");
-    expect(snap.you?.isCreator).toBe(true);
     expect(snap.players.map((p) => p.name)).toEqual(["Marc", "Bot 2", "Bot 3", "Bot 4"]);
   });
 });

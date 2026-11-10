@@ -184,3 +184,20 @@ export function seatRequestNews(
   }
   return null;
 }
+
+/**
+ * How long ago something happened, in plain words: "just now", "5 minutes ago", "3 hours ago",
+ * "yesterday", "4 days ago". Days count calendar days on this device, so last night is "yesterday".
+ */
+export function timeAgo(then: number, now: number): string {
+  const minutes = Math.floor((now - then) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return minutes === 1 ? "a minute ago" : `${minutes} minutes ago`;
+  const startOfDay = (ms: number) => new Date(ms).setHours(0, 0, 0, 0);
+  const days = Math.round((startOfDay(now) - startOfDay(then)) / 86_400_000);
+  if (days === 0) {
+    const hours = Math.floor(minutes / 60);
+    return hours === 1 ? "an hour ago" : `${hours} hours ago`;
+  }
+  return days === 1 ? "yesterday" : `${days} days ago`;
+}

@@ -49,13 +49,6 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           <strong>Practice with bots</strong> to practise bidding and play on your own: you sit South, and bots
           take the other three seats. See <strong>Practice with bots</strong> below.
         </li>
-        <li>
-          <strong>Start demo game</strong> to see how it works on your own. You get a made-up game (the deals
-          are real, but the other results and the commentary are invented), with three bots at the table (Bot 2,
-          Bot 3 and Bot 4). Pick a partner, then for each board deal yourself your cards and enter any result
-          you like, as the owner. It starts at board 9 of 36, to show that a game can start part-way through and
-          wrap round.
-        </li>
       </Box>
 
       <Heading>The owner runs the table</Heading>
@@ -292,11 +285,11 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           their own; dummy just watches.
         </li>
         <li>
-          When a trick is complete, it stays face up in the middle so you can look at it as long as you need (up
-          to 30 seconds). Tap it to close it when you're done; leading to the next trick closes it too. If
-          someone else leads first, a message at the bottom says the next trick has started: close the old
-          trick to see the new one and play to it. Until the next card is led, you can tap a closed trick to
-          see it again. Dummy's screen closes the trick by itself when the next card is led.
+          When a trick is complete, it stays face up in the middle for a couple of seconds, then turns over by
+          itself (sooner if someone plays to the next trick). Want another look? Tap <strong>See trick 1</strong>{" "}
+          (or whichever trick was last) under the trick, at any time, dummy too; the cards of the trick being
+          played are hidden while you look. Tap <strong>Hide trick 1</strong>, or play a card, to go back. This is friendlier than tournament rules, where you
+          can only ask to see the last trick before your side plays to the next one.
         </li>
         <li>
           <strong>Claim:</strong> when you know how the rest will go, tap <strong>Claim</strong> and say how many
@@ -310,6 +303,18 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           few seconds later every screen shows the result and the four hands as usual.
         </li>
       </Box>
+
+      <Heading>Going back to the first screen</Heading>
+      <Typography sx={{ mb: 1 }}>
+        Tap the ♠ <strong>Bridge Replay</strong> at the top left to go to the first screen, for example to start
+        another game or practise. Your game is kept: a note at the top of the first screen says which game it is,
+        its join code, the board you were on, who else is playing and when you were last there. Tap{" "}
+        <strong>Resume</strong> to return to your seat, or <strong>✕</strong> to put the game aside (you can still
+        go back with its join code). If you open the app again within 6 hours, it goes straight back into your game;
+        after longer, it opens on the first screen with that note. Starting or joining another game makes that one
+        your game instead. To leave a game from inside it, tap your initial at the top right, then{" "}
+        <strong>Leave game</strong>; once play has started you can still go back to your seat with its join code.
+      </Typography>
 
       <Heading>Swapping a player, or changing devices</Heading>
       <Typography sx={{ mb: 1 }}>

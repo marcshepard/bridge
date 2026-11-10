@@ -1,12 +1,17 @@
 // The first screen. On first use it asks for your display name; then it offers Start a game, Join a
-// game, Practice with bots (bidding and play on your own), and Start demo game (on your own, with
-// bots, on a made-up game).
+// game, and Practice with bots (bidding and play on your own). When you have a game going, a note
+// at the top says which (its title, code, board, who's in it, when you were last there), with
+// Resume, and a close button that stops it being your current game. It's information, not the main
+// action: after hours away you're more likely here to start something new.
 
 import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
+import CloseIcon from "@mui/icons-material/Close";
 import { Alert, Button, IconButton, Stack, TextField, Typography } from "@mui/material";
 import { useState } from "react";
+import type { CurrentGameInfo } from "../../session/store";
 import { EditButton } from "../controls/EditButton";
 import { Screen } from "../controls/Layout";
+import { formatJoinCode, timeAgo } from "../labels";
 
 /** The backend's limit (backend/src/index.ts). */
 export const MAX_NAME_LENGTH = 30;
@@ -17,17 +22,65 @@ interface Props {
   onStart: () => void;
   onJoin: () => void;
   onPractice: () => void;
-  /** Start a demo game and go into it. Rejects with a message to show if that fails. */
-  onDemo: () => Promise<void>;
   onHelp: () => void;
   /** Something to tell you on arrival, e.g. "That game was cancelled". */
   notice?: string | null;
+  /** The game you're in (your current game), to go back to or put aside. */
+  lastGame?: {
+    code: string;
+    /** Unknown for a game not on screen since this was added. */
+    info: CurrentGameInfo | null;
+    /** When it was last on screen. */
+    at: number | null;
+    onGoBack: () => void;
+    /** Stop it being your current game (your seat is kept). */
+    onClose: () => void;
+  };
 }
 
-export function Home({ name, onName, onStart, onJoin, onPractice, onDemo, onHelp, notice }: Props) {
+/** "Ann", "Ann and Bob", "Ann, Bob and Carol". */
+function names(list: string[]): string {
+  return list.length < 2 ? (list[0] ?? "") : `${list.slice(0, -1).join(", ")} and ${list.at(-1)}`;
+}
+
+/** The note about your current game: which it is, and where it had got to. */
+function LastGameNote({ game }: { game: NonNullable<Props["lastGame"]> }) {
+  const { info } = game;
+  const practice = info?.practice ?? false;
+  const details = [
+    info && `Board ${info.board} of ${info.boardCount}${!practice && info.others.length ? `, with ${names(info.others)}` : ""}`,
+    game.at !== null && timeAgo(game.at, Date.now()),
+  ].filter(Boolean);
+  return (
+    <Alert
+      severity="info"
+      sx={{ mb: 3, alignItems: "center" }}
+      action={
+        <>
+          <Button color="inherit" onClick={game.onGoBack}>
+            Resume
+          </Button>
+          <IconButton color="inherit" aria-label="Close this note" onClick={game.onClose}>
+            <CloseIcon />
+          </IconButton>
+        </>
+      }
+    >
+      <Typography variant="body2" component="span" sx={{ display: "block" }}>
+        <strong>{practice ? "Your last practice:" : "Your last game:"}</strong>{" "}
+        {[info?.title, !practice && `code ${formatJoinCode(game.code)}`].filter(Boolean).join(" · ")}
+      </Typography>
+      {details.length > 0 && (
+        <Typography variant="body2" component="span" sx={{ display: "block" }}>
+          {details.join(" · ")}
+        </Typography>
+      )}
+    </Alert>
+  );
+}
+
+export function Home({ name, onName, onStart, onJoin, onPractice, onHelp, notice, lastGame }: Props) {
   const [editing, setEditing] = useState(!name);
-  const [demoBusy, setDemoBusy] = useState(false);
-  const [demoError, setDemoError] = useState<string | null>(null);
   const [draft, setDraft] = useState(name);
   const clean = draft.trim().replace(/\s+/g, " ");
 
@@ -41,6 +94,8 @@ export function Home({ name, onName, onStart, onJoin, onPractice, onDemo, onHelp
           <HelpOutlineIcon />
         </IconButton>
       </Stack>
+
+      {lastGame && <LastGameNote game={lastGame} />}
 
       {notice && (
         <Alert severity="info" sx={{ mb: 3 }}>
@@ -103,28 +158,7 @@ export function Home({ name, onName, onStart, onJoin, onPractice, onDemo, onHelp
             <Button variant="outlined" size="large" fullWidth onClick={onPractice}>
               Practice with bots
             </Button>
-            <Button
-              variant="outlined"
-              size="large"
-              fullWidth
-              disabled={demoBusy}
-              onClick={() => {
-                setDemoBusy(true);
-                setDemoError(null);
-                onDemo().catch((e: Error) => {
-                  setDemoError(e.message);
-                  setDemoBusy(false);
-                });
-              }}
-            >
-              {demoBusy ? "Starting the demo…" : "Start demo game"}
-            </Button>
           </Stack>
-          {demoError && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              Couldn't start the demo: {demoError}
-            </Alert>
-          )}
         </>
       )}
     </Screen>
