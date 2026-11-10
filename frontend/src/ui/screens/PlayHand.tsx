@@ -36,15 +36,17 @@ import {
 import { scoreResult } from "../../core/scoring";
 import { type Contract, type Seat, SEATS, SEAT_NAMES, SUIT_SYMBOLS, directionOf } from "../../core/types";
 import type { Board } from "../../providers/types";
-import { AuctionTable } from "../components/Auction";
+import { BiddingReview } from "../components/BiddingReview";
 import { Hand, HandTiles } from "../components/Hand";
 import { ContractText, SUIT_NAMES } from "../controls/BridgeText";
 import { Notice } from "../controls/Notice";
 import { NumberStepper } from "../controls/NumberStepper";
 import { PlayerName } from "../controls/PlayerName";
+import { PlayingCard } from "../controls/PlayingCard";
 import { SheetDialog } from "../controls/SheetDialog";
 import { TurnStrip } from "../controls/TurnStrip";
 import { relationTo } from "../labels";
+import { rememberDecision } from "../botMemory";
 
 /** How long a finished trick stays open (face up) if you don't close it: plenty of time to look. */
 const OPEN_MS = 30_000;
@@ -214,6 +216,7 @@ export function PlayHand(p: Props) {
         }
       }
       const [d] = await Promise.all([decideCard(state, context, doubleDummy).catch(() => decideCard(state, context, null)), pause]);
+      rememberDecision(state, context, d); // for the play review
       if (!cancelled) void p.onPlay(cards.length + 1, d.card).catch(() => {});
     })();
     return () => {
@@ -305,23 +308,29 @@ export function PlayHand(p: Props) {
           box and the line below always takes its height, so nothing moves under your finger. */}
       <TurnStrip
         left={
-          <Typography variant="h6" component="h1" sx={{ lineHeight: 1.2 }} noWrap>
-            {/* Bid on the devices: the contract opens the auction. */}
-            {p.calls.length > 0 ? (
-              <Button
-                onClick={() => setShowAuction(true)}
-                aria-label={`${formatContract(p.contract.contract)} by ${SEAT_NAMES[declarer]}. Show the auction`}
-                sx={{ typography: "h6", minWidth: 0, p: 0, lineHeight: 1.2 }}
-              >
+          // Bid on the devices: the contract is a button that opens the bidding review (meanings only).
+          p.calls.length > 0 ? (
+            <Button
+              variant="outlined"
+              onClick={() => setShowAuction(true)}
+              aria-label={`${formatContract(p.contract.contract)} by ${SEAT_NAMES[declarer]}. Show the auction`}
+              sx={{ display: "block", textAlign: "left", minWidth: 0, px: 1, py: 0.25, lineHeight: 1.2 }}
+            >
+              <Typography variant="h6" component="h1" sx={{ lineHeight: 1.2 }} noWrap>
                 <ContractText contract={p.contract.contract} />
-              </Button>
-            ) : (
+              </Typography>
+              <Typography variant="caption" component="span" color="text.secondary" sx={{ display: "block" }} noWrap>
+                by {SEAT_NAMES[declarer]} · auction
+              </Typography>
+            </Button>
+          ) : (
+            <Typography variant="h6" component="h1" sx={{ lineHeight: 1.2 }} noWrap>
               <ContractText contract={p.contract.contract} />
-            )}
-            <Typography variant="caption" component="span" color="text.secondary" sx={{ display: "block" }} noWrap>
-              by {SEAT_NAMES[declarer]}
+              <Typography variant="caption" component="span" color="text.secondary" sx={{ display: "block" }} noWrap>
+                by {SEAT_NAMES[declarer]}
+              </Typography>
             </Typography>
-          </Typography>
+          )
         }
         turn={turnLabel}
         mine={myTurn}
@@ -425,7 +434,7 @@ export function PlayHand(p: Props) {
         title="The auction"
         actions={<Button onClick={() => setShowAuction(false)}>Close</Button>}
       >
-        <AuctionTable dealer={board.dealer} vul={board.vul} names={names} calls={p.calls} seat={seat} />
+        <BiddingReview board={board} calls={p.calls} seat={seat} names={names} bots={p.bots} systems={p.systems} meaningsOnly />
       </SheetDialog>
 
       {claiming && (
@@ -548,7 +557,7 @@ function TrickView({
       {faceUp ? (
         trick.cards.map(({ seat: s, card }) => (
           <Box key={s} sx={{ gridArea: AREA[relationTo(seat, s)] }}>
-            <TrickCard
+            <PlayingCard
               card={card}
               won={s === winner}
               label={`${SEAT_NAMES[s]}: ${card.rank === "T" ? "10" : card.rank} of ${SUIT_NAMES[card.suit]}`}
@@ -617,31 +626,5 @@ function CardBack() {
         boxShadow: 2,
       }}
     />
-  );
-}
-
-function TrickCard({ card, won, label }: { card: Card; won: boolean; label: string }) {
-  return (
-    <Box
-      aria-label={label}
-      sx={{
-        width: (t) => t.spacing(5),
-        height: (t) => t.spacing(7),
-        bgcolor: "card.face",
-        border: 1,
-        borderColor: won ? "primary.main" : "card.edge",
-        boxShadow: won ? 4 : 1,
-        borderRadius: 1,
-        color: card.suit === "H" || card.suit === "D" ? "card.red" : "card.ink",
-        typography: "subtitle1",
-        fontWeight: "fontWeightBold",
-        lineHeight: 1.1,
-        pt: 0.5,
-      }}
-    >
-      {card.rank === "T" ? "10" : card.rank}
-      <br />
-      {SUIT_SYMBOLS[card.suit]}
-    </Box>
   );
 }

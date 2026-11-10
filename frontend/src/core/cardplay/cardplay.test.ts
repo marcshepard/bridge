@@ -12,6 +12,8 @@ import { leadCard } from "./carding";
 import { playContext } from "./context";
 import { decideCard } from "./decide";
 import { botClaim, checkClaim } from "./claims";
+import { type CardOdds, markFor, oddsOf, reviewCard } from "./review";
+import type { CardSimulation } from "./decide";
 import { fitWeight, sampleDeals, voids } from "./sample";
 import { unknownHand } from "../bidding/model";
 import { seeded } from "../random";
@@ -100,6 +102,72 @@ describe("the bots' card play", () => {
     expect(lead.simulation!.groups.length).toBeGreaterThan(1);
     expect(cardCode(lead.card)).toMatch(/^[SHDC][AKQJT2-9]$/);
   });
+});
+
+describe("the play review", () => {
+  const card = (code: string) => ({ suit: code[0] as "S", rank: code[1]! });
+  const odds = (gap: number, clear = true) => ({ gap, clear }) as CardOdds;
+
+  it.each([
+    ["the best play that didn't cost", 0, 0, null, false],
+    ["the best play that cost a trick: unlucky", 0, 1, "unlucky", false],
+    ["10% behind: a mistake, even when it worked", 0.1, 0, "mistake", false],
+    ["5% behind, clearly: a close call", 0.05, 1, "close", false],
+    ["5% behind, within the noise: too close to call", 0.05, 0, null, true],
+    ["half a percent behind: too close to call", 0.005, 0, null, true],
+  ] as const)("%s", (_, gap, cost, mark, tooClose) => {
+    const clear = !(gap === 0.05 && cost === 0);
+    expect(markFor(gap === 0 ? null : odds(gap, clear), cost)).toEqual({ mark, tooClose });
+  });
+
+  it("compares the two cards on the same deals, and says when the gap is clear", () => {
+    // ♠A best on every deal; ♠2 best on 3 of 4 (the same deals): 25% behind, but on 4 deals not clear.
+    const rows = [
+      [["SA", 3], ["S2", 3]],
+      [["SA", 3], ["S2", 3]],
+      [["SA", 3], ["S2", 3]],
+      [["SA", 3], ["S2", 2]],
+    ].map((r) => new Map(r as [string, number][]));
+    const sim: CardSimulation = {
+      deals: rows.map(() => ({ hands: {} as never, weight: 1 })),
+      total: 4,
+      perDeal: rows,
+      groups: [
+        { cards: [card("SA")], best: 1, average: 3 },
+        { cards: [card("S2")], best: 0.75, average: 2.75 },
+      ],
+      note: "",
+    };
+    const o = oddsOf(sim, card("S2"))!;
+    expect(o.gap).toBeCloseTo(0.25);
+    expect(o.clear).toBe(false);
+    // The same pattern on 40 deals is clear.
+    const many = { ...sim, deals: Array.from({ length: 40 }, () => ({ hands: {} as never, weight: 1 })), total: 40, perDeal: Array.from({ length: 10 }, () => rows).flat() };
+    expect(oddsOf(many, card("S2"))!.clear).toBe(true);
+    expect(oddsOf(sim, card("SA"))!.gap).toBe(0);
+  });
+
+  it("never marks the bot's own card, and marks a lead well behind the best as a mistake", async () => {
+    const hands = {
+      N: parseHand("73.T7.T63.QJT943"),
+      E: parseHand("K542.KQJ854..AK2"),
+      S: parseHand("QJT98.62.AK94.85"),
+      W: parseHand("A6.A93.QJ8752.76"),
+    };
+    const ctx = playContext({ dealer: "N", vul: "None" }, ["PASS", "1H", "1S", "2S", "PASS", "4H", "PASS", "PASS", "PASS"].map((c) => parseCall(c)!));
+    const state = startPlay(hands, "H", "E");
+    const bots = await reviewCard(state, (await decideCard(state, ctx, solver)).card, ctx, solver, true);
+    expect(bots.mark === null || bots.mark === "unlucky").toBe(true);
+    expect(bots.odds!.gap).toBe(0);
+    const groups = bots.odds!.groups;
+    const worst = groups.at(-1)!;
+    if (groups[0]!.best - worst.best >= 0.1) {
+      const r = await reviewCard(state, worst.cards[0]!, ctx, solver, true);
+      expect(r.mark).toBe("mistake");
+      expect(r.bot.card).toEqual(bots.bot.card);
+    }
+    expect(bots.actual.length).toBeGreaterThan(1);
+  }, 60_000);
 });
 
 describe("claims", () => {

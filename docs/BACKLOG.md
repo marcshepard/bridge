@@ -40,6 +40,21 @@ sitting there in plain sight.
   during a claim; everything once the board has a result), and every screen that reads
   `board.hands` would cope with hands it doesn't have yet. Much more work than the problem deserves.
 
+## Reviews of earlier boards, for everyone
+
+The bidding and play reviews open from a board's result screen. Only the game's owner can look back
+at an earlier board (from the tally, to correct it), so only the owner can review one. Everyone else
+sees the board the table is on. The snapshot already keeps every board's auction and cards, so this
+is a frontend change: let anyone open an earlier board from the tally to review it (read-only),
+without moving the table.
+
+## Play review: judge by the game's scoring
+
+The play review (stage 5 in [BOT.md](BOT.md)) and the bots' card play count a card as best when it
+takes the most tricks, so overtricks matter as at matchpoints. At IMPs, making the contract (or
+beating it) matters far more than an overtrick. Score each card's tricks by the game's scoring
+instead, in both the bots' play and the review.
+
 ## Bidding bot: gaps, to take on as feedback comes in
 
 The bots bid SAYC well enough to practise with (stages 1–3 in [BOT.md](BOT.md)). Bidding has no

@@ -252,15 +252,13 @@ export async function getPlays(db: D1Database, code: string, board: number): Pro
   return results.map(toPlay);
 }
 
-/** The cards so far on every board being played on devices right now (not yet finished). */
-export async function getLivePlays(db: D1Database, code: string): Promise<PlayDto[]> {
+/**
+ * The cards played on every board played on the devices: the one being played, and finished ones
+ * (for the play review). Starting a board again deletes its old cards.
+ */
+export async function getAllPlays(db: D1Database, code: string): Promise<PlayDto[]> {
   const { results } = await db
-    .prepare(
-      `SELECT p.board, p.seq, p.seat, p.card FROM plays p
-       JOIN results r ON r.event_code = p.event_code AND r.table_no = p.table_no AND r.board = p.board
-       WHERE p.event_code = ? AND r.on_devices = 1 AND r.tricks IS NULL
-       ORDER BY p.board, p.seq`,
-    )
+    .prepare("SELECT board, seq, seat, card FROM plays WHERE event_code = ? ORDER BY board, seq")
     .bind(code)
     .all<PlayRow>();
   return results.map(toPlay);

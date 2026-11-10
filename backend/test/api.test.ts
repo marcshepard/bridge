@@ -312,7 +312,7 @@ describe("playing the cards on devices", () => {
     const snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
     const tricks = tricksWon(state).declarer;
     expect(snap.results[0]).toMatchObject({ contract: "3NT", declarer: "S", tricks, onDevices: true });
-    expect(snap.plays).toEqual([]); // finished boards' cards aren't sent
+    expect(snap.plays).toHaveLength(52); // kept once the board is over, for the play review
     expect((await play(code, 53, "SA", idOf.W)).status).toBe(409);
   }, 30_000); // 52 requests
 

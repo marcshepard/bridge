@@ -18,7 +18,7 @@ import { type Decision, type ReviewedCall, decideWithSimulation, reviewAuction }
 import { doubleDummy } from "../../services";
 import { type Shown, rangeWords } from "../../core/bidding/model";
 import { callName } from "../../core/bidding/sayc/common";
-import { type TableSystems, isDefault } from "../../core/bidding/system";
+import type { TableSystems } from "../../core/bidding/system";
 import { type Seat, SEATS, SEAT_NAMES, SUITS, SUIT_SYMBOLS } from "../../core/types";
 import type { Board } from "../../providers/types";
 import { CallText, SuitString } from "../controls/BridgeText";
@@ -39,10 +39,15 @@ interface Props {
   /** The card each side bids by. */
   systems: TableSystems;
   /** Open the bidding system page. */
-  onSystem: () => void;
+  onSystem?: () => void;
+  /**
+   * During the play: what each bid means and what the bidding had shown, nothing more. No marks, no
+   * comparisons and no bots' reasons, which would give away the hands nobody can see yet.
+   */
+  meaningsOnly?: boolean;
 }
 
-export function BiddingReview({ board, calls, seat, names, bots, systems, onSystem }: Props) {
+export function BiddingReview({ board, calls, seat, names, bots, systems, onSystem, meaningsOnly = false }: Props) {
   const plain = useMemo(() => reviewAuction(board.hands, { dealer: board.dealer, vul: board.vul }, calls, systems), [board, calls, systems]);
   // Hard calls, settled by simulation (by index), as each finishes.
   const [simulated, setSimulated] = useState<Record<number, Decision>>({});
@@ -50,7 +55,7 @@ export function BiddingReview({ board, calls, seat, names, bots, systems, onSyst
   useEffect(() => {
     setSimulated({});
     const hard = plain.map((r, i) => (r.bot.hard ? i : -1)).filter((i) => i >= 0);
-    if (!doubleDummy || hard.length === 0) return;
+    if (meaningsOnly || !doubleDummy || hard.length === 0) return;
     let cancelled = false;
     setSimulating(true);
     void (async () => {
@@ -80,7 +85,7 @@ export function BiddingReview({ board, calls, seat, names, bots, systems, onSyst
 
   const markOf = (i: number): CallMark | null => {
     const r = review[i];
-    if (!r) return null;
+    if (!r || meaningsOnly) return null;
     if (mine(r) && !r.agrees) return "differs";
     if (isBot(r.seat) ? r.bot.fallback : r.read.guessed) return "norule";
     if ((isBot(r.seat) || (mine(r) && r.agrees)) && r.bot.hard) return "hard";
@@ -92,24 +97,36 @@ export function BiddingReview({ board, calls, seat, names, bots, systems, onSyst
   return (
     <Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-        Tap a bid to see what it means and why it was made.
-        {review.some(mine) && (differs === 0 ? " Every bid of yours matches the bots' system." : ` ${differs} of your bids differ from what the bot would bid.`)}
+        {meaningsOnly ? (
+          "Tap a bid to see what it means."
+        ) : (
+          <>
+            Tap a bid to see the{" "}
+            {onSystem ? (
+              // Opens the bidding system each side bid by: a button that reads as part of the sentence.
+              <Button onClick={onSystem} sx={{ p: 0, minWidth: 0, verticalAlign: "baseline", typography: "body2", textTransform: "none" }}>
+                bot's evaluation
+              </Button>
+            ) : (
+              "bot's evaluation"
+            )}
+            .
+          </>
+        )}
+        {!meaningsOnly &&
+          review.some(mine) &&
+          (differs === 0 ? " The bot agrees with all your bids." : ` The bot would bid ${differs === 1 ? "one of yours" : `${differs} of yours`} differently.`)}
         {simulating && " Working out the hard calls…"}
       </Typography>
       <AuctionTable dealer={board.dealer} vul={board.vul} names={names} calls={calls} seat={seat} onOpenCall={setOpen} marks={markOf} />
       <MarkLegend marks={marks} />
-      <Box sx={{ mt: 1.5 }}>
-        <Button variant="outlined" onClick={onSystem}>
-          Bidding system: SAYC{isDefault(systems.NS) && isDefault(systems.EW) ? "" : ", with your choices"}
-        </Button>
-      </Box>
       {open !== null && review[open] && (
         <CallDialog
           r={review[open]}
           me={seat}
           names={names}
-          isBot={isBot(review[open].seat)}
-          isMine={mine(review[open])}
+          isBot={!meaningsOnly && isBot(review[open].seat)}
+          isMine={!meaningsOnly && mine(review[open])}
           onPrev={open > 0 ? () => setOpen(open - 1) : undefined}
           onNext={open < review.length - 1 ? () => setOpen(open + 1) : undefined}
           onClose={() => setOpen(null)}

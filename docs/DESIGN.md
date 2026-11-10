@@ -361,7 +361,7 @@ played. If a board somehow hasn't started, the owner has **Play online**.
 - **Stored as:** the board's result row with `on_devices` set and an empty contract while it's
   being bid, and a `calls` row per call (migration 0007). The calls stay with the board's cards
   through the play, and after it: the snapshot sends every board's auction, for the bidding review
-  (a button under the result). Starting a board's auction again replaces its calls.
+  (the Bidding tab under the result; during the play, the contract opens it with meanings only). Starting a board's auction again replaces its calls.
 - No alerts or explanations yet (see "Convention cards and alerts" in the backlog).
 
 - The board screen becomes the play table: the join code and tally on top, then a status strip
@@ -557,7 +557,9 @@ The schema is `backend/migrations/0001_init.sql`. In short:
   `updated_at`, `on_devices` (the cards are played on the devices; with `tricks` NULL the board is
   being played right now).
 - **plays** (`0004_card_play.sql`): each card played on the devices, in order: `board`, `seq`
-  (1–52), `seat` (dummy's when declarer plays it), `card` ("SA").
+  (1–52), `seat` (dummy's when declarer plays it), `card` ("SA"). The snapshot sends every board's
+  cards, finished boards' too, for the play review (stage 5 in [BOT.md](BOT.md)); starting a board
+  again deletes them.
 - **claims** (`0005_claims.sql`): at most one per board: `seat`, `tricks` (of those left, for the
   claimer's side), `accepted_by` (seats, e.g. "EW"). Refused or taken back: deleted.
 

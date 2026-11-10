@@ -98,7 +98,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           The result card says what happened, for example <strong>2♣× by N, made</strong>, with two buttons
           under it: your <strong>Score</strong> (+180 N/S; tap it to see how it adds up) and your{" "}
           <strong>Matchpoints</strong> (83% N/S; tap it to see what the original pairs scored, and your net). Below are all
-          four hands, North at the top and South at the bottom, each headed with the seat and the player, for
+          four hands (on the <strong>Bidding</strong> tab, under the auction, when the board was played online), North at the top and South at the bottom, each headed with the seat and the player, for
           example <strong>West (Marc)</strong>. Trumps come first in each hand, then the other suits alternating
           colours. When the source has
           analysis for the board (<strong>Expert analysis</strong>, or just the <strong>Double dummy</strong>{" "}
@@ -139,6 +139,12 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           Want to see how the bots would handle a hand? Turn on <strong>Bots bid for me</strong> (or{" "}
           <strong>Bots bid and play for me</strong>) on the bidding screen, and they take your seat too while you
           read why. It stays on for the rest of that practice until you turn it off.
+        </li>
+        <li>
+          In <strong>Bidding and play</strong>, the result screen after each board opens on the{" "}
+          <strong>Play</strong> tab (the play review); the <strong>Bidding</strong> tab has the bidding review, with
+          the four hands under it. See <strong>The bidding review</strong> and{" "}
+          <strong>The play review</strong> below.
         </li>
         <li>
           In <strong>Bidding only</strong>, when the auction ends the contract is scored as if everyone then played perfectly (double dummy): for
@@ -183,8 +189,40 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         choice would score with perfect play, and picks the one that does best at matchpoints. Tap the bid to see
         the figures, for example <strong>Double: 58% of the matchpoints, Pass: 42%</strong> over 60 deals. Use <strong>Previous bid</strong>{" "}
         and <strong>Next bid</strong> to step through the auction. In a game with other people, only your own bids
-        are compared with the bot's. The <strong>Bidding system</strong> button under the auction shows the card each
-        side bid by in this game.
+        are compared with the bot's. Tap <strong>bot's evaluation</strong> above the auction to see the card each side bid by in this game.
+      </Typography>
+
+      <Heading>The play review</Heading>
+      <Typography sx={{ mb: 1 }}>
+        After a board played online, the <strong>Play</strong> tab under the result goes through the play a trick at
+        a time. Tap a trick's number to see it: all four hands face up as they were when the trick started, you at the
+        bottom, and the trick's cards in the middle (the first card says <strong>led</strong>, and the line under it
+        says who led and who won). Tap a card in the trick to see what it was, under the table:
+      </Typography>
+      <Box component="ul" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
+        <li>
+          <strong>For your cards</strong> (and dummy's, when you were declarer): how it compares with the other
+          cards you could have played. The review deals the hands you couldn't see many times, in ways that fit the
+          bidding and the cards played so far, and works out which card does best with perfect play from there on
+          each deal. So it judges your card on what you could know, not on how the cards happened to lie.
+        </li>
+        <li>
+          <strong>For a bot's card</strong>: why the bot played it.
+        </li>
+        <li>
+          Other people's cards aren't explained: feedback is only for the player it's about.
+        </li>
+      </Box>
+      <Typography sx={{ mt: 1 }}>
+        Your cards can carry a mark, on the card and on its trick's number: <strong>✗</strong> a mistake, when another
+        card was best on at least 10% more of the deals; <strong>≈</strong> a close call, when another card was a
+        little better (1% to 10% more); and <strong>?</strong> unlucky, when your card was right on the odds but cost
+        a trick on the actual deal. For example, with nine trumps missing the queen, playing for the drop works on
+        slightly more deals than the finesse: finessing is a close call even when it wins, and the drop is unlucky
+        when the finesse would have worked. A mistake that happened to work says so ("it worked this time"). Tap{" "}
+        <strong>Details</strong> for the figures: how often each card was best across the deals, and what each would
+        have taken on the actual deal with perfect play. The review takes a moment: the marks appear as they're
+        worked out.
       </Typography>
 
       <Heading>Playing online</Heading>
@@ -209,7 +247,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         <li>
           The auction ends after three passes in a row following a bid. The contract goes in for everyone, and the
           card play starts. If all four pass first, the board is passed out and scored as that. During the play,
-          tap the contract at the top to see the auction again.
+          tap the contract at the top (it says <strong>auction</strong> under it) to see the auction again, and tap
+          any bid in it to see what it means.
         </li>
         <li>
           In a game with bots (robot players), the bots bid and play by themselves, after a short pause so you
@@ -231,8 +270,10 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           the card it started with. Bots with nobody on their side bid SAYC as it comes.
         </li>
         <li>
-          After the board, tap <strong>Bidding review</strong> under the result to go through the auction: tap any
-          bid to see what it means, and why the bot made it. See <strong>The bidding review</strong> below.
+          After the board, the tabs under the result have the reviews: <strong>Bidding</strong> goes through the
+          auction (tap any bid to see what it means, and why the bot made it), and <strong>Play</strong> through the
+          cards, with how yours compared. See <strong>The bidding review</strong> and <strong>The play review</strong>{" "}
+          above.
         </li>
         <li>
           Once the card play starts, everyone's screen shows the table: your cards

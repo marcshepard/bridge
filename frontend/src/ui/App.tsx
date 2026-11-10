@@ -89,9 +89,10 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
 
   /**
    * A result saved here or pushed from another device: replace that board's result. A board's
-   * cards and claim are kept while it's being played on the devices, and when that play has just
-   * ended (the finished table stays on screen for a moment). Its auction is kept for good, for the
-   * bidding review. A fresh start of the board (its auction again) has none of them.
+   * claim is kept while it's being played on the devices, and when that play has just ended (the
+   * finished table stays on screen for a moment). Its auction and cards are kept for good, for the
+   * bidding and play reviews. A fresh start of the board (its auction again, or its play stopped)
+   * has none of them.
    */
   const mergeResult = useCallback((result: ResultDto) => {
     setSnapshot((s) => {
@@ -103,7 +104,10 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
         ...s,
         results: [...s.results.filter((r) => r.board !== result.board), result],
         calls: freshStart ? s.calls.filter((k) => k.board !== result.board) : s.calls,
-        plays: keepPlays ? s.plays : s.plays.filter((p) => p.board !== result.board),
+        // Cards go when the board starts afresh or stops being played on the devices.
+        plays: freshStart || !result.onDevices || (result.contract !== "" && !(before && isLive(before)) && isLive(result))
+          ? s.plays.filter((p) => p.board !== result.board)
+          : s.plays,
         claims: keepPlays ? s.claims : s.claims.filter((k) => k.board !== result.board),
       };
     });

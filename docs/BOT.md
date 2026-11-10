@@ -222,9 +222,10 @@ core/bidding/      pure, no I/O, used by the devices (to bid for bots, and for r
      file has no double dummy.
    Gaps in the bidding (conventions not used yet, judgment calls, sharper simulation) are listed in
    the backlog, to take on as feedback comes in.
-4. **Card play by sampling** (built, being tested by hand; details below), replacing the simple rules
+4. **Card play by sampling** (done; details below), replacing the simple rules
    (kept for devices without double dummy).
-5. **Play review** after the board, then feedback as you go and take-backs.
+5. **Play review** after the board (built, being tested by hand; details below), then feedback as
+   you go and take-backs.
 6. **Bots on the fastest device,** with a backend fallback; bots in games with people ("Add a bot"
    in the lobby).
 
@@ -289,4 +290,51 @@ core/bidding/      pure, no I/O, used by the devices (to bid for bots, and for r
   declares, you watch as dummy.
 - **Known limits** (as for bidding, listed rather than fixed now): double dummy assumes it will know
   later what it has to guess now, and never plays for an opponent's mistake.
+
+### Stage 5
+
+- **Where:** under the result, two tabs, so a phone needn't scroll: **Bidding** (the bidding
+  review with the four hands under it, since you want both together) and **Play** (the play review,
+  which has its own hands). Without an auction the first tab is just the hands, called Hands. Practice
+  with a play opens on Play; a game with people on Bidding. With no play on the devices there are no
+  tabs, just the bidding review and the hands.
+- **Trick by trick:** a strip of trick numbers (a trick with a marked card of yours shows its worst
+  mark); the table shows all four hands face up as they were when the trick started (you at the
+  bottom) and the trick's four cards, the lead tagged "led", with who led and who won under it.
+  Tapping a card shows what it was, in a line or two: for your cards, the verdict; for a bot's card,
+  its reason; for another person's, nothing (feedback is only for the player it's about). Details
+  opens the figures: each card's share of the deals from that seat, and its tricks on the actual deal.
+- **The auction during the play:** the contract on the play table is a button that opens the
+  bidding review with meanings only (what each bid means, what the bidding had shown), without
+  marks or the bots' reasons, which would give away hands nobody can see yet.
+- **Your cards are judged on the odds, not on the result.** For each real choice (more than one
+  card, and not just equals), the review deals the hidden hands from your seat, as the bot does at
+  the table, and compares the cards on those deals:
+
+  | Mark | On the odds | On this deal |
+  |---|---|---|
+  | Mistake ✗ | another card was best on at least 10% more of the deals | either way ("it worked this time") |
+  | Close call ≈ | another card was best on 1% to 10% more of the deals | either way |
+  | Unlucky ? | your card was the best play | it cost a trick |
+  | none | your card was the best play | it didn't cost |
+
+  Your cards are the ones from your seat, and dummy's when you declare. In "Watch the bots" those are
+  the bots' too, and judged the same way (they'll mostly be unmarked).
+- **Two passes:** every choice on 40 deals (the bot's own decision, so it also gives what the bot
+  would have played and why), then any card behind the best by less than 10% again on 200 deals. A
+  close call is marked only when the difference is at least 1% and clearly more than the sampling's
+  noise (twice its standard error, on the same deals for both cards); otherwise the card says it's
+  too close to call, with the figures. The thresholds are a first guess, to tune on real hands.
+- **"Best"** is the bots' measure: the card that takes the most tricks on a deal, so overtricks count
+  (matchpoints). Judging by the game's scoring (making the contract first, at IMPs) is for later.
+- **On the actual deal:** each card is solved on the real position too, which tells unlucky from fine
+  and shows what each card would have taken there.
+- **The bots' cards** get their reason and the same figures, but no marks: the bot's card is the one
+  its own analysis chose, so a mark would only repeat it. The owner's device keeps each decision as
+  the bot plays, so the review needn't work it out again; on other devices (and after a reload)
+  it's worked out again, the same way (it's seeded).
+- **Speed:** it works in the background, your cards first, and the marks appear as they're worked
+  out. Only cards with a real choice are solved.
+- **Kept on the backend:** a board's cards stay in the snapshot once its result is in (they used to
+  be dropped), like the auction.
 

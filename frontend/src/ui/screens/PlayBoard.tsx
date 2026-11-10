@@ -8,7 +8,6 @@
 // stays pinned at the bottom of the screen.
 
 import { Box, Button, Paper, Stack, Typography } from "@mui/material";
-import { useState } from "react";
 import { formatTableResult } from "../../core/contract";
 import { formatScore } from "../../core/scoring";
 import type { BoardComparison } from "../../core/compare";
@@ -19,6 +18,7 @@ import { type Contract, type Hand as HandT, type Seat, SEATS, SEAT_NAMES, direct
 import type { Board } from "../../providers/types";
 import type { TableSystems } from "../../core/bidding/system";
 import { BiddingReview } from "../components/BiddingReview";
+import { PlayReview } from "../components/PlayReview";
 import { BoardHeader } from "../components/BoardHeader";
 import { Hand } from "../components/Hand";
 import { ContractText, ResultText, ScoreText } from "../controls/BridgeText";
@@ -27,7 +27,7 @@ import { DetailButton } from "../controls/DetailButton";
 import { EditButton } from "../controls/EditButton";
 import { PlayerName } from "../controls/PlayerName";
 import { Panel, Screen, Section } from "../controls/Layout";
-import { SheetDialog } from "../controls/SheetDialog";
+import { type TabPanel, TabPanels } from "../controls/TabPanels";
 import { ScoreChip, type Tone } from "../controls/ScoreChip";
 import { formatJoinCode, netParts, seatAndPlayer, vulnerableShort } from "../labels";
 import { BidHand } from "./BidHand";
@@ -92,6 +92,16 @@ interface Props {
     systems: TableSystems;
     inline: boolean;
     onSystem: () => void;
+  } | null;
+  /**
+   * The board's cards, once its play on the devices is over, for the play review (a tab on the
+   * result screen, beside Bidding and Hands).
+   */
+  playReview: {
+    calls: Call[];
+    cards: Card[];
+    bots: Seat[];
+    systems: TableSystems;
   } | null;
   /** While the cards are being played on the devices: the play table takes over the page. */
   play: {
@@ -161,7 +171,6 @@ function SeatHand({
 
 export function PlayBoard(p: Props) {
   const { board, seat, comparison: c } = p;
-  const [reviewOpen, setReviewOpen] = useState(false);
   const dir = directionOf(seat);
   const sideLabel = dir === "NS" ? "N/S" : "E/W";
 
@@ -247,11 +256,30 @@ export function PlayBoard(p: Props) {
     ) as Record<Seat, React.ReactNode>;
     return <Compass me={seat} bottom="S" seats={seats} label="All four hands" />;
   };
-  const reviewSection = p.review && (
-    <Section title="Bidding review" id="bidding-review" tight>
-      <BiddingReview board={board} calls={p.review.calls} seat={seat} names={p.names} bots={p.review.bots} systems={p.review.systems} onSystem={p.review.onSystem} />
-    </Section>
+  const biddingReview = p.review && (
+    <BiddingReview board={board} calls={p.review.calls} seat={seat} names={p.names} bots={p.review.bots} systems={p.review.systems} onSystem={p.review.onSystem} />
   );
+  /**
+   * Under the result: the bidding review with the four hands under it (you want both together), and
+   * the play review (it has its own hands), as tabs, so a phone needn't scroll. Without a bidding
+   * review it's just the hands. Practice with a play opens on Play; otherwise, Bidding.
+   */
+  const resultTabs = (trump: Contract["strain"] | null, playReview: React.ReactNode) => {
+    const bidding = biddingReview ? (
+      <>
+        {biddingReview}
+        <Box sx={{ mt: 2 }}>{allHands(trump)}</Box>
+      </>
+    ) : (
+      allHands(trump)
+    );
+    if (!playReview) return bidding;
+    const tabs: TabPanel[] = [
+      { id: "bidding", label: biddingReview ? "Bidding" : "Hands", content: bidding },
+      { id: "play", label: "Play", content: playReview },
+    ];
+    return <TabPanels tabs={tabs} initial={p.review?.inline ? "play" : "bidding"} label="The board after play" />;
+  };
 
   // Bidding practice on a game file without double dummy: the auction's contract, unscored.
   if (!c && p.review?.inline && p.contract) {
@@ -272,8 +300,7 @@ export function PlayBoard(p: Props) {
               : "Not scored: this game file has no double-dummy tricks, and they couldn't be worked out on this device."}
           </Typography>
         </Paper>
-        {reviewSection}
-        <Box sx={{ mt: 2 }}>{allHands(p.contract.contract.strain)}</Box>
+        {resultTabs(p.contract.contract.strain, null)}
       </Screen>
     );
   }
@@ -347,6 +374,20 @@ export function PlayBoard(p: Props) {
 
   // After the result: the result card (what happened, and how it scored), then all four hands.
   const trump = c.ours.result.contract?.strain ?? null;
+  const played = c.ours.result.contract && c.ours.result.declarer ? { contract: c.ours.result.contract, declarer: c.ours.result.declarer } : null;
+  const playReviewBody = p.playReview && played && (
+    <PlayReview
+      board={board}
+      contract={played}
+      calls={p.playReview.calls}
+      cards={p.playReview.cards}
+      seat={seat}
+      names={p.names}
+      bots={p.playReview.bots}
+      systems={p.playReview.systems}
+      tricks={c.ours.result.tricks}
+    />
+  );
   const mp = c.mpPct === null ? null : netParts(c.mpPct);
 
   return (
@@ -395,21 +436,9 @@ export function PlayBoard(p: Props) {
             </Typography>
           )}
         </Box>
-        {p.review && !p.review.inline && (
-          <Button variant="outlined" fullWidth sx={{ mt: 1 }} onClick={() => setReviewOpen(true)}>
-            Bidding review
-          </Button>
-        )}
       </Paper>
 
-      {p.review?.inline && reviewSection}
-      <Box sx={{ mt: p.review?.inline ? 2 : 0 }}>{allHands(trump)}</Box>
-
-      {p.review && !p.review.inline && (
-        <SheetDialog open={reviewOpen} title={`Bidding review: board ${board.number}`} onClose={() => setReviewOpen(false)}>
-          <BiddingReview board={board} calls={p.review.calls} seat={seat} names={p.names} bots={p.review.bots} systems={p.review.systems} onSystem={p.review.onSystem} />
-        </SheetDialog>
-      )}
+      {resultTabs(trump, playReviewBody)}
     </Screen>
   );
 }

@@ -122,7 +122,10 @@ export interface EventSnapshot {
    * the bidding review). A board's calls are replaced when its auction is started again.
    */
   calls: CallDto[];
-  /** The cards played so far on boards being played on devices right now. */
+  /**
+   * The cards played on every board played on the devices (the one being played, and finished ones
+   * for the play review). A board's cards are deleted when it's started again.
+   */
   plays: PlayDto[];
   /** Claims made on boards being played on devices right now. */
   claims: ClaimDto[];

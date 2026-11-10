@@ -12,7 +12,7 @@ import { type Seat, type Suit, SUITS } from "../types";
 import type { Shown } from "../bidding/model";
 import type { SystemSettings } from "../bidding/system";
 import { chooseWithin } from "./carding";
-import { decider, sampleDeals } from "./sample";
+import { type WeightedDeal, decider, sampleDeals } from "./sample";
 import { unknownHand } from "../bidding/model";
 
 /** What the bidding said, for the play: what each hand showed, and the suits each seat bid naturally. */
@@ -46,37 +46,51 @@ export interface CardDecision {
 export interface CardPlayOptions {
   deals?: number;
   maxTries?: number;
+  /** A simulation already run for this position (the play review's), so it isn't run twice. */
+  simulation?: CardSimulation | null;
 }
 
 const RANK_WORDS = "AKQJT98765432";
 const cardText = (c: Card) => `${({ S: "♠", H: "♥", D: "♦", C: "♣" } as const)[c.suit]}${c.rank === "T" ? "10" : c.rank}`;
 
-/** The bot's card for whoever is to play (declarer decides for dummy). */
-export async function decideCard(state: PlayState, ctx: PlayContext, solver: DoubleDummySolver | null, options: CardPlayOptions = {}): Promise<CardDecision> {
+/**
+ * The deals the decider can't rule out, and every legal card solved on each: what both the bot's
+ * choice and the play review work from. `perDeal[i]` maps a card's code to the tricks the mover's
+ * side takes with it on deal i. Null when nothing fitted.
+ */
+export interface CardSimulation {
+  deals: WeightedDeal[];
+  total: number;
+  perDeal: Map<string, number>[];
+  groups: CardGroup[];
+  /** Said when the bidding had to be ignored. */
+  note: string;
+}
+
+/** Deal the hidden hands from the decider's seat, solve every legal card on each, and group equal cards. */
+export async function simulateCards(state: PlayState, ctx: PlayContext, solver: DoubleDummySolver, count = 40, maxTries = 20_000): Promise<CardSimulation | null> {
   const mover = toPlay(state);
   const who = decider(state, mover);
   const legal = legalCards(state, mover);
-  if (legal.length === 1) return { card: legal[0]!, reason: "the only card it can play" };
-  if (!solver) return { card: chooseCard(state), reason: "by simple rules (double dummy isn't available on this device)" };
-
   const trick = currentTrick(state);
   const played = state.tricks.flatMap((t) => t.cards.map((p) => cardCode(p.card))).join(" ");
   const mine = SUITS.map((s) => state.hands[who][s]).join(".");
   const rand = seeded(hash(`${mine}|${played}|${ctx.key}`));
-  const count = options.deals ?? 40;
-  let deals = sampleDeals(state, who, ctx.shown, count, options.maxTries ?? 20_000, rand, [], ctx.readCarding === false ? undefined : ctx.systemFor);
+  const carding = ctx.readCarding === false ? undefined : ctx.systemFor;
+  let deals = sampleDeals(state, who, ctx.shown, count, maxTries, rand, [], carding);
   let note = "";
   if (deals.length < 6) {
     // The bidding and the play don't fit together well (a misread call, a wild bid): use the hard facts only.
     const unknown = { N: unknownHand(), E: unknownHand(), S: unknownHand(), W: unknownHand() };
-    deals = sampleDeals(state, who, unknown, count, options.maxTries ?? 20_000, rand, [], ctx.readCarding === false ? undefined : ctx.systemFor);
+    deals = sampleDeals(state, who, unknown, count, maxTries, rand, [], carding);
     note = " (the bidding didn't fit the cards seen, so only the cards played were used)";
   }
-  if (deals.length === 0) return { card: chooseCard(state), reason: "by simple rules (no deal fitted what it knows)" };
+  if (deals.length === 0) return null;
 
   const scores = await solver.cards(
     deals.map((d) => ({ hands: d.hands, trump: state.trump, leader: trick.leader, trick: trick.cards.map((p) => p.card) })),
   );
+  const perDeal = scores.map((row) => new Map(row.map((r) => [cardCode(r.card), r.tricks])));
 
   // Per card: weighted share of deals where it's best, and average tricks; group cards that score
   // the same on every deal (double dummy can't tell them apart).
@@ -102,6 +116,20 @@ export async function decideCard(state: PlayState, ctx: PlayContext, solver: Dou
       return { cards, best: e.best / total, average: e.sum / total };
     })
     .sort((a, b) => b.best - a.best || b.average - a.average);
+  return { deals, total, perDeal, groups, note };
+}
+
+/** The bot's card for whoever is to play (declarer decides for dummy). */
+export async function decideCard(state: PlayState, ctx: PlayContext, solver: DoubleDummySolver | null, options: CardPlayOptions = {}): Promise<CardDecision> {
+  const mover = toPlay(state);
+  const legal = legalCards(state, mover);
+  if (legal.length === 1) return { card: legal[0]!, reason: "the only card it can play" };
+  if (!solver) return { card: chooseCard(state), reason: "by simple rules (double dummy isn't available on this device)" };
+
+  const trick = currentTrick(state);
+  const sim = options.simulation !== undefined ? options.simulation : await simulateCards(state, ctx, solver, options.deals ?? 40, options.maxTries ?? 20_000);
+  if (!sim) return { card: chooseCard(state), reason: "by simple rules (no deal fitted what it knows)" };
+  const { deals, groups, note } = sim;
 
   // An opening lead within a whisker of the best, in partner's suit, is preferred.
   let chosen = groups[0]!;

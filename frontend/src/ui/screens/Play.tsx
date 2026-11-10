@@ -69,6 +69,8 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
   // On your own with three bots (practice): the bots can bid, and play, your seat too
   // (remembered on this device, per game).
   const withBotsOnly = isOwner && bots.length === 3;
+  // Bidding-and-play practice: the result screen shows the bidding and play reviews, not buttons for them.
+  const practicePlay = withBotsOnly && snapshot.mode === "devices";
   const [watch, setWatch] = useState(() => withBotsOnly && profile.botsBidForMe(snapshot.code));
   // The card each side bids by (fixed when the game started), for the bots and the review.
   const systems = useMemo(() => tableSystems(snapshot.players), [snapshot.players]);
@@ -285,7 +287,12 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
         scoring={scoring}
         review={
           !bidding && calls.length > 0 && isAuctionOver(calls) && (practice || comparison)
-            ? { calls, bots, systems, inline: practice, onSystem: () => setCardsOpen(true) }
+            ? { calls, bots, systems, inline: practice || practicePlay, onSystem: () => setCardsOpen(true) }
+            : null
+        }
+        playReview={
+          !bidding && !live && ending !== board.number && comparison && shared?.onDevices && cards.length > 0
+            ? { calls, cards, bots, systems }
             : null
         }
         play={

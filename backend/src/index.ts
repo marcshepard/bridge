@@ -275,7 +275,7 @@ app.get("/events/:code", async (c) => {
     db.getPlayers(c.env.DB, event.code),
     db.getResults(c.env.DB, event.code),
     db.getAllCalls(c.env.DB, event.code),
-    db.getLivePlays(c.env.DB, event.code),
+    db.getAllPlays(c.env.DB, event.code),
     db.getLiveClaims(c.env.DB, event.code),
     hub(c.env, event.code).connectedSlots(),
     db.getPendingSeatRequests(c.env.DB, event.code, requestCutoff()),
