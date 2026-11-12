@@ -4,7 +4,7 @@
 import type { Call } from "../../auction";
 import { type Contract, type Strain, type Suit, STRAINS, SUITS } from "../../types";
 import { contractTrickPoints } from "../../scoring";
-import { type HandFacts, fitPoints, isMajor, supportPoints } from "../evaluate";
+import { type HandFacts, fitPoints, holding, isMajor, supportPoints } from "../evaluate";
 import type { CallRule } from "../model";
 import {
   type Position,
@@ -33,19 +33,70 @@ import {
 import { SUIT_WORDS, SYMBOL, callName, rule, strainSymbol } from "./common";
 import { stopper } from "../evaluate";
 
-// ---- Blackwood ----------------------------------------------------------------------------------
+// ---- Slam: invitations, Blackwood, Roman Key Card --------------------------------------------------
+
+/** Points for a small slam between the hands, and where an invitation starts. */
+const SLAM_POINTS = 33;
+const SLAM_INVITE_FROM = 31;
+
+const ANSWER_NAMES = new Set(["Blackwood answer", "Roman Key Card answer", "Queen answer"]);
+
+/** The likely point of the range my bidding has shown (the same measure as partnerPoints). */
+function myLikely(p: Position): number {
+  const [min, max] = p.shown[p.seat].hcp;
+  return min + Math.min(2, Math.floor((max - min) / 2));
+}
 
 export function slamRules(p: Position): CallRule[] {
   const pl = partnerLast(p);
   const me = myLast(p);
-  if (pl?.rule?.name === "Blackwood") {
+  const style = p.s.blackwood;
+
+  // Partner invited slam (5 of our major, or a quantitative 4NT): bid it with more than I've shown.
+  if (pl?.rule?.name === "Slam invitation" && isBid(pl.call)) {
+    const strain = pl.call.strain;
+    const unit = strain === "NT" ? "HCP" : "points";
+    const count = (h: HandFacts) => (strain === "NT" ? h.hcp : valuation(p, h).mine);
+    const top = myLikely(p) + 1;
     return [
-      rule(bid(5, "C"), "Answers Blackwood: no aces, or all four.", (h) => h.aces === 0 || h.aces === 4, { name: "Blackwood answer", why: (h) => `${h.aces} aces` }),
-      rule(bid(5, "D"), "Answers Blackwood: one ace.", (h) => h.aces === 1, { name: "Blackwood answer", why: () => "one ace" }),
-      rule(bid(5, "H"), "Answers Blackwood: two aces.", (h) => h.aces === 2, { name: "Blackwood answer", why: () => "two aces" }),
-      rule(bid(5, "S"), "Answers Blackwood: three aces.", (h) => h.aces === 3, { name: "Blackwood answer", why: () => "three aces" }),
+      rule(bid(6, strain), "Accepts the slam invitation: more than I've shown so far.", (h) => count(h) >= top, {
+        why: (h) => `${count(h)} ${unit}, more than the ${myLikely(p)} or so I've shown: slam`,
+      }),
+      rule(PASS, "Declines the slam invitation: no more than I've shown.", () => true, {
+        why: (h) => `${count(h)} ${unit}, no more than the ${myLikely(p)} or so I've shown: stop`,
+      }),
     ];
   }
+
+  // Partner asked with 4NT: answer by the card's Blackwood.
+  if (pl?.rule?.name === "Blackwood") {
+    const trump = trumpSuit(p);
+    if (style === "plain" || !trump) {
+      return [
+        rule(bid(5, "C"), "Answers Blackwood: no aces, or all four.", (h) => h.aces === 0 || h.aces === 4, { name: "Blackwood answer", why: (h) => `${h.aces} aces` }),
+        rule(bid(5, "D"), "Answers Blackwood: one ace.", (h) => h.aces === 1, { name: "Blackwood answer", why: () => "one ace" }),
+        rule(bid(5, "H"), "Answers Blackwood: two aces.", (h) => h.aces === 2, { name: "Blackwood answer", why: () => "two aces" }),
+        rule(bid(5, "S"), "Answers Blackwood: three aces.", (h) => h.aces === 3, { name: "Blackwood answer", why: () => "three aces" }),
+      ];
+    }
+    const sym = SYMBOL[trump];
+    const kc = (h: HandFacts) => keyCards(h, trump);
+    const q = (h: HandFacts) => h.hand[trump].includes("Q");
+    // 1430: 5♣ shows 1 or 4, 5♦ 0 or 3. 3014 swaps them. (Five key cards answers as zero.)
+    const clubs = style === "rkc1430" ? [1, 4] : [0, 3];
+    const diamonds = style === "rkc1430" ? [0, 3] : [1, 4];
+    const bucket = (h: HandFacts) => (kc(h) === 5 ? 0 : kc(h));
+    const why = (h: HandFacts) => `${kc(h)} key card${kc(h) === 1 ? "" : "s"} (aces and the ${sym}K)${q(h) ? `, with the ${sym}Q` : ""}`;
+    const answer = { name: "Roman Key Card answer", why };
+    return [
+      rule(bid(5, "C"), `Answers Roman Key Card: ${clubs[0]} or ${clubs[1]} key cards.`, (h) => clubs.includes(bucket(h)), answer),
+      rule(bid(5, "D"), `Answers Roman Key Card: ${diamonds[0]} or ${diamonds[1]} key cards.`, (h) => diamonds.includes(bucket(h)), answer),
+      rule(bid(5, "H"), `Answers Roman Key Card: 2 key cards, without the ${sym}Q.`, (h) => kc(h) === 2 && !q(h), answer),
+      rule(bid(5, "S"), `Answers Roman Key Card: 2 key cards, with the ${sym}Q.`, (h) => kc(h) === 2 && q(h), answer),
+    ];
+  }
+
+  // I asked with plain Blackwood: bid the slam unless two aces are missing.
   if (me?.rule?.name === "Blackwood" && pl?.rule?.name === "Blackwood answer" && isBid(pl.call)) {
     const answer = pl.call.strain;
     const trump = trumpSuit(p);
@@ -63,7 +114,92 @@ export function slamRules(p: Position): CallRule[] {
     out.push(rule(PASS, "Two aces missing: stops here.", () => true, { why: () => "two aces missing" }));
     return out;
   }
+
+  // I asked with Roman Key Card: count key cards, ask for the trump queen if it decides it, then place it.
+  if (me?.rule?.name === "Blackwood" && pl?.rule?.name === "Roman Key Card answer" && isBid(pl.call)) {
+    const trump = trumpSuit(p);
+    if (!trump || pl.call.strain === "NT") return [];
+    return rkcAsker(p, pl.call.strain, trump);
+  }
+
+  // Partner asked for the trump queen: six with it, five without.
+  if (pl?.rule?.name === "Queen ask") {
+    const trump = trumpSuit(p);
+    if (!trump) return [];
+    const sym = SYMBOL[trump];
+    return [
+      rule(bid(6, trump), `Has the ${sym}Q: small slam.`, (h) => h.hand[trump].includes("Q"), { name: "Queen answer", why: () => `the ${sym}Q` }),
+      rule(bid(5, trump), `No ${sym}Q: signs off.`, () => true, { name: "Queen answer", why: () => `no ${sym}Q` }),
+    ];
+  }
+
+  // I asked for the queen and partner answered: that's the contract.
+  if (me?.rule?.name === "Queen ask" && pl?.rule?.name === "Queen answer") {
+    return [rule(PASS, "Partner's answer places the contract.", () => true, { why: () => "the queen answer settles it" })];
+  }
+
+  // I answered partner's ask and partner has placed the contract: leave it there.
+  if (me?.rule && ANSWER_NAMES.has(me.rule.name ?? "") && pl && pl.rule?.name !== "Queen ask") {
+    return [rule(PASS, "Partner asked, and has placed the contract.", () => true, { why: () => "partner asked, so partner decides" })];
+  }
   return [];
+}
+
+/** Key cards for Roman Key Card: the four aces and the trump king. */
+function keyCards(h: HandFacts, trump: Suit): number {
+  return h.aces + (h.hand[trump].includes("K") ? 1 : 0);
+}
+
+/**
+ * After partner's Roman Key Card answer. 5♣ and 5♦ each mean one of two counts (1 or 4, 0 or 3):
+ * take the one that fits (there are only five between us), and when both do, the one nearer what
+ * partner's points suggest (about one key card for every 8 points).
+ */
+function rkcAsker(p: Position, answer: Suit, trump: Suit): CallRule[] {
+  const style = p.s.blackwood;
+  const pp = partnerPoints(p);
+  const buckets: Record<Suit, number[]> =
+    style === "rkc1430" ? { C: [1, 4], D: [0, 3], H: [2], S: [2] } : { C: [0, 3], D: [1, 4], H: [2], S: [2] };
+  const options = buckets[answer];
+  const partnerKc = (h: HandFacts) => {
+    const fits = options.filter((k) => keyCards(h, trump) + k <= 5);
+    const pool = fits.length ? fits : options;
+    return pool.slice().sort((a, b) => Math.abs(a - pp.likely / 8) - Math.abs(b - pp.likely / 8))[0]!;
+  };
+  const missing = (h: HandFacts) => 5 - keyCards(h, trump) - partnerKc(h);
+  // The trump queen: known when I hold it or partner's 5♠ shows it; known to be missing after 5♥.
+  const queen = (h: HandFacts): "yes" | "no" | "unknown" => (h.hand[trump].includes("Q") || answer === "S" ? "yes" : answer === "H" ? "no" : "unknown");
+  const trumps = (h: HandFacts) => h.len[trump] + partnerShown(p).len[trump][0];
+  // The queen ask: the cheapest suit above the answer that isn't trumps, below five of trumps.
+  const step = SUITS.slice()
+    .reverse()
+    .find((s) => s !== trump && SUITS.indexOf(s) < SUITS.indexOf(answer) && SUITS.indexOf(s) > SUITS.indexOf(trump));
+  const ask = step ? bid(5, step) : null;
+  const five = cheapest(p, trump) <= 5 ? bid(5, trump) : null;
+  const sym = SYMBOL[trump];
+  const kcWords = (h: HandFacts) => `${keyCards(h, trump) + partnerKc(h)} of the five key cards between us`;
+  const out: CallRule[] = [
+    rule(bid(7, trump), "Grand slam: every key card and the trump queen, with plenty to spare.", (h) => missing(h) === 0 && queen(h) === "yes" && h.hcp + pp.min >= 36, {
+      why: (h) => `${kcWords(h)}, the ${sym}Q, and enough strength for thirteen tricks`,
+    }),
+  ];
+  if (ask) {
+    out.push(
+      rule(ask, `Asks for the ${sym}Q: partner bids six with it, five without.`, (h) => missing(h) === 1 && queen(h) === "unknown", {
+        name: "Queen ask",
+        forcing: "one round",
+        why: (h) => `${kcWords(h)}: one missing, so the ${sym}Q decides it`,
+      }),
+    );
+  }
+  out.push(
+    rule(bid(6, trump), "Small slam: at most one key card missing, and the trump queen isn't a second loser.", (h) => missing(h) === 0 || (missing(h) === 1 && (queen(h) === "yes" || (queen(h) === "unknown" && trumps(h) >= 10))), {
+      why: (h) => `${kcWords(h)}${queen(h) === "yes" ? ` and the ${sym}Q` : missing(h) === 0 ? "" : `; ${trumps(h)} trumps, so the ${sym}Q matters less`}`,
+    }),
+  );
+  if (five) out.push(rule(five, "Signs off: too many key cards missing.", () => true, { why: (h) => `${kcWords(h)}: stop at the five level` }));
+  out.push(rule(PASS, "Too many key cards missing: stops here.", () => true, { why: (h) => kcWords(h) }));
+  return out;
 }
 
 /** The suit our side has agreed on, as far as the auction shows: our last bid suit with an 8-card fit, else our last bid suit. */
@@ -114,17 +250,25 @@ const OUTBID_RULE = "when outbid: bid on if the Law of Total Tricks allows it, d
  * if we're there already. Below game, invite when game is possible: likely within 2 of it (3 in a
  * minor) and partner's maximum would reach it.
  */
-function plan(p: Position, h: HandFacts): Plan {
+/**
+ * How much my hand is worth with partner's, and our fit. Support points (5/3/1 for shortness) only
+ * when raising partner's suit: they've shown 4+ and we're not longer. In our own long suit the hand
+ * counts as declarer does (h.points); once partner has supported it, it counts shortness and extra
+ * trumps instead (fitPoints), the same count opener uses to answer a raise.
+ */
+function valuation(p: Position, h: HandFacts) {
   const ps = partnerShown(p);
-  const pp = partnerPoints(p);
   const fit = fitWith(p, h);
-  // Support points (5/3/1 for shortness) only when raising partner's suit: they've shown 4+ and
-  // we're not longer. In our own long suit the hand counts as declarer does (h.points); once
-  // partner has supported it, it counts shortness and extra trumps instead (fitPoints), the same
-  // count opener uses to answer a raise.
   const raising = !!fit && ps.len[fit][0] >= 4 && h.len[fit] <= ps.len[fit][0];
   const supported = !!fit && !raising && ps.len[fit][0] >= 3;
   const mine = raising ? supportPoints(h, fit!) : supported ? fitPoints(h, fit!, p.shown[p.seat].len[fit!][0]) : h.points;
+  return { fit, raising, mine };
+}
+
+function plan(p: Position, h: HandFacts): Plan {
+  const ps = partnerShown(p);
+  const pp = partnerPoints(p);
+  const { fit, raising, mine } = valuation(p, h);
   /** "a 9+ card hearts fit" with partner's support, or just "6 hearts" for a suit of our own. */
   const fitWords = (s: Suit) =>
     ps.len[s][0] >= 2 ? `${aOrAn(h.len[s] + ps.len[s][0])} ${h.len[s] + ps.len[s][0]}+ card ${SUIT_WORDS[s]} fit` : `${h.len[s]} ${SUIT_WORDS[s]}`;
@@ -183,6 +327,21 @@ function plan(p: Position, h: HandFacts): Plan {
         call: PASS,
         why: `${callName({ kind: "bid", level: doubled.level, strain: doubled.strain })} doubled is already a game (${trickPoints / 2} doubled to ${trickPoints}), and scores more than bidding game would: pass`,
       };
+    }
+  }
+
+  // Slam is possible but not sure (likely 31–32, and partner's maximum would reach 33): invite it,
+  // with 5 of our major or a quantitative 4NT. Not with two quick losers in a suit neither of us
+  // has bid: partner would accept on points alone, and the defence could cash two tricks there.
+  const suitAgreed = ourSuits(p).length > 0 && ourContract(p)?.strain !== "NT";
+  const asked = ourActions(p).some((r) => r.rule?.name === "Slam invitation" || r.rule?.name === "Blackwood");
+  if (!byTricks && target < 6 && likely >= SLAM_INVITE_FROM && mine + pp.max >= SLAM_POINTS && !asked) {
+    if (strain !== "NT" && isMajor(strain as Suit) && fit === strain && ourSuits(p).includes(strain) && cheapest(p, strain) <= 5) {
+      const loser = SUITS.find((s) => s !== strain && !ourSuits(p).includes(s) && h.len[s] >= 2 && !h.hand[s].includes("A") && !h.hand[s].includes("K"));
+      if (!loser) return { call: bid(5, strain), why: `${why}, ${points}: slam is possible, so invite it` };
+      why = `${why}, slam is possible but ${holding(h, loser)} could lose two quick tricks`;
+    } else if (strain === "NT" && !suitAgreed && cheapest(p, "NT") <= 4) {
+      return { call: bid(4, "NT"), why: `${why}, ${points}: slam is possible, so invite it` };
     }
   }
 
@@ -253,13 +412,22 @@ function outbid(p: Position, h: HandFacts, strain: Strain, mine: number, points:
 export function placementRules(p: Position): CallRule[] {
   const candidates: { call: Call; meaning: string; name?: string }[] = [{ call: PASS, meaning: "Happy with the contract as it is." }];
   const suitAgreed = ourSuits(p).length > 0 && ourContract(p)?.strain !== "NT";
-  candidates.push({ call: bid(4, "NT"), meaning: suitAgreed ? "Blackwood: asks partner how many aces they hold." : "Quantitative: invites 6NT.", name: suitAgreed ? "Blackwood" : "Quantitative 4NT" });
+  const askWords =
+    p.s.blackwood === "plain"
+      ? "Blackwood: asks partner how many aces they hold."
+      : `Roman Key Card Blackwood (${p.s.blackwood === "rkc1430" ? "1430" : "3014"}): asks for key cards, the four aces and the trump king.`;
+  candidates.push({
+    call: bid(4, "NT"),
+    meaning: suitAgreed ? askWords : "Quantitative: invites 6NT. Partner bids it with more than they've shown.",
+    name: suitAgreed ? "Blackwood" : "Slam invitation",
+  });
   for (const strain of STRAINS) {
     const g = gameLevel(strain);
     const sym = strainSymbol(strain);
     candidates.push(
       { call: bid(g - 1, strain), meaning: `Invites game in ${strain === "NT" ? "notrump" : sym}.` },
       { call: bid(g, strain), meaning: `Game in ${strain === "NT" ? "notrump" : sym}: enough values between us.` },
+      ...(strain !== "NT" && isMajor(strain) && ourSuits(p).includes(strain) ? [{ call: bid(5, strain), meaning: `Invites slam in ${sym}: partner bids six with more than they've shown.`, name: "Slam invitation" }] : []),
       { call: bid(6, strain), meaning: `Small slam in ${strain === "NT" ? "notrump" : sym}.` },
       { call: bid(7, strain), meaning: `Grand slam in ${strain === "NT" ? "notrump" : sym}.` },
     );

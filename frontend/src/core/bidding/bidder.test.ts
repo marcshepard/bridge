@@ -99,9 +99,9 @@ describe("hand valuation", () => {
   });
 
   // East counts 16 HCP + 3 for the void + 1 for the sixth heart = 20, and partner's cuebid raise
-  // about 12: 32, one short of slam. 6♥ makes, but finding it needs slam tries (in the backlog).
-  // Until then the bots stop in game; change this to 6♥ when slam tries are built.
-  it("bids game on demo board 1 (no slam tries yet)", () => {
+  // about 12: 32, slam possible but not sure. East invites with 5♥; West, with 13 (more than the
+  // 12 or so shown), accepts.
+  it("finds the slam on demo board 1 with a slam invitation", () => {
     const hands = {
       N: parseHand("73.T7.T63.QJT943"),
       E: parseHand("K542.KQJ854..AK2"),
@@ -109,7 +109,8 @@ describe("hand valuation", () => {
       W: parseHand("A6.A93.QJ8752.76"),
     };
     const made = botAuction(hands, { dealer: "N", vul: "None" }).map((d) => d.call);
-    expect(auctionResult("N", made)?.contract).toMatchObject({ level: 4, strain: "H" });
+    expect(made.map(callCode).slice(5, 8)).toEqual(["5H", "PASS", "6H"]);
+    expect(auctionResult("N", made)?.contract).toMatchObject({ level: 6, strain: "H" });
   });
 
   it("when outbid past its target, makes a hard call instead of bidding on", () => {
@@ -209,6 +210,63 @@ describe("after partner's penalty double of 1NT", () => {
     const shown = steps.at(-1)!.position.shown.E;
     expect(shown.hcp).toEqual([0, 5]);
     expect(shown.len.H[0]).toBe(5);
+  });
+});
+
+describe("slam", () => {
+  const N = "N" as const;
+  const card = (blackwood: SystemSettings["blackwood"]): SystemSettings => ({ ...SAYC_DEFAULTS, blackwood });
+  const call = (hand: string, auction: string, settings: SystemSettings = SAYC_DEFAULTS) =>
+    callCode(chooseCall(parseHand(hand), { dealer: N, vul: "None" }, calls(auction), settings).call);
+
+  // East after 1♥ (1♠) 2♠ cuebid raise: likely 31–32 invites; a suit with two quick losers doesn't.
+  it.each([
+    ["invites with 5♥ (board 1)", "K542.KQJ854..AK2", "5H"],
+    ["bids game instead with two quick losers in clubs", "K542.AKJ854.A.32", "4H"],
+  ])("slam invitation: %s", (_, hand, expected) => {
+    expect(call(hand, "PASS 1H 1S 2S PASS")).toBe(expected);
+  });
+
+  it.each([
+    ["accepts with more than shown", "A6.A93.QJ8752.76", "6H"],
+    ["declines with no more than shown", "A6.J93.QJ8752.76", "PASS"],
+  ])("answering 5♥: %s", (_, hand, expected) => {
+    expect(call(hand, "PASS 1H 1S 2S PASS 5H PASS")).toBe(expected);
+  });
+
+  it("reads 5 of our agreed major as a slam invitation", () => {
+    expect(readAuction({ dealer: N, vul: "None" }, calls("PASS 1H 1S 2S PASS 5H"))[5]!.read!.rule?.name).toBe("Slam invitation");
+  });
+
+  // Roman Key Card: hearts agreed by 1♥–3♥, then 4NT.
+  it.each([
+    ["plain: aces only", "plain", "A84.K732.987.Q82", "5D"],
+    ["1430: two key cards without the queen", "rkc1430", "A84.K732.987.Q82", "5H"],
+    ["1430: two key cards with the queen", "rkc1430", "A84.KQ32.987.982", "5S"],
+    ["1430: one key card is 5♣", "rkc1430", "A84.J732.987.Q82", "5C"],
+    ["3014: one key card is 5♦", "rkc3014", "A84.J732.987.Q82", "5D"],
+    ["3014: none is 5♣", "rkc3014", "Q84.J732.K87.Q82", "5C"],
+  ])("answers 4NT, %s", (_, style, hand, expected) => {
+    expect(call(hand, "1H PASS 3H PASS 4NT PASS", card(style as SystemSettings["blackwood"]))).toBe(expected);
+  });
+
+  it.each([
+    ["two missing (partner has 1, not 4): signs off", "KQ2.AQJ85.AKQ.32", "5C", "5H"],
+    ["one missing, holding the queen: small slam", "A2.AQJ85.AKQ.432", "5C", "6H"],
+    ["one missing, queen unknown: asks for it with 5♦", "A2.AJ985.AKQ.432", "5C", "5D"],
+  ])("after a 1430 answer: %s", (_, hand, answer, expected) => {
+    expect(call(hand, `1H PASS 3H PASS 4NT PASS ${answer} PASS`, card("rkc1430"))).toBe(expected);
+  });
+
+  it.each([
+    ["with the queen: six", "A84.KQ32.987.982", "6H"],
+    ["without it: five", "A84.K732.987.Q82", "5H"],
+  ])("answers the queen ask %s", (_, hand, expected) => {
+    expect(call(hand, "1H PASS 3H PASS 4NT PASS 5C PASS 5D PASS", card("rkc1430"))).toBe(expected);
+  });
+
+  it("leaves partner's decision alone after answering", () => {
+    expect(call("A84.J732.987.Q82", "1H PASS 3H PASS 4NT PASS 5C PASS 5H PASS", card("rkc1430"))).toBe("PASS");
   });
 });
 

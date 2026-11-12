@@ -354,6 +354,25 @@ export const SETTING_FIELDS: SettingField[] = [
 
   {
     kind: "choice",
+    id: "blackwood",
+    group: "Slams",
+    label: "Blackwood",
+    options: [
+      { value: "plain", label: "Plain (aces)" },
+      { value: "rkc1430", label: "Roman Key Card 1430" },
+      { value: "rkc3014", label: "Roman Key Card 3014" },
+    ],
+    get: (s) => s.blackwood,
+    set: (s, v) => ({ ...s, blackwood: v as BlackwoodStyle }),
+    help: (s) =>
+      s.blackwood === "plain"
+        ? "4NT asks partner how many aces they hold: 5♣ none or four, 5♦ one, 5♥ two, 5♠ three."
+        : `4NT asks for key cards: the four aces and the king of trumps. 5♣ ${s.blackwood === "rkc1430" ? "1 or 4" : "0 or 3"}, 5♦ ${s.blackwood === "rkc1430" ? "0 or 3" : "1 or 4"}, 5♥ two without the trump queen, 5♠ two with it. After 5♣ or 5♦, the next bid up (not trumps) asks for the trump queen: six with it, five without.`,
+    built: true,
+    editable: true,
+  },
+  {
+    kind: "choice",
     id: "leadFromAk",
     group: "Leads and signals",
     label: "Lead from AK",
@@ -424,16 +443,6 @@ export const SETTING_FIELDS: SettingField[] = [
     help: () => "When declarer leads a suit: whether you hold an even or odd number of cards in it.",
     built: true,
     editable: true,
-  },
-  {
-    kind: "fixed",
-    id: "blackwood",
-    group: "Slams",
-    label: "Blackwood",
-    value: () => "Plain (aces)",
-    help: () => "4NT asks partner how many aces they hold: 5♣ none or four, 5♦ one, 5♥ two, 5♠ three. (Roman Key Card isn't built yet.)",
-    built: true,
-    editable: false,
   },
 ];
 

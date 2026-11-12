@@ -8,21 +8,21 @@ Work happens on `dev`; `main` is what's deployed. To take an idea on: agree the 
 it, Marc tests it by hand, then commit, and take it out of this file. Feedback from the bridge
 group is handled the same way when it arrives.
 
-## Next up: slam tries in the bidding
+## Next up: control bids (cuebids) for slam
 
-After the current round of bidding fixes. The bots bid slam only when the points say so (33 between
-the hands for a small slam): the general "place the contract" rule bids slam or stops in game, with
-nothing in between. Hands that are close (31–32), or whose shape is worth more than points, never
-explore.
+The bots now invite slam with 31–32 between the hands (5 of the agreed major, or a quantitative
+4NT, which partner accepts with more than they've shown) and check aces or key cards with 33+. Two
+gaps remain, both for control bids:
 
-- **The case that found it:** demo board 1. East (♠K542 ♥KQJ854 ♦— ♣AK2) opens 1♥ and hears a
-  cuebid raise; 20 points with the fit plus partner's likely 12 is 32, so the bots stop in 4♥ and
-  6♥ makes. A test in `bidder.test.ts` pins 4♥ for now; it should become 6♥.
-- **What's needed:** a way to try for slam below game or just above it when the hands are close:
-  control (cue) bids, and Blackwood once controls are known. Roman Key Card is on the card already
-  but not used by the bots yet (see the gaps below), so the two may go together.
-- Agree the approach with Marc first: which tries, when the bots make them, and how a partner
-  answers.
+- **Two quick losers in an unbid suit:** the bots don't invite, and just bid game, since partner
+  would accept on points alone. With control bids, the slam hand bids the suits it controls and the
+  gap tells partner which suit worries it; partner with that suit controlled goes on.
+- **Voids:** Blackwood (plain or Roman Key Card) can't say which ace is missing; a control bid can
+  show a void.
+- **After a limit raise:** opener's answer to 1M–3M is a rule of its own (accept or decline), so a
+  very strong opener never invites slam or uses Blackwood there; control bids would start here too.
+- Agree the approach with Marc first: when the bots start, how partner cooperates or signs off, and
+  how the review explains each control bid.
 
 ## Rate limiting
 
@@ -78,9 +78,9 @@ end of conventions and judgment calls, so these wait for feedback from the peopl
 than being built in advance. Each fix the usual way: the board, a rule change, and a test built from
 that deal; `npm run bidding-report` to check nothing else got worse.
 
-- **On the card, not used yet** (shown as "Not used by the bots yet"): Roman Key Card Blackwood
-  (1430 or 3014), splinters, inverted minors, new minor forcing, fourth suit forcing (from the two
-  level).
+- **On the card, not used yet** (shown as "Not used by the bots yet"): splinters, inverted minors,
+  new minor forcing, fourth suit forcing (from the two level).
+- **Roman Key Card extras:** answers that show a void, and 5NT asking for kings.
 - **Other systems and conventions:** 2/1 game forcing as a second system (the design allows for
   it), Lebensohl, a lead-directing double of an artificial bid, Drury.
 - **Judgment:**
