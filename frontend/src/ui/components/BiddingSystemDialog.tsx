@@ -82,13 +82,14 @@ export function BiddingSystemDialog(props: Props) {
         <Box component="ul" sx={{ mt: 0.5, mb: 0, pl: 2.5, display: "grid", gap: 0.5 }}>
           <li>
             <Typography>
-              <strong>Length:</strong> 1 point for each card over four in a suit.
+              <strong>Length:</strong> 1 point for each card over four in a suit, until a trump suit is agreed.
             </Typography>
           </li>
           <li>
             <Typography>
-              <strong>Shortness,</strong> once a trump suit is agreed: a void, singleton or doubleton counts 3, 2 or 1 in the hand
-              with the long trumps; when raising partner, 3, 2 or 1 with three trumps, 5, 3 or 1 with four or more.
+              <strong>Shortness,</strong> once a trump suit is agreed. In the hand with the long trumps, instead of length: a
+              void, singleton or doubleton counts 3, 2 or 1, plus 1 for each trump beyond what the bidding has shown (a sixth
+              spade after opening 1♠). When raising partner: 3, 2 or 1 with three trumps, 5, 3 or 1 with four or more.
             </Typography>
           </li>
           <li>

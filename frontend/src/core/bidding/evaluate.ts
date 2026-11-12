@@ -117,6 +117,17 @@ export function supportPoints(h: HandFacts, trump: Suit): number {
   return h.hcp + shortness;
 }
 
+/**
+ * Points for the hand whose suit partner has supported (usually opener): HCP, shortness (3 for a
+ * void, 2 for a singleton, 1 for a doubleton) and 1 for each trump beyond what the auction has
+ * shown for this hand (`shown`). Length points aren't added on top: the extra trumps already count
+ * the long suit, and counting both would value a flat 5-3-3-2 minimum as more than a minimum.
+ */
+export function fitPoints(h: HandFacts, trump: Suit, shown: number): number {
+  const shortness = SUITS.filter((s) => s !== trump).reduce((n, s) => n + (h.len[s] <= 2 ? [3, 2, 1][h.len[s]]! : 0), 0);
+  return h.hcp + shortness + Math.max(0, h.len[trump] - shown);
+}
+
 /** Rule of 20: HCP plus the two longest suits' lengths make 20 or more. */
 export function ruleOf20(h: HandFacts): boolean {
   return h.hcp + h.shape[0]! + h.shape[1]! >= 20;

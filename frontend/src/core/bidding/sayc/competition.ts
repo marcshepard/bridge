@@ -27,7 +27,7 @@ import {
   theirSuits,
   weVul,
 } from "../position";
-import { SUIT_WORDS, SYMBOL, callName, cards, hcpText, len, rule } from "./common";
+import { SUIT_WORDS, SYMBOL, callName, cards, hcpText, len, rule, shapeText } from "./common";
 
 export function competitiveRules(p: Position): CallRule[] {
   const theirs = theirActions(p);
@@ -81,14 +81,64 @@ function overcalls(p: Position): CallRule[] {
   const unbid = SUITS.filter((x) => x !== t);
 
   if (lb.call.strain === "NT") {
-    // Over their 1NT: double is for penalties; a long suit can overcall.
+    // Over their 1NT: double is for penalties and shows a notrump opening or better, in either seat
+    // (partner will leave it in, so it needs the points and the shape to defend). A long suit
+    // overcalls instead; in the balancing seat it can be lighter, and a good five-card suit will do.
+    const up = lb.call.level > 1 ? 1 : 0;
+    const ntShape = (h: HandFacts) => h.semiBalanced && h.shape[0]! <= 5; // 4333, 4432, 5332, 5422
     rules.push(
-      rule(DOUBLE, "Penalty double: as strong as their 1NT or stronger.", (h) => h.hcp >= 15 + (lb.call.level > 1 ? 1 : 0) - adj, { shows: { hcp: [15 - adj, 37] }, why: (h) => `${hcpText(h)}: more than their notrump range` }),
+      rule(DOUBLE, "Penalty double: a 1NT opening or better (15+ HCP, balanced or nearly), or 16+ HCP with any shape.", (h) => h.hcp >= 16 + up || (h.hcp >= 15 + up && ntShape(h)), {
+        name: "Penalty double",
+        shows: { hcp: [15 + up, 37] },
+        why: (h) => (ntShape(h) ? `${hcpText(h)}, ${shapeText(h)}: as good as their notrump` : `${hcpText(h)}: too strong to overcall`),
+      }),
     );
+    // A suit overcall is natural. Partner reads it by the first rule below (it's the first that
+    // makes the call), so that one's meaning covers every hand that can make it: 5+ cards.
     for (const x of SUITS) {
       const b = cheapBid(p, x);
       if (!b || b.level > 3) continue;
-      rules.push(rule(b, `Natural overcall: 6+ ${SYMBOL[x]} (or a good 5), 8–15 HCP.`, (h) => h.len[x] >= 6 && decentSuit(h, x) && h.hcp >= 8 - adj && h.hcp <= 15, { shows: { hcp: [8 - adj, 15], len: len(x, 5) }, why: (h) => `${holding(h, x)}: a long suit to compete with` }));
+      const suitOk = (h: HandFacts) => (h.len[x] >= 6 && decentSuit(h, x)) || (balance && h.len[x] >= 5 && goodSuit(h, x));
+      const what = balance
+        ? `5+ ${SYMBOL[x]} (a decent 6-card suit or a good 5)`
+        : `5+ ${SYMBOL[x]} (a decent 6-card suit; two 5-card suits; or a good 5, not vulnerable)`;
+      rules.push(rule(b, `Natural overcall: ${what}, ${8 - adj}–15 HCP.`, (h) => suitOk(h) && h.hcp >= 8 - adj && h.hcp <= 15, { shows: { hcp: [8 - adj, 15], len: len(x, 5) }, why: (h) => `${holding(h, x)}: a long suit to compete with` }));
+    }
+    if (!balance && lb.call.level === 1) {
+      // Direct seat: two 5-card suits, 8–15. Bid the higher-ranking: a major scores more when both
+      // take the same tricks. Simulation can choose between the suits, or pass.
+      const fives = (h: HandFacts) => SUITS.filter((x) => h.len[x] >= 5);
+      for (const [i, x] of SUITS.entries()) {
+        for (const y of SUITS.slice(i + 1)) {
+          const bx = bid(2, x);
+          rules.push(
+            rule(bx, `Natural overcall: 5+ ${SYMBOL[x]}, 8–15 HCP.`, (h) => h.hcp >= 8 && h.hcp <= 15 && fives(h)[0] === x && fives(h)[1] === y, {
+              shows: { hcp: [8, 15], len: len(x, 5) },
+              hard: { candidates: [PASS, bx, bid(2, y)], rule: "with two 5-card suits, bid the higher-ranking over their 1NT" },
+              why: (h) => `${holding(h, x)} and ${holding(h, y)}: two suits to compete with; ${SYMBOL[x]} is the higher-ranking`,
+            }),
+          );
+        }
+      }
+      // A good five-card suit, 10–15: bid it when not vulnerable; vulnerable, defending 1NT usually
+      // pays more. Either way simulation can decide.
+      const goodFive = (h: HandFacts, x: Suit) => h.hcp >= 10 && h.hcp <= 15 && h.len[x] >= 5 && goodSuit(h, x) && SUITS.find((y) => h.len[y] >= 5 && goodSuit(h, y)) === x;
+      for (const x of SUITS) {
+        const bx = bid(2, x);
+        const hard = { candidates: [PASS, bx], rule: "with a good 5-card suit over their 1NT, bid when not vulnerable and pass when vulnerable" };
+        rules.push(
+          rule(bx, `Natural overcall: a good 5+ ${SYMBOL[x]}, 10–15 HCP, not vulnerable.`, (h) => !weVul(p) && goodFive(h, x), {
+            shows: { hcp: [10, 15], len: len(x, 5) },
+            hard,
+            why: (h) => `${holding(h, x)} and ${hcpText(h)}, not vulnerable: compete`,
+          }),
+          // Reads as any other pass over their notrump: the meaning partner sees stays the same.
+          rule(PASS, "Nothing to say over their notrump.", (h) => weVul(p) && goodFive(h, x), {
+            hard,
+            why: (h) => `${holding(h, x)} and ${hcpText(h)}, but vulnerable: defending 1NT usually pays more`,
+          }),
+        );
+      }
     }
     rules.push(rule(PASS, "Nothing to say over their notrump.", () => true, { why: (h) => `${hcpText(h)}: pass` }));
     return rules;
@@ -259,6 +309,28 @@ function advances(p: Position, pa: ReadCall): CallRule[] {
     }
   }
 
+  // Partner doubled their 1NT for penalties and the next player passed. Partner's points sit in
+  // front of the notrump bidder, so declarer's finesses work: with a weak hand and a long suit,
+  // 1NT doubled often makes, and two of the suit usually scores better. A hard call, so simulation
+  // decides the hand in front of it (it bore this out: about 3 deals in 4 with 0–5 HCP).
+  const lb = lastBid(p);
+  if (pa.call.kind === "double" && name === "Penalty double" && lb && !isOurs(p, lb.seat) && lb.call.level === 1 && lb.call.strain === "NT" && !free) {
+    const longest = (h: HandFacts): Suit => SUITS.slice().sort((a, b) => h.len[b] - h.len[a])[0]!; // equal: higher-ranking
+    for (const x of SUITS) {
+      const b = bid(2, x);
+      rules.push(
+        rule(b, `Runs from 1NT doubled: 5+ ${SYMBOL[x]}, 0–5 HCP. To play: partner should pass.`, (h) => h.hcp <= 5 && h.len[x] >= 5 && longest(h) === x, {
+          name: "Run-out",
+          shows: { hcp: [0, 5], len: len(x, 5) },
+          hard: { candidates: [PASS, b], rule: "with 0–5 HCP and a 5+ card suit, run from 1NT doubled rather than defend it" },
+          why: (h) => `${hcpText(h)} and ${h.len[x]} ${SUIT_WORDS[x]}: 1NT doubled would likely make, so play in the long suit`,
+        }),
+      );
+    }
+    rules.push(rule(PASS, "Defends 1NT doubled: 6+ HCP, or no 5-card suit to run to.", () => true, { why: (h) => (h.hcp >= 6 ? `${hcpText(h)}: enough to help beat 1NT doubled` : `${hcpText(h)} but no 5-card suit: nowhere better to play`) }));
+    return rules;
+  }
+
   // Partner showed two suits (Michaels, the unusual 2NT): choose between them. A double by the next
   // player doesn't change that (partner still wants a choice); a bid by them means we only bid with
   // a fit, since partner can bid again.
@@ -352,6 +424,7 @@ function responderInCompetition(p: Position, o: Suit): CallRule[] {
     return rules;
   }
 
+  if (isBid(rho.call) && rho.call.strain === "NT" && rho.call.level === 1) return overNotrumpOvercall(p, o);
   if (!isBid(rho.call) || rho.call.strain === "NT") return contested(p);
   const t = rho.call.strain as Suit;
   const level = rho.call.level;
@@ -394,6 +467,39 @@ function responderInCompetition(p: Position, o: Suit): CallRule[] {
     rules.push(rule(nt, `${range[0]}–${range[1]} HCP with a ${SYMBOL[t]} stopper.`, (h) => stopper(h, t) && h.hcp >= range[0]! && h.hcp <= range[1]! && h.semiBalanced, { shows: { hcp: range as [number, number] }, why: (h) => `${hcpText(h)} and ${holding(h, t)}` }));
   }
   rules.push(rule(PASS, "Nothing suitable to bid.", () => true, { why: (h) => `${hcpText(h)}: pass for now` }));
+  return rules;
+}
+
+/**
+ * Partner opened one of a suit and the next player overcalled 1NT. Double is for penalties (8+:
+ * partner's opening and ours outweigh their 15–18). A new suit is natural and not forcing: a weak
+ * hand with a long suit and shortness in partner's suit, to play. Raises are the usual competing
+ * rules. Pass otherwise. Whether to double at the bottom of the range, and whether to bid the new
+ * suit at all (vulnerable, defending 1NT often pays more), are hard calls for simulation.
+ */
+function overNotrumpOvercall(p: Position, o: Suit): CallRule[] {
+  const PENALTY = { name: "Penalty double", shows: { hcp: [8, 37] as [number, number] }, why: (h: HandFacts) => `${hcpText(h)} with partner's opening: more than their 1NT` };
+  const longest = (h: HandFacts): Suit => SUITS.filter((x) => x !== o).sort((a, b) => h.len[b] - h.len[a])[0]!; // equal: higher-ranking
+  const rules: CallRule[] = [
+    rule(DOUBLE, "Penalty double: 8+ HCP. With partner's opening, more than their 1NT.", (h) => h.hcp >= 8 && h.hcp <= 9, {
+      ...PENALTY,
+      hard: { candidates: [PASS, DOUBLE], rule: "double their 1NT with 8+ HCP opposite an opening" },
+    }),
+    rule(DOUBLE, "Penalty double: 8+ HCP. With partner's opening, more than their 1NT.", (h) => h.hcp >= 10, PENALTY),
+    // Raising partner: the usual competing rules (a hard call already).
+    ...contested(p).filter((r) => isBid(r.call) && r.call.strain === o),
+  ];
+  for (const x of SUITS.filter((x) => x !== o)) {
+    const b = bid(2, x);
+    rules.push(
+      rule(b, `Natural: 5+ ${SYMBOL[x]}, under 8 HCP, short in partner's ${SYMBOL[o]}. To play, not forcing.`, (h) => h.hcp < 8 && h.len[x] >= 5 && h.len[o] <= 1 && longest(h) === x, {
+        shows: { hcp: [0, 7], len: len(x, 5) },
+        hard: { candidates: [PASS, b], rule: `bid a long suit with shortness in partner's ${SYMBOL[o]}, rather than defend 1NT` },
+        why: (h) => `${h.len[x]} ${SUIT_WORDS[x]} and ${h.len[o]} ${SUIT_WORDS[o]}: play in the long suit`,
+      }),
+    );
+  }
+  rules.push(rule(PASS, "Nothing suitable to bid: defends 1NT.", () => true, { why: (h) => `${hcpText(h)}: not enough to double, and no long suit to bid` }));
   return rules;
 }
 

@@ -8,6 +8,22 @@ Work happens on `dev`; `main` is what's deployed. To take an idea on: agree the 
 it, Marc tests it by hand, then commit, and take it out of this file. Feedback from the bridge
 group is handled the same way when it arrives.
 
+## Next up: slam tries in the bidding
+
+After the current round of bidding fixes. The bots bid slam only when the points say so (33 between
+the hands for a small slam): the general "place the contract" rule bids slam or stops in game, with
+nothing in between. Hands that are close (31–32), or whose shape is worth more than points, never
+explore.
+
+- **The case that found it:** demo board 1. East (♠K542 ♥KQJ854 ♦— ♣AK2) opens 1♥ and hears a
+  cuebid raise; 20 points with the fit plus partner's likely 12 is 32, so the bots stop in 4♥ and
+  6♥ makes. A test in `bidder.test.ts` pins 4♥ for now; it should become 6♥.
+- **What's needed:** a way to try for slam below game or just above it when the hands are close:
+  control (cue) bids, and Blackwood once controls are known. Roman Key Card is on the card already
+  but not used by the bots yet (see the gaps below), so the two may go together.
+- Agree the approach with Marc first: which tries, when the bots make them, and how a partner
+  answers.
+
 ## Rate limiting
 
 Backend only. Limits per device address, to stop code guessing and runaway clients (the free plan
@@ -70,6 +86,8 @@ that deal; `npm run bidding-report` to check nothing else got worse.
 - **Judgment:**
   - drop length points once partner shows shortness in the suit (a misfit), unless the suit runs
     by itself;
+  - a second 8-card fit (partner raises our second suit and we hold support for theirs) is worth
+    about 1 more point;
   - redouble when they double us into game and we have extras;
   - preempts and weak jump overcalls as high as the highest of the cheapest level, length minus
     four, and playing tricks plus 2 or 3 (as over a conventional bid already);

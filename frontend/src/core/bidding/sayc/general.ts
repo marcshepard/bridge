@@ -4,7 +4,7 @@
 import type { Call } from "../../auction";
 import { type Contract, type Strain, type Suit, STRAINS, SUITS } from "../../types";
 import { contractTrickPoints } from "../../scoring";
-import { type HandFacts, isMajor, supportPoints } from "../evaluate";
+import { type HandFacts, fitPoints, isMajor, supportPoints } from "../evaluate";
 import type { CallRule } from "../model";
 import {
   type Position,
@@ -114,10 +114,11 @@ function plan(p: Position, h: HandFacts): Plan {
   const fit = fitWith(p, h);
   // Support points (5/3/1 for shortness) only when raising partner's suit: they've shown 4+ and
   // we're not longer. In our own long suit the hand counts as declarer does (h.points); once
-  // partner has supported it, its short suits can ruff too, so declarer adds 3/2/1 for them.
+  // partner has supported it, it counts shortness and extra trumps instead (fitPoints), the same
+  // count opener uses to answer a raise.
   const raising = !!fit && ps.len[fit][0] >= 4 && h.len[fit] <= ps.len[fit][0];
   const supported = !!fit && !raising && ps.len[fit][0] >= 3;
-  const mine = raising ? supportPoints(h, fit!) : h.points + (supported ? h.shortnessPoints : 0);
+  const mine = raising ? supportPoints(h, fit!) : supported ? fitPoints(h, fit!, p.shown[p.seat].len[fit!][0]) : h.points;
   /** "a 9+ card hearts fit" with partner's support, or just "6 hearts" for a suit of our own. */
   const fitWords = (s: Suit) =>
     ps.len[s][0] >= 2 ? `${aOrAn(h.len[s] + ps.len[s][0])} ${h.len[s] + ps.len[s][0]}+ card ${SUIT_WORDS[s]} fit` : `${h.len[s]} ${SUIT_WORDS[s]}`;

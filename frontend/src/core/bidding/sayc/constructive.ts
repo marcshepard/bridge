@@ -2,7 +2,7 @@
 // call, when the opponents have stayed out (or only passed). Later calls go to the general rules.
 
 import { type Suit, SUITS } from "../../types";
-import { type HandFacts, goodSuit, holding, isMajor, stopper, supportPoints, topHonours } from "../evaluate";
+import { type HandFacts, fitPoints, goodSuit, holding, isMajor, stopper, supportPoints, topHonours } from "../evaluate";
 import type { CallRule } from "../model";
 import type { SystemSettings } from "../system";
 import {
@@ -73,18 +73,21 @@ function responses(p: Position, o: Suit): CallRule[] {
       );
     }
     rules.push(
-      rule(bid(4, o), `Weak raise to game: 5+ ${SYMBOL[o]}, fewer than 10 HCP, usually a singleton or void. Makes it hard for the opponents.`, (h) => h.len[o] >= 5 && h.hcp < 10 && h.shape[3]! <= 1, {
-        shows: { hcp: [0, 9], len: len(o, 5) },
-        why: (h) => `${h.len[o]} ${SUIT_WORDS[o]}, shortness and ${hcpText(h)}: bid game to keep the opponents out`,
+      // Lower limits on the hand tests below aren't needed: a hand under 6 HCP has already passed
+      // (or, with 5+ trumps and 3+ HCP, bid 4M). What each call shows still states them, for partner.
+      rule(bid(4, o), `Weak raise to game: 5+ ${SYMBOL[o]}, 3–9 HCP. Makes it hard for the opponents.`, (h) => h.len[o] >= 5 && h.hcp < 10, {
+        shows: { hcp: [3, 9], len: len(o, 5) },
+        why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${hcpText(h)}: bid game to keep the opponents out`,
       }),
-      rule(bid(3, o), `Limit raise: 3+ ${SYMBOL[o]} (usually 4), 10–12 points. Invites game.`, (h) => h.len[o] >= 3 && sp(h) >= 10 && sp(h) <= 12, {
+      rule(bid(3, o), `Limit raise: 4+ ${SYMBOL[o]}, 10–12 points. Invites game.`, (h) => h.len[o] >= 4 && sp(h) >= 10 && sp(h) <= 12, {
         name: "Limit raise",
-        shows: { hcp: [8, 12], len: len(o, 3) },
+        shows: { hcp: [8, 12], len: len(o, 4) },
         why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${sp(h)} points counting shortness: invite game`,
       }),
-      rule(bid(2, o), `Single raise: 3+ ${SYMBOL[o]}, 6–10 points.`, (h) => h.len[o] >= 3 && sp(h) >= 6 && sp(h) <= 10 && !(o === "H" && h.len.S >= 4 && h.len.H === 3 && h.hcp >= 10), {
-        shows: { hcp: [5, 10], len: len(o, 3) },
-        why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${sp(h)} points counting shortness: support partner straight away`,
+      // With 10+ HCP and three trumps, responder bids a new suit first and supports later.
+      rule(bid(2, o), `Single raise: 3+ ${SYMBOL[o]}, 6–9 HCP.`, (h) => h.len[o] >= 3 && h.hcp < 10, {
+        shows: { hcp: [6, 9], len: len(o, 3) },
+        why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${hcpText(h)}: support partner straight away`,
       }),
     );
   } else {
@@ -144,13 +147,15 @@ function responses(p: Position, o: Suit): CallRule[] {
     );
   }
 
-  // Two over one: a new suit at the two level, 10+, forcing.
+  // Two over one: a new suit at the two level, 10+, forcing. Over a major, a minor can be three
+  // cards (the last resort below), so that's all partner can count on.
   const twoLevel = SUITS.filter((t) => t !== o && cheapest(p, t) === 2);
   for (const t of twoLevel) {
     const need = o === "S" && t === "H" ? 5 : 4;
+    const threeOk = major && !isMajor(t);
     rules.push(
-      rule(bid(2, t), `New suit at the two level: ${cards(need, t)}, 10+ points. Forcing for one round.`, (h) => h.hcp >= 10 && h.len[t] >= need && newSuitChoice(h, twoLevel.filter((x) => h.len[x] >= (o === "S" && x === "H" ? 5 : 4))) === t && !(major && h.len[o] >= 3 && supportPoints(h, o) <= 12), {
-        shows: { hcp: [10, 37], len: len(t, need) },
+      rule(bid(2, t), `New suit at the two level: ${cards(need, t)}${threeOk ? ` (3 when supporting ${SYMBOL[o]} with no 4-card suit to show)` : ""}, 10+ points. Forcing for one round.`, (h) => h.hcp >= 10 && h.len[t] >= need && newSuitChoice(h, twoLevel.filter((x) => h.len[x] >= (o === "S" && x === "H" ? 5 : 4))) === t, {
+        shows: { hcp: [10, 37], len: len(t, threeOk ? 3 : need) },
         forcing: "one round",
         why: (h) => `${hcpText(h)} and ${h.len[t]} ${SUIT_WORDS[t]}: too strong for 1NT, so show the suit at the two level`,
       }),
@@ -164,9 +169,22 @@ function responses(p: Position, o: Suit): CallRule[] {
         why: (h) => `${hcpText(h)}, ${shapeText(h)}, no fit: game in notrump`,
       }),
     );
+    // Last resort with 10+: support for the major but no 4-card suit to bid at the two level
+    // (e.g. 3-4-3-3 over 1♠). Bid the longer minor on three cards (clubs when equal), to support
+    // partner next. Partner reads it with the two-over-one rule above, which allows for this.
+    for (const t of ["C", "D"] as Suit[]) {
+      const other: Suit = t === "C" ? "D" : "C";
+      rules.push(
+        rule(bid(2, t), `New suit at the two level on three cards: support for ${SYMBOL[o]}, 10+ points, no 4-card suit to show. Forcing for one round.`, (h) => h.hcp >= 10 && (t === "C" ? h.len.C >= h.len.D : h.len.D > h.len.C), {
+          shows: { hcp: [10, 37], len: len(t, 3) },
+          forcing: "one round",
+          why: (h) => `${hcpText(h)} and ${h.len[o]} ${SUIT_WORDS[o]}, but no 4-card suit to show: ${SYMBOL[t]} (${h.len[t]} cards, ${h.len[other]} ${SUIT_WORDS[other]}) first, then support partner`,
+        }),
+      );
+    }
   }
   rules.push(
-    rule(bid(1, "NT"), `6–10 points, nothing better to bid${major ? ` (fewer than 3 ${SYMBOL[o]})` : " (no 4-card major)"}. Not forcing.`, (h) => h.hcp >= 6 && h.hcp <= 10, {
+    rule(bid(1, "NT"), `6–10 points, nothing better to bid${major ? ` (fewer than 3 ${SYMBOL[o]})` : " (no 4-card major)"}. Not forcing.`, (h) => h.hcp <= 10, {
       shows: { hcp: [6, 10] },
       why: (h) => `${hcpText(h)}, no fit and no suit to show at the one level`,
     }),
@@ -187,20 +205,21 @@ function openerRebid(p: Position, o: Suit, r: Bid, rName: string | undefined, ga
   const high = rebidHigh(p.s);
   const balancedMin = (h: HandFacts) => h.balanced && h.hcp <= low[1];
 
-  // Partner raised.
+  // Partner raised (or bid Jacoby 2NT): count the hand with the fit, shortness and extra trumps.
+  const fp = (h: HandFacts) => fitPoints(h, o, p.shown[p.seat].len[o][0]);
   if (rs === o && r.level === 2) {
     return [
-      rule(bid(4, o), "Bids game: enough opposite a single raise.", (h) => h.points >= 19 && isMajor(o), { why: (h) => `${h.points} points: game even opposite 6` }),
-      rule(bid(3, o), "Invites game: 16–18 points.", (h) => h.points >= 16, { shows: { hcp: [15, 18] }, why: (h) => `${h.points} points: game if partner is at the top of the raise` }),
+      rule(bid(4, o), "Bids game: enough opposite a single raise.", (h) => fp(h) >= 19 && isMajor(o), { why: (h) => `${fp(h)} points: game even opposite 6` }),
+      rule(bid(3, o), "Invites game: 16–18 points.", (h) => fp(h) >= 16, { shows: { hcp: [15, 18] }, why: (h) => `${fp(h)} points: game if partner is at the top of the raise` }),
       rule(bid(3, "NT"), "Bids game in notrump.", (h) => !isMajor(o) && h.hcp >= 18 && h.balanced, { why: (h) => `${hcpText(h)} balanced` }),
-      rule(PASS, "Minimum: no game opposite a single raise.", () => true, { why: (h) => `${h.points} points: game is unlikely` }),
+      rule(PASS, "Minimum: no game opposite a single raise.", () => true, { why: (h) => `${fp(h)} points: game is unlikely` }),
     ];
   }
   if (rs === o && r.level === 3) {
     return [
-      rule(bid(isMajor(o) ? 4 : 5, o), "Accepts the invitation.", (h) => h.points >= 14, { why: (h) => `${h.points} points: more than a minimum` }),
+      rule(bid(isMajor(o) ? 4 : 5, o), "Accepts the invitation.", (h) => fp(h) >= 14, { why: (h) => `${fp(h)} points: more than a minimum` }),
       rule(bid(3, "NT"), "Accepts in notrump.", (h) => !isMajor(o) && h.hcp >= 14 && h.balanced, { why: () => "stoppers and extras: 3NT is easier than 5 of a minor" }),
-      rule(PASS, "Declines: minimum.", () => true, { why: (h) => `${h.points} points: a minimum` }),
+      rule(PASS, "Declines: minimum.", () => true, { why: (h) => `${fp(h)} points: a minimum` }),
     ];
   }
   if (rName === "Jacoby 2NT") {
@@ -209,8 +228,8 @@ function openerRebid(p: Position, o: Suit, r: Bid, rName: string | undefined, ga
       ...SUITS.filter((x) => x !== o).map((x) =>
         rule(bid(3, x), `Shortness: a singleton or void in ${SYMBOL[x]}.`, (h) => short(h) === x, { name: "Jacoby 2NT answer", shows: { len: { [x]: [0, 1] } }, why: (h) => `a ${h.len[x] === 0 ? "void" : "singleton"} in ${SUIT_WORDS[x]}` }),
       ),
-      rule(bid(3, o), "No shortness, 18+ points: slam interest.", (h) => h.points >= 18, { name: "Jacoby 2NT answer", shows: { hcp: [17, 21] }, why: (h) => `${h.points} points, no shortness` }),
-      rule(bid(3, "NT"), "No shortness, 15–17 points.", (h) => h.points >= 15, { name: "Jacoby 2NT answer", shows: { hcp: [14, 17] }, why: (h) => `${h.points} points, no shortness` }),
+      rule(bid(3, o), "No shortness, 18+ points: slam interest.", (h) => fp(h) >= 18, { name: "Jacoby 2NT answer", shows: { hcp: [17, 21] }, why: (h) => `${fp(h)} points, no shortness` }),
+      rule(bid(3, "NT"), "No shortness, 15–17 points.", (h) => fp(h) >= 15, { name: "Jacoby 2NT answer", shows: { hcp: [14, 17] }, why: (h) => `${fp(h)} points, no shortness` }),
       rule(bid(4, o), "No shortness, minimum: signs off in game.", () => true, { name: "Jacoby 2NT answer", shows: { hcp: [11, 14] }, why: () => "a minimum with no shortness" }),
     ];
   }
@@ -461,6 +480,16 @@ function responderRebid(p: Position, o: Suit, r: Bid, rebid: Bid): CallRule[] {
   rules.push(
     rule(bid(4, o), `Game in opener's ${SYMBOL[o]}.`, (h) => isMajor(o) && fitO(h) && total(h) >= 25, { why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${hcpText(h)}: game` }),
     rule(bid(3, "NT"), "Game in notrump.", (h) => total(h) >= 25 && SUITS.filter((x) => x !== o && x !== r.strain && x !== opener2).every((x) => stopper(h, x)), { why: (h) => `${hcpText(h)} and stoppers in the unbid suits` }),
+    // 3+ cards in opener's major and 10–12 support points: the limit raise that waited a round
+    // (1♠–2♦–2♠–3♠). Below game, so 13+ has already bid 4M above.
+    ...(isMajor(o)
+      ? [
+          rule(bid(3, o), `Invites game in ${SYMBOL[o]}: 3+ ${SYMBOL[o]}, 10–12 points.`, (h) => h.len[o] >= 3 && supportPoints(h, o) >= 10 && cheapest(p, o) <= 3, {
+            shows: { hcp: [8, 12], len: len(o, 3) },
+            why: (h: HandFacts) => `${h.len[o]} ${SUIT_WORDS[o]} and ${supportPoints(h, o)} points counting shortness: invite`,
+          }),
+        ]
+      : []),
     rule(bid(3, o), `Invites game in ${SYMBOL[o]}.`, (h) => fitO(h) && total(h) >= 23 && cheapest(p, o) <= 3, { why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${hcpText(h)}: invite` }),
     rule(bid(2, "NT"), "Invites 3NT: 11–12 HCP.", (h) => h.hcp >= 11 && h.hcp <= 12 && cheapest(p, "NT") === 2, { shows: { hcp: [11, 12] }, why: (h) => `${hcpText(h)}: invite` }),
   );
