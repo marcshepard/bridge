@@ -217,7 +217,8 @@ function openerRebid(p: Position, o: Suit, r: Bid, rName: string | undefined, ga
   }
   if (rs === o && r.level === 3) {
     return [
-      rule(bid(isMajor(o) ? 4 : 5, o), "Accepts the invitation.", (h) => fp(h) >= 14, { why: (h) => `${fp(h)} points: more than a minimum` }),
+      // A major game needs 26: 15 opposite the limit raise's likely 11 (the general rule's numbers).
+      rule(bid(isMajor(o) ? 4 : 5, o), "Accepts the invitation.", (h) => fp(h) >= (isMajor(o) ? 15 : 14), { why: (h) => `${fp(h)} points: more than a minimum` }),
       rule(bid(3, "NT"), "Accepts in notrump.", (h) => !isMajor(o) && h.hcp >= 14 && h.balanced, { why: () => "stoppers and extras: 3NT is easier than 5 of a minor" }),
       rule(PASS, "Declines: minimum.", () => true, { why: (h) => `${fp(h)} points: a minimum` }),
     ];

@@ -100,13 +100,19 @@ interface Plan {
   hard?: NonNullable<CallRule["hard"]>;
 }
 
+/** Points between the hands for game: notrump counts HCP; a suit counts distribution too, so needs more. */
+const GAME_POINTS = { NT: 25, major: 26, minor: 28 } as const;
+/** Invite from here (when partner's maximum could reach game). */
+const INVITE_FROM = { NT: 23, major: 24, minor: 25 } as const;
+
 const OUTBID_RULE = "when outbid: bid on if the Law of Total Tricks allows it, double if we hold most of the points, otherwise pass";
 
 /**
  * Where should we play, from my hand and what partner has shown? Pick a strain (a major fit, then
  * notrump if balanced, then a minor fit, then a long suit), work out how high our combined values
- * go (25 for a major or notrump game, 29 for a minor, 33 slam, 37 grand), and bid that, or pass if
- * we're there already.
+ * go (game: 25 in notrump, 26 in a major, 28 in a minor; 33 slam, 37 grand), and bid that, or pass
+ * if we're there already. Below game, invite when game is possible: likely within 2 of it (3 in a
+ * minor) and partner's maximum would reach it.
  */
 function plan(p: Position, h: HandFacts): Plan {
   const ps = partnerShown(p);
@@ -134,7 +140,7 @@ function plan(p: Position, h: HandFacts): Plan {
   if (fit && isMajor(fit)) {
     strain = fit;
     why = fitWords(fit);
-  } else if (ntOk && (!fit || (likely >= 25 && likely < 29))) {
+  } else if (ntOk && (!fit || (likely >= GAME_POINTS.NT && likely < GAME_POINTS.minor))) {
     strain = "NT";
     why = "no major fit, a balanced hand";
   } else if (fit) {
@@ -151,7 +157,10 @@ function plan(p: Position, h: HandFacts): Plan {
   const points = `${mine} points here and about ${pp.likely} (${pp.min}${pp.max >= 37 ? "+" : `–${pp.max}`}) with partner`;
   const ours = ourContract(p);
   let game = gameLevel(strain);
-  let target = likely >= 37 && least >= 35 ? 7 : likely >= 33 && least >= 31 ? 6 : likely >= (strain === "NT" || isMajor(strain as Suit) ? 25 : 29) ? game : likely >= 23 && least < 25 ? game - 1 : 0;
+  const kindOf = strain === "NT" ? "NT" : isMajor(strain as Suit) ? "major" : "minor";
+  const needed = GAME_POINTS[kindOf];
+  const possible = mine + pp.max >= needed;
+  let target = likely >= 37 && least >= 35 ? 7 : likely >= 33 && least >= 31 ? 6 : likely >= needed ? game : likely >= INVITE_FROM[kindOf] && possible ? game - 1 : 0;
   const mustBid = forced(p);
 
   // Our own long suit: the tricks it takes by itself can go higher than the points say (a long

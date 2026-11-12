@@ -245,11 +245,18 @@ describe("responder's second bid", () => {
   });
 });
 
+describe("placing the contract: game and invitation points", () => {
+  it("invites game in a minor with 25–27 (demo board 36)", () => {
+    // 1♥–2♦–3♦–(X): 14 points here with partner's likely 13 is 27, short of the 28 a minor game needs.
+    expect(bot("T65.5.AK873.QJT8", "PASS 1H PASS 2D PASS 3D X", "W", "Both")).toBe("4D");
+  });
+});
+
 describe("opener after the delayed invitation (1♠–2♦–2♠–3♠)", () => {
   it.each([
     ["accepts with extras", "AQJ32.K54.K5.Q94", "4S"],
     ["declines with 12 HCP, 5-3-2-3 (12 + 1 for the doubleton)", "AQ932.K54.85.K94", "PASS"],
-    ["accepts with 12 HCP, 6-3-2-2 (12 + 2 for the doubletons; the sixth spade was shown)", "AQ9832.K54.K5.94", "4S"],
+    ["declines with 12 HCP, 6-3-2-2: 14 (the sixth spade was shown) + about 11 is short of 26", "AQ9832.K54.K5.94", "PASS"],
   ])("%s", (_, hand, expected) => {
     expect(bot(hand, "1S PASS 2D PASS 2S PASS 3S PASS")).toBe(expected);
   });
@@ -258,6 +265,7 @@ describe("opener after the delayed invitation (1♠–2♦–2♠–3♠)", () =
 describe("opener after a limit raise (1♠–3♠): the same count as the delayed invitation", () => {
   it.each([
     ["declines with 12 HCP, 5-3-3-2 (12 + 1 for the doubleton)", "AQ932.K54.K85.94", "PASS"],
+    ["declines with 14 (13 HCP + 1): a major game needs 15 opposite the raise", "AQ932.K54.K85.J4", "PASS"],
     ["accepts with 12 HCP, 6-3-2-2 (12 + 2 for the doubletons + 1 for the sixth spade)", "AQ9832.K54.K5.94", "4S"],
   ])("%s", (_, hand, expected) => {
     expect(bot(hand, "1S PASS 3S PASS")).toBe(expected);
