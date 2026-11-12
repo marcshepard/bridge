@@ -8,22 +8,6 @@ Work happens on `dev`; `main` is what's deployed. To take an idea on: agree the 
 it, Marc tests it by hand, then commit, and take it out of this file. Feedback from the bridge
 group is handled the same way when it arrives.
 
-## Next up: control bids (cuebids) for slam
-
-The bots now invite slam with 31–32 between the hands (5 of the agreed major, or a quantitative
-4NT, which partner accepts with more than they've shown) and check aces or key cards with 33+. Two
-gaps remain, both for control bids:
-
-- **Two quick losers in an unbid suit:** the bots don't invite, and just bid game, since partner
-  would accept on points alone. With control bids, the slam hand bids the suits it controls and the
-  gap tells partner which suit worries it; partner with that suit controlled goes on.
-- **Voids:** Blackwood (plain or Roman Key Card) can't say which ace is missing; a control bid can
-  show a void.
-- **After a limit raise:** opener's answer to 1M–3M is a rule of its own (accept or decline), so a
-  very strong opener never invites slam or uses Blackwood there; control bids would start here too.
-- Agree the approach with Marc first: when the bots start, how partner cooperates or signs off, and
-  how the review explains each control bid.
-
 ## Rate limiting
 
 Backend only. Limits per device address, to stop code guessing and runaway clients (the free plan
