@@ -148,6 +148,7 @@ const ARTIFICIAL = new Set([
   "Blackwood answer",
   "Roman Key Card answer",
   "Queen ask",
+  "Control bid",
   "Gerber answer",
   "Quantitative 4NT",
   "Michaels",

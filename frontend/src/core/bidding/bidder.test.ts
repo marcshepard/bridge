@@ -99,9 +99,9 @@ describe("hand valuation", () => {
   });
 
   // East counts 16 HCP + 3 for the void + 1 for the sixth heart = 20, and partner's cuebid raise
-  // about 12: 32, slam possible but not sure. East invites with 5♥; West, with 13 (more than the
-  // 12 or so shown), accepts.
-  it("finds the slam on demo board 1 with a slam invitation", () => {
+  // about 12: 32, slam possible. With a void, Blackwood can't help, so East makes a control bid
+  // (4♣); West, with more than shown, shows the ♠A (4♠); every suit is controlled, so 6♥.
+  it("finds the slam on demo board 1 with control bids", () => {
     const hands = {
       N: parseHand("73.T7.T63.QJT943"),
       E: parseHand("K542.KQJ854..AK2"),
@@ -109,7 +109,7 @@ describe("hand valuation", () => {
       W: parseHand("A6.A93.QJ8752.76"),
     };
     const made = botAuction(hands, { dealer: "N", vul: "None" }).map((d) => d.call);
-    expect(made.map(callCode).slice(5, 8)).toEqual(["5H", "PASS", "6H"]);
+    expect(made.map(callCode).slice(5, 10)).toEqual(["4C", "PASS", "4S", "PASS", "6H"]);
     expect(auctionResult("N", made)?.contract).toMatchObject({ level: 6, strain: "H" });
   });
 
@@ -213,17 +213,37 @@ describe("after partner's penalty double of 1NT", () => {
   });
 });
 
+describe("answering the general rule's game invitations", () => {
+  // 1♣–1♦–1♥–2♣ (a weak preference, 6–10), then opener invites with 2NT.
+  const deal = { dealer: "E", vul: "NS" } as const;
+  const north = (hand: string) => callCode(chooseCall(parseHand(hand), deal, calls("PASS 1C PASS 1D PASS 1H PASS 2C PASS 2NT PASS")).call);
+  it.each([
+    ["accepts at the top of the range (10)", "J7.Q75.A532.K987", "3NT"],
+    ["declines with no more than the likely 8", "J7.975.A532.K987", "PASS"],
+  ])("%s", (_, hand, expected) => {
+    expect(north(hand)).toBe(expected);
+  });
+
+  it("reads the preference as 6–10, and opener with 14 passes it", () => {
+    const steps = readAuction(deal, calls("PASS 1C PASS 1D PASS 1H PASS 2C PASS"));
+    expect(steps.at(-1)!.position.shown.N.hcp).toEqual([6, 10]);
+    expect(callCode(chooseCall(parseHand("KQ83.AJT6.QT.Q42"), deal, calls("PASS 1C PASS 1D PASS 1H PASS 2C PASS")).call)).toBe("PASS");
+  });
+});
+
 describe("slam", () => {
   const N = "N" as const;
   const card = (blackwood: SystemSettings["blackwood"]): SystemSettings => ({ ...SAYC_DEFAULTS, blackwood });
   const call = (hand: string, auction: string, settings: SystemSettings = SAYC_DEFAULTS) =>
     callCode(chooseCall(parseHand(hand), { dealer: N, vul: "None" }, calls(auction), settings).call);
 
-  // East after 1♥ (1♠) 2♠ cuebid raise: likely 31–32 invites; a suit with two quick losers doesn't.
+  // East after 1♥ (1♠) 2♠ cuebid raise, slam possible: invite with no problem suit; control bids
+  // (cheapest control first) with a void or a suit with two quick losers.
   it.each([
-    ["invites with 5♥ (board 1)", "K542.KQJ854..AK2", "5H"],
-    ["bids game instead with two quick losers in clubs", "K542.AKJ854.A.32", "4H"],
-  ])("slam invitation: %s", (_, hand, expected) => {
+    ["no problem suit: invites with 5♥", "K542.KQJ854.A.K2", "5H"],
+    ["a void: control bid in the cheapest controlled suit (board 1)", "K542.KQJ854..AK2", "4C"],
+    ["two quick losers in clubs: control bid 4♦, skipping clubs", "K542.AKJ854.A.32", "4D"],
+  ])("slam try: %s", (_, hand, expected) => {
     expect(call(hand, "PASS 1H 1S 2S PASS")).toBe(expected);
   });
 
@@ -232,6 +252,26 @@ describe("slam", () => {
     ["declines with no more than shown", "A6.J93.QJ8752.76", "PASS"],
   ])("answering 5♥: %s", (_, hand, expected) => {
     expect(call(hand, "PASS 1H 1S 2S PASS 5H PASS")).toBe(expected);
+  });
+
+  it.each([
+    ["with extras: shows a control back", "A6.A93.QJ8752.76", "4S"],
+    ["no extras, nothing in a skipped suit: signs off", "Q6.Q93.J87532.Q7", "4H"],
+  ])("answering a control bid, %s", (_, hand, expected) => {
+    expect(call(hand, "PASS 1H 1S 2S PASS 4C PASS")).toBe(expected);
+  });
+
+  it("partner signs off with a suit uncontrolled after the control bids", () => {
+    // East (♣32, no club control) bid 4♦; West showed ♠ (4♠) but not clubs: East signs off.
+    expect(call("K542.AKJ854.A.32", "PASS 1H 1S 2S PASS 4D PASS 4S PASS")).toBe("5H");
+  });
+
+  it("a strong opener explores slam after a limit raise instead of just accepting", () => {
+    expect(call("AK2.AKJ85.K32.K2", "1H PASS 3H PASS")).toBe("5H");
+  });
+
+  it("reads a new suit at the four level, with a major agreed, as a control bid", () => {
+    expect(readAuction({ dealer: N, vul: "None" }, calls("PASS 1H 1S 2S PASS 4C"))[5]!.read!.rule?.name).toBe("Control bid");
   });
 
   it("reads 5 of our agreed major as a slam invitation", () => {

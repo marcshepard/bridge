@@ -7,6 +7,7 @@ import { contractTrickPoints } from "../../scoring";
 import { type HandFacts, fitPoints, holding, isMajor, supportPoints } from "../evaluate";
 import type { CallRule } from "../model";
 import {
+  type Bid,
   type Position,
   DOUBLE,
   PASS,
@@ -24,6 +25,8 @@ import {
   ourActions,
   ourContract,
   ourSuits,
+  callsBy,
+  partner,
   partnerLast,
   partnerPoints,
   partnerShown,
@@ -51,6 +54,24 @@ export function slamRules(p: Position): CallRule[] {
   const pl = partnerLast(p);
   const me = myLast(p);
   const style = p.s.blackwood;
+
+  // Partner invited game (the placement rule's invitation): bid it at the top of my range, that is
+  // with more than the likely point of what I've shown. The next player must have passed.
+  if (pl?.rule?.name === "Game invitation" && isBid(pl.call) && p.read.at(-1)?.call.kind === "pass") {
+    const strain = pl.call.strain;
+    const game = bid(gameLevel(strain), strain);
+    const unit = strain === "NT" ? "HCP" : "points";
+    const count = (h: HandFacts) => (strain === "NT" ? h.hcp : valuation(p, h).mine);
+    const top = myLikely(p) + 1;
+    return [
+      rule(game, "Accepts the game invitation: the top of my range.", (h) => count(h) >= top, {
+        why: (h) => `${count(h)} ${unit}, more than the ${myLikely(p)} or so I've shown: accept`,
+      }),
+      rule(PASS, "Declines the game invitation: not the top of my range.", () => true, {
+        why: (h) => `${count(h)} ${unit}, no more than the ${myLikely(p)} or so I've shown: decline`,
+      }),
+    ];
+  }
 
   // Partner invited slam (5 of our major, or a quantitative 4NT): bid it with more than I've shown.
   if (pl?.rule?.name === "Slam invitation" && isBid(pl.call)) {
@@ -138,11 +159,122 @@ export function slamRules(p: Position): CallRule[] {
     return [rule(PASS, "Partner's answer places the contract.", () => true, { why: () => "the queen answer settles it" })];
   }
 
+  // Control bids: partner started them, or answered mine.
+  if (pl?.rule?.name === "Control bid") {
+    const rules = controlRules(p, pl, me);
+    if (rules) return rules;
+  }
+  // I made a control bid and partner has decided (signed off, or bid the slam): leave it there.
+  if (me?.rule?.name === "Control bid" && pl && isBid(pl.call) && pl.rule?.name !== "Blackwood") {
+    return [rule(PASS, "Partner has placed the contract.", () => true, { why: () => "partner decided after the control bids" })];
+  }
+
   // I answered partner's ask and partner has placed the contract: leave it there.
   if (me?.rule && ANSWER_NAMES.has(me.rule.name ?? "") && pl && pl.rule?.name !== "Queen ask") {
     return [rule(PASS, "Partner asked, and has placed the contract.", () => true, { why: () => "partner asked, so partner decides" })];
   }
   return [];
+}
+
+// ---- Control bids (Italian style) -----------------------------------------------------------------
+//
+// Only for the slams Blackwood can't settle: a suit with two quick losers, a void, or a strong
+// opener after a limit raise. With a major agreed, the slam hand bids its cheapest control (ace,
+// king, singleton or void) at the four level or higher, below five of trumps; skipping a suit says
+// there's nothing there. Partner shows a control back with extras, or with control of a suit the
+// slam hand skipped, and otherwise signs off. With every suit controlled, the slam hand uses
+// Blackwood, or bids the slam with a void.
+
+const STRAIN_ORDER: Strain[] = ["C", "D", "H", "S", "NT"];
+const rank = (b: Bid) => b.level * 5 + STRAIN_ORDER.indexOf(b.strain);
+
+/** First- or second-round control: the ace or king, a singleton or a void. */
+const hasControl = (h: HandFacts, s: Suit) => h.hand[s].includes("A") || h.hand[s].includes("K") || h.len[s] <= 1;
+
+/** The major both hands have shown (8+ cards between what each has shown), if any. */
+export function agreedMajor(p: Position): Suit | null {
+  const mine = p.shown[p.seat];
+  const theirs = partnerShown(p);
+  return (["S", "H"] as Suit[]).find((m) => ourSuits(p).includes(m) && mine.len[m][0] + theirs.len[m][0] >= 8) ?? null;
+}
+
+/** Control bids open now, cheapest first: each side suit at the four level or higher, below five of trumps. */
+function controlBids(p: Position, trump: Suit): Bid[] {
+  const limit = rank(bid(5, trump));
+  return SUITS.filter((s) => s !== trump)
+    .map((s) => bid(Math.max(4, cheapest(p, s)), s))
+    .filter((b) => rank(b) < limit)
+    .sort((a, b) => rank(a) - rank(b));
+}
+
+/** My cheapest control bid, or null when I have none to show here. */
+function myControlBid(p: Position, h: HandFacts, trump: Suit): Bid | null {
+  return controlBids(p, trump).find((b) => hasControl(h, b.strain as Suit)) ?? null;
+}
+
+/** The bid before a call in the auction (anyone's), as a rank; 0 if none. */
+function rankBefore(p: Position, r: (typeof p.read)[number]): number {
+  const i = p.read.indexOf(r);
+  const prev = p.read.slice(0, i).filter((x) => isBid(x.call)).at(-1);
+  return prev && isBid(prev.call) ? rank(prev.call) : 0;
+}
+
+/** Side suits a control bid denies: the ones that could have been shown more cheaply. */
+function deniedBy(call: Bid, before: number, trump: Suit): Suit[] {
+  return SUITS.filter((s) => {
+    if (s === trump || s === call.strain) return false;
+    let level = 4;
+    while (rank(bid(level, s)) <= before) level++;
+    return rank(bid(level, s)) < rank(call);
+  });
+}
+
+function controlWords(trump: Suit, s: Suit): string {
+  return `Control bid: slam interest in ${SYMBOL[trump]}, a control in ${SYMBOL[s]} (ace, king, singleton or void), and none in the suits skipped.`;
+}
+
+/** Partner started (or answered) control bids. */
+function controlRules(p: Position, pl: NonNullable<ReturnType<typeof partnerLast>>, me: ReturnType<typeof myLast>): CallRule[] | null {
+  const trump = agreedMajor(p) ?? trumpSuit(p);
+  if (!trump || !isMajor(trump) || !isBid(pl.call)) return null;
+  const sym = SYMBOL[trump];
+  const signOff = cheapBid(p, trump);
+  const signOffRule = (why: string): CallRule[] =>
+    signOff && signOff.level <= 5 ? [rule(signOff, `Signs off in ${sym}: no slam.`, () => true, { why: () => why })] : [rule(PASS, "No slam.", () => true, { why: () => why })];
+
+  if (me?.rule?.name !== "Control bid") {
+    // Partner started: cooperate with extras, or with control of a suit partner skipped.
+    const skipped = deniedBy(pl.call, rankBefore(p, pl), trump);
+    const extras = (h: HandFacts) => valuation(p, h).mine >= myLikely(p) + 1;
+    const helps = (h: HandFacts) => skipped.some((s) => hasControl(h, s));
+    const out: CallRule[] = controlBids(p, trump).map((b) =>
+      rule(b, controlWords(trump, b.strain as Suit), (h) => (extras(h) || helps(h)) && sameCall(myControlBid(p, h, trump) ?? PASS, b), {
+        name: "Control bid",
+        forcing: "one round",
+        why: (h) => `${extras(h) ? "more than I've shown" : `control of ${skipped.filter((s) => hasControl(h, s)).map((s) => SYMBOL[s]).join(" and ")}, which partner skipped`}: show my cheapest control`,
+      }),
+    );
+    return [...out, ...signOffRule(`no extras, and nothing in ${skipped.length ? skipped.map((s) => SYMBOL[s]).join(" or ") : "the suits partner skipped"}`)];
+  }
+
+  // I started, and partner showed a control back: slam if every side suit is controlled.
+  const shown = new Set(callsBy(p, partner(p)).filter((r) => r.rule?.name === "Control bid" && isBid(r.call)).map((r) => (r.call as Bid).strain));
+  const uncovered = (h: HandFacts) => SUITS.filter((s) => s !== trump && !hasControl(h, s) && !shown.has(s));
+  const hasVoid = (h: HandFacts) => SUITS.some((s) => s !== trump && h.len[s] === 0);
+  const room = cheapest(p, "NT") <= 4;
+  return [
+    rule(bid(6, trump), "Small slam: every suit controlled between us.", (h) => uncovered(h).length === 0 && (hasVoid(h) || !room), {
+      why: (h) => (hasVoid(h) ? "every suit controlled, and with a void Blackwood can't help: slam" : "every suit controlled: slam"),
+    }),
+    rule(bid(4, "NT"), blackwoodWords(p), (h) => uncovered(h).length === 0 && room, { name: "Blackwood", forcing: "one round", why: () => "every suit controlled: check the aces" }),
+    ...signOffRule("a suit neither of us controls"),
+  ];
+}
+
+function blackwoodWords(p: Position): string {
+  return p.s.blackwood === "plain"
+    ? "Blackwood: asks partner how many aces they hold."
+    : `Roman Key Card Blackwood (${p.s.blackwood === "rkc1430" ? "1430" : "3014"}): asks for key cards, the four aces and the trump king.`;
 }
 
 /** Key cards for Roman Key Card: the four aces and the trump king. */
@@ -334,10 +466,27 @@ function plan(p: Position, h: HandFacts): Plan {
   // with 5 of our major or a quantitative 4NT. Not with two quick losers in a suit neither of us
   // has bid: partner would accept on points alone, and the defence could cash two tricks there.
   const suitAgreed = ourSuits(p).length > 0 && ourContract(p)?.strain !== "NT";
-  const asked = ourActions(p).some((r) => r.rule?.name === "Slam invitation" || r.rule?.name === "Blackwood");
+  const asked = ourActions(p).some((r) => r.rule?.name === "Slam invitation" || r.rule?.name === "Blackwood" || r.rule?.name === "Control bid");
+  const agreed = agreedMajor(p);
+  const voidSuit = SUITS.find((s) => s !== strain && h.len[s] === 0) ?? null;
+  // Control bids, only where Blackwood can't settle it: a suit with two quick losers, or a void.
+  const controlBid = (problem: string): Plan | null => {
+    const cb = agreed === strain && !asked && !byTricks ? myControlBid(p, h, strain as Suit) : null;
+    return cb ? { call: cb, why: `${why}, ${points}: slam is possible, but ${problem}: show controls with ${callName(cb)}` } : null;
+  };
+  if (target >= 6 && voidSuit && strain !== "NT" && isMajor(strain as Suit)) {
+    const cb = controlBid(`with a void in ${SYMBOL[voidSuit]} Blackwood can't tell which ace is missing`);
+    if (cb) return cb;
+  }
   if (!byTricks && target < 6 && likely >= SLAM_INVITE_FROM && mine + pp.max >= SLAM_POINTS && !asked) {
     if (strain !== "NT" && isMajor(strain as Suit) && fit === strain && ourSuits(p).includes(strain) && cheapest(p, strain) <= 5) {
       const loser = SUITS.find((s) => s !== strain && !ourSuits(p).includes(s) && h.len[s] >= 2 && !h.hand[s].includes("A") && !h.hand[s].includes("K"));
+      const cb = loser
+        ? controlBid(`${holding(h, loser)} could lose two quick tricks`)
+        : voidSuit
+          ? controlBid(`with a void in ${SYMBOL[voidSuit]} Blackwood can't tell which ace is missing`)
+          : null;
+      if (cb) return cb;
       if (!loser) return { call: bid(5, strain), why: `${why}, ${points}: slam is possible, so invite it` };
       why = `${why}, slam is possible but ${holding(h, loser)} could lose two quick tricks`;
     } else if (strain === "NT" && !suitAgreed && cheapest(p, "NT") <= 4) {
@@ -412,10 +561,12 @@ function outbid(p: Position, h: HandFacts, strain: Strain, mine: number, points:
 export function placementRules(p: Position): CallRule[] {
   const candidates: { call: Call; meaning: string; name?: string }[] = [{ call: PASS, meaning: "Happy with the contract as it is." }];
   const suitAgreed = ourSuits(p).length > 0 && ourContract(p)?.strain !== "NT";
-  const askWords =
-    p.s.blackwood === "plain"
-      ? "Blackwood: asks partner how many aces they hold."
-      : `Roman Key Card Blackwood (${p.s.blackwood === "rkc1430" ? "1430" : "3014"}): asks for key cards, the four aces and the trump king.`;
+  const askWords = blackwoodWords(p);
+  // With a major agreed, a new suit at the four level or higher is a control bid: read it first.
+  const agreed = agreedMajor(p);
+  if (agreed) {
+    for (const b of controlBids(p, agreed)) candidates.push({ call: b, meaning: controlWords(agreed, b.strain as Suit), name: "Control bid" });
+  }
   candidates.push({
     call: bid(4, "NT"),
     meaning: suitAgreed ? askWords : "Quantitative: invites 6NT. Partner bids it with more than they've shown.",
@@ -425,7 +576,7 @@ export function placementRules(p: Position): CallRule[] {
     const g = gameLevel(strain);
     const sym = strainSymbol(strain);
     candidates.push(
-      { call: bid(g - 1, strain), meaning: `Invites game in ${strain === "NT" ? "notrump" : sym}.` },
+      { call: bid(g - 1, strain), meaning: `Invites game in ${strain === "NT" ? "notrump" : sym}: partner bids game at the top of their range.`, name: "Game invitation" },
       { call: bid(g, strain), meaning: `Game in ${strain === "NT" ? "notrump" : sym}: enough values between us.` },
       ...(strain !== "NT" && isMajor(strain) && ourSuits(p).includes(strain) ? [{ call: bid(5, strain), meaning: `Invites slam in ${sym}: partner bids six with more than they've shown.`, name: "Slam invitation" }] : []),
       { call: bid(6, strain), meaning: `Small slam in ${strain === "NT" ? "notrump" : sym}.` },
@@ -462,7 +613,7 @@ export function placementRules(p: Position): CallRule[] {
     rules.push(
       rule(c.call, c.meaning, (h) => sameCall(plan(p, h).call, c.call), {
         ...(c.name && { name: c.name }),
-        ...(c.name === "Blackwood" && { forcing: "one round" as const }),
+        ...((c.name === "Blackwood" || c.name === "Control bid") && { forcing: "one round" as const }),
         why: (h) => plan(p, h).why,
       }),
     );

@@ -98,6 +98,13 @@ export function BiddingSystemDialog(props: Props) {
               <SuitString text="♠KQJ1098" /> is 5). A strong <SuitString text="2♣" /> shows {card.twoNtMax + 1}+ HCP or 9 playing tricks.
             </Typography>
           </li>
+          <li>
+            <Typography>
+              <strong>Game and slam,</strong> counting both hands: game needs 25 in notrump, 26 in a major and 28 in a minor; a small
+              slam 33, a grand slam 37. The bots invite game when they're within 2 of it (3 in a minor), and invite slam with 31–32,
+              as long as partner's best hand would get there.
+            </Typography>
+          </li>
         </Box>
       </Box>
 

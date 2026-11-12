@@ -317,6 +317,17 @@ export const SETTING_FIELDS: SettingField[] = [
     built: true,
     editable: false,
   },
+  {
+    kind: "fixed",
+    id: "threeCardSupport",
+    group: "Responses",
+    label: "Three trumps and 10+",
+    value: () => "New suit first",
+    help: () =>
+      "Over 1♥ or 1♠ with three trumps and 10–12 points: bid a new suit, then support partner (3 of the major invites game). A two-level minor can be three cards when there's no four-card suit to show.",
+    built: true,
+    editable: false,
+  },
   toggle("splinters", "Responses", "Splinters", "A double jump in a new suit shows a fit for partner's major and a singleton or void in that suit.", false, false),
   toggle("invertedMinors", "Responses", "Inverted minors", "1♦–2♦ would be strong and 1♦–3♦ weak. Off in SAYC: 1♦–2♦ is 6–10 points.", false, false),
   toggle("newMinorForcing", "Responses", "New minor forcing", "After opener rebids 1NT, responder's 2 of the unbid minor asks about the majors.", false, false),
@@ -351,6 +362,39 @@ export const SETTING_FIELDS: SettingField[] = [
     built: true,
     editable: false,
   },
+  {
+    kind: "fixed",
+    id: "overTheir1Nt",
+    group: "Competition",
+    label: "Over their 1NT",
+    value: () => "Penalty double, natural overcalls",
+    help: () =>
+      "Double: 15+ HCP and balanced, or 16+ with any shape, in either seat. Overcall a decent six-card suit or two five-card suits (the higher-ranking); a good five-card suit when not vulnerable, or in the balancing seat.",
+    built: true,
+    editable: false,
+  },
+  {
+    kind: "fixed",
+    id: "partnerDoubles1Nt",
+    group: "Competition",
+    label: "Partner doubles their 1NT",
+    value: () => "Run with a weak hand",
+    help: () =>
+      "With 0–5 HCP and a five-card suit, bid it at the two level, to play. Otherwise pass and defend.",
+    built: true,
+    editable: false,
+  },
+  {
+    kind: "fixed",
+    id: "their1NtOvercall",
+    group: "Competition",
+    label: "They overcall 1NT over partner's opening",
+    value: () => "Double for penalties",
+    help: () =>
+      "Double: 8+ HCP, for penalties. Two of a new suit: five or more cards, under 8 HCP and short in partner's suit, to play.",
+    built: true,
+    editable: false,
+  },
 
   {
     kind: "choice",
@@ -370,6 +414,28 @@ export const SETTING_FIELDS: SettingField[] = [
         : `4NT asks for key cards: the four aces and the king of trumps. 5♣ ${s.blackwood === "rkc1430" ? "1 or 4" : "0 or 3"}, 5♦ ${s.blackwood === "rkc1430" ? "0 or 3" : "1 or 4"}, 5♥ two without the trump queen, 5♠ two with it. After 5♣ or 5♦, the next bid up (not trumps) asks for the trump queen: six with it, five without.`,
     built: true,
     editable: true,
+  },
+  {
+    kind: "fixed",
+    id: "slamInvitations",
+    group: "Slams",
+    label: "Slam invitations",
+    value: () => "5 of the major, or 4NT",
+    help: () =>
+      "With 31–32 points between you and slam possible: 5 of the agreed major, or 4NT in a notrump auction. Partner bids the slam with more than they've shown so far.",
+    built: true,
+    editable: false,
+  },
+  {
+    kind: "fixed",
+    id: "controlBids",
+    group: "Slams",
+    label: "Control bids (cuebids)",
+    value: () => "Italian, only when needed",
+    help: () =>
+      "Used only for slams Blackwood can't settle: a suit that could lose two quick tricks, a void, or a strong opener after a limit raise. With a major agreed, bid your cheapest control (ace, king, singleton or void) at the four level or higher; skipping a suit says you have nothing there. Partner shows a control back or signs off. Every other slam is an invitation or Blackwood.",
+    built: true,
+    editable: false,
   },
   {
     kind: "choice",

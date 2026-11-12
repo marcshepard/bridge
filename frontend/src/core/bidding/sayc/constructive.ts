@@ -14,6 +14,7 @@ import {
   cheapest,
   isBid,
   ourActions,
+  partnerPoints,
   partnerShown,
   theirActions,
 } from "../position";
@@ -215,12 +216,15 @@ function openerRebid(p: Position, o: Suit, r: Bid, rName: string | undefined, ga
       rule(PASS, "Minimum: no game opposite a single raise.", () => true, { why: (h) => `${fp(h)} points: game is unlikely` }),
     ];
   }
+  const slamZone = (h: HandFacts) => isMajor(o) && fp(h) + partnerPoints(p).likely >= 31;
   if (rs === o && r.level === 3) {
     return [
       // A major game needs 26: 15 opposite the limit raise's likely 11 (the general rule's numbers).
-      rule(bid(isMajor(o) ? 4 : 5, o), "Accepts the invitation.", (h) => fp(h) >= (isMajor(o) ? 15 : 14), { why: (h) => `${fp(h)} points: more than a minimum` }),
+      // With a major and slam possible (31+ with partner's likely), neither rule here applies, and
+      // the general rules explore slam (an invitation, control bids or Blackwood).
+      rule(bid(isMajor(o) ? 4 : 5, o), "Accepts the invitation.", (h) => fp(h) >= (isMajor(o) ? 15 : 14) && !slamZone(h), { why: (h) => `${fp(h)} points: more than a minimum` }),
       rule(bid(3, "NT"), "Accepts in notrump.", (h) => !isMajor(o) && h.hcp >= 14 && h.balanced, { why: () => "stoppers and extras: 3NT is easier than 5 of a minor" }),
-      rule(PASS, "Declines: minimum.", () => true, { why: (h) => `${fp(h)} points: a minimum` }),
+      rule(PASS, "Declines: minimum.", (h) => fp(h) < (isMajor(o) ? 15 : 14) || !isMajor(o), { why: (h) => `${fp(h)} points: a minimum` }),
     ];
   }
   if (rName === "Jacoby 2NT") {
@@ -496,7 +500,8 @@ function responderRebid(p: Position, o: Suit, r: Bid, rebid: Bid): CallRule[] {
   );
   if (opener2) {
     rules.push(
-      rule(bid(cheapest(p, o), o), `Preference: back to opener's first suit, ${SYMBOL[o]}.`, (h) => h.len[o] > h.len[opener2] || (h.len[o] === h.len[opener2] && h.len[o] >= 2), { why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} against ${h.len[opener2]} ${SUIT_WORDS[opener2]}: prefer the first suit` }),
+      // Weak: with 11+ responder would have invited above. Two cards only when equal in both suits.
+      rule(bid(cheapest(p, o), o), `Preference: back to opener's first suit, ${SYMBOL[o]}. 6–10 points, 2+ ${SYMBOL[o]}.`, (h) => h.len[o] > h.len[opener2] || (h.len[o] === h.len[opener2] && h.len[o] >= 2), { shows: { hcp: [6, 10], len: len(o, 2) }, why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} against ${h.len[opener2]} ${SUIT_WORDS[opener2]}: prefer the first suit` }),
     );
   }
   rules.push(rule(PASS, "Weak: no game, and this contract will do.", () => true, { why: (h) => `${hcpText(h)}: stop` }));
