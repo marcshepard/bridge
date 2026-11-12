@@ -7,11 +7,19 @@ import type { HandFacts } from "./evaluate";
 /** A range, inclusive. 0–37 HCP and 0–13 cards are "nothing known". */
 export type Range = [number, number];
 
+/**
+ * How good a suit is (as `decentSuit` and `goodSuit` in evaluate.ts): "decent", one of the top three
+ * honours and two of the top five; "good", two of the top three or three of the top five.
+ */
+export type SuitQuality = "decent" | "good";
+
 /** What the auction has shown about one hand. */
 export interface Shown {
   hcp: Range;
   len: Record<Suit, Range>;
   balanced: boolean;
+  /** Suits shown to be of at least this quality (an overcall's suit); absent says nothing. */
+  quality?: Partial<Record<Suit, SuitQuality>>;
 }
 
 /** Part of what a call shows; anything left out says nothing new. */
@@ -19,6 +27,14 @@ export interface ShowsPatch {
   hcp?: Range;
   len?: Partial<Record<Suit, Range>>;
   balanced?: boolean;
+  quality?: Partial<Record<Suit, SuitQuality>>;
+}
+
+/** Does a suit's holding (ranks, any order) meet a quality? */
+export function meetsQuality(ranks: string, q: SuitQuality): boolean {
+  const top = [...ranks].filter((r) => "AKQ".includes(r)).length;
+  const honours = [...ranks].filter((r) => "AKQJT".includes(r)).length;
+  return q === "good" ? top >= 2 || honours >= 3 : top >= 1 && honours >= 2;
 }
 
 /** How long partner must keep bidding: none, for one more call, or until game. */
@@ -79,11 +95,16 @@ export function applyShows(known: Shown, patch: ShowsPatch | undefined): Shown {
   if (!patch) return known;
   const len = { ...known.len };
   for (const s of SUITS) if (patch.len?.[s]) len[s] = narrow(known.len[s], patch.len[s]!);
-  return {
+  const out: Shown = {
     hcp: patch.hcp ? narrow(known.hcp, patch.hcp) : known.hcp,
     len,
     balanced: known.balanced || !!patch.balanced,
   };
+  // Quality only ever goes up: "good" stays good when a later call shows the suit is decent.
+  const quality = { ...known.quality };
+  for (const s of SUITS) if (patch.quality?.[s] && quality[s] !== "good") quality[s] = patch.quality[s];
+  if (Object.keys(quality).length > 0) out.quality = quality;
+  return out;
 }
 
 /** The widest of several patches (a call that more than one rule can make means any of them). */

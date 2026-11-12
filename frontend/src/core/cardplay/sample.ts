@@ -1,11 +1,11 @@
 // What a bot knows during the play, and deals of the hands it can't see.
 //
 // Hard facts: its own hand; dummy's once the opening lead is made; every card played; who has shown
-// out of a suit. Soft facts: what each hand's bids showed (HCP and suit lengths). Bidding light is
-// common, and so are false cards, so a deal that fits the bids exactly counts in full, one a little
-// off counts a third, and one further off is left out. The bot never looks at the real hidden hands.
+// out of a suit. Soft facts: what each hand's bids showed (HCP, suit lengths, an overcall's suit
+// quality). Bidding light is common, and so are false cards, so a deal that fits the bids exactly
+// counts in full, one a little off counts a third, and one further off is left out. The bot never looks at the real hidden hands.
 
-import type { Shown } from "../bidding/model";
+import { type Shown, meetsQuality } from "../bidding/model";
 import type { SystemSettings } from "../bidding/system";
 import { cardingWeight } from "./inference";
 import { type Card, type PlayState, currentTrick, dummyOf } from "../play";
@@ -61,20 +61,23 @@ function handOf(indices: number[]): Hand {
 
 /**
  * How well a hand's original cards (what it holds now plus what it has played) fit what its bids
- * showed: 1 within the shown ranges; a third when no more than 2 HCP and a card per suit outside;
- * 0 further off.
+ * showed: 1 within the shown ranges and suit quality; a third when no more than 2 HCP and a card
+ * per suit outside, or a suit weaker than shown (an overcall on a poor suit happens); 0 further off.
  */
 export function fitWeight(original: Card[], shown: Shown): number {
   let hcp = 0;
   const len = [0, 0, 0, 0];
+  const ranks: Record<Suit, string> = { S: "", H: "", D: "", C: "" };
   for (const c of original) {
     hcp += HCP[c.rank] ?? 0;
     len[SUITS.indexOf(c.suit)]!++;
+    ranks[c.suit] += c.rank;
   }
   const off = (v: number, [lo, hi]: [number, number]) => (v < lo ? lo - v : v > hi ? v - hi : 0);
   const hcpOff = off(hcp, shown.hcp);
   const lenOff = SUITS.map((s, i) => off(len[i]!, shown.len[s]));
-  if (hcpOff === 0 && lenOff.every((d) => d === 0)) return 1;
+  const qualityOk = SUITS.every((s) => !shown.quality?.[s] || meetsQuality(ranks[s], shown.quality[s]!));
+  if (hcpOff === 0 && lenOff.every((d) => d === 0) && qualityOk) return 1;
   if (hcpOff <= 2 && lenOff.every((d) => d <= 1)) return 1 / 3;
   return 0;
 }

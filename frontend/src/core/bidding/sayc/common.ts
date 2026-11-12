@@ -3,7 +3,7 @@
 import type { Call } from "../../auction";
 import { type Strain, type Suit, SUITS } from "../../types";
 import { type HandFacts, SUIT_WORDS, SYMBOL } from "../evaluate";
-import type { CallRule, Forcing, ShowsPatch } from "../model";
+import type { CallRule, Forcing, ShowsPatch, SuitQuality } from "../model";
 import type { Bid } from "../position";
 
 export { SUIT_WORDS, SYMBOL };
@@ -30,6 +30,8 @@ export const hcpText = (h: HandFacts) => `${h.hcp} HCP`;
 
 /** A one-suit length patch: at least `min` cards. */
 export const len = (s: Suit, min: number, max = 13): ShowsPatch["len"] => ({ [s]: [min, max] }) as ShowsPatch["len"];
+/** A suit shown to be at least decent or good (an overcall's suit). */
+export const quality = (s: Suit, q: SuitQuality): ShowsPatch["quality"] => ({ [s]: q }) as ShowsPatch["quality"];
 
 export interface RuleOptions {
   name?: string;

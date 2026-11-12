@@ -10,7 +10,7 @@ import { parseGameFile } from "../../providers/gameFile";
 import { SyncSolver } from "../../dds/syncSolver";
 import { leadCard } from "./carding";
 import { playContext } from "./context";
-import { decideCard } from "./decide";
+import { type CardGroup, AK_LEAD_MARGIN, akLeads, decideCard } from "./decide";
 import { botClaim, checkClaim } from "./claims";
 import { type CardOdds, markFor, oddsOf, reviewCard } from "./review";
 import type { CardSimulation } from "./decide";
@@ -70,6 +70,13 @@ describe("dealing the hidden hands", () => {
     expect(fitWeight(cards("AK3.QJ2.K52.8643"), shown)).toBe(1); // 13 HCP
     expect(fitWeight(cards("AK3.432.K52.8643"), shown)).toBeCloseTo(1 / 3); // 10 HCP: two light
     expect(fitWeight(cards("A43.Q32.952.8643"), shown)).toBe(0); // 6 HCP
+  });
+
+  it("weights a suit weaker than the bidding showed (an overcall) a third", () => {
+    const shown = { ...unknownHand(), quality: { H: "decent" as const } };
+    const cards = (h: string) => Object.entries(parseHand(h)).flatMap(([suit, ranks]) => [...ranks].map((rank) => ({ suit: suit as "S", rank })));
+    expect(fitWeight(cards("A43.KJ852.95.864"), shown)).toBe(1);
+    expect(fitWeight(cards("A43.98752.K5.864"), shown)).toBeCloseTo(1 / 3);
   });
 });
 
@@ -240,4 +247,37 @@ describe("reading leads and signals", () => {
     const deals = sampleDeals(state, "E", { N: unknownHand(), E: unknownHand(), S: unknownHand(), W: unknownHand() }, 30, 20_000, seeded(3));
     expect(deals.every((d) => d.weight === 1)).toBe(true);
   });
+});
+
+describe("the opening lead from AK", () => {
+  // South declares 4♠; West is on lead with ♥AK852.
+  const hands = {
+    N: parseHand("KQ9.QJ4.AJ7.8642"),
+    E: parseHand("J2.T963.Q985.AT7"),
+    S: parseHand("AT8654.7.K32.KQ5"),
+    W: parseHand("73.AK852.T64.J93"),
+  };
+  const card = (c: string) => ({ suit: c[0] as "S", rank: c[1]! });
+  const groups = (ak: number): CardGroup[] => [
+    { cards: [card("C3")], best: 0.6, average: 3 },
+    { cards: [card("HA"), card("HK")], best: ak, average: 3 },
+  ];
+
+  it("is preferred against a suit contract unless another lead is clearly better", () => {
+    const state = startPlay(hands, "S", "S");
+    expect(akLeads(state, groups(0.6 - AK_LEAD_MARGIN + 0.01)).map((a) => a.suit)).toEqual(["H"]);
+    expect(akLeads(state, groups(0.6 - AK_LEAD_MARGIN - 0.05))).toEqual([]);
+  });
+
+  it("isn't preferred against notrump, or from AK of trumps", () => {
+    expect(akLeads(startPlay(hands, "NT", "S"), groups(0.55))).toEqual([]);
+    expect(akLeads(startPlay(hands, "H", "S"), groups(0.55))).toEqual([]);
+  });
+
+  it("the bot leads from AK, and says why", async () => {
+    const deal = { dealer: "S" as const, vul: "None" as const };
+    const ctx = playContext(deal, "1S PASS 2S PASS 4S PASS PASS PASS".split(" ").map((c) => parseCall(c)!));
+    const decision = await decideCard(startPlay(hands, "S", "S"), ctx, solver);
+    expect(["HA", "HK"]).toContain(cardCode(decision.card));
+  }, 60_000);
 });

@@ -9,11 +9,12 @@
 //
 // Two passes: 40 deals (the bot's own decision), then 200 for a card behind the best by less than
 // 10%, where a small difference needs more deals to show. "Best" is the bots' measure: the most
-// tricks on the deal (matchpoints). See docs/BOT.md, stage 5.
+// tricks on the deal (matchpoints). An opening lead from AK the bots would accept (AK_LEAD_MARGIN in
+// decide.ts) is never marked. See docs/BOT.md, stage 5.
 
 import type { DoubleDummySolver } from "../doubleDummy";
 import { type Card, type PlayState, cardCode, currentTrick, legalCards, toPlay } from "../play";
-import { type CardDecision, type CardGroup, type CardSimulation, type PlayContext, decideCard, simulateCards } from "./decide";
+import { type CardDecision, type CardGroup, type CardSimulation, type PlayContext, akLeads, decideCard, simulateCards } from "./decide";
 
 export type PlayMark = "mistake" | "close" | "unlucky";
 
@@ -119,8 +120,9 @@ export async function reviewCard(
 
   let odds = oddsOf(sim, card);
   // The bot's own choice is never marked: it can differ from the top group on a near tie (an
-  // opening lead in partner's suit).
-  if (odds && odds.yours.cards.some((c) => cardCode(c) === cardCode(bot.card))) odds = { ...odds, gap: 0, clear: false };
+  // opening lead in partner's suit). Nor is a lead from AK that the bots would also accept.
+  const akLead = akLeads(state, sim.groups).some((a) => a.suit === card.suit && odds?.yours === a.group);
+  if (odds && (akLead || odds.yours.cards.some((c) => cardCode(c) === cardCode(bot.card)))) odds = { ...odds, gap: 0, clear: false };
   if (judge && odds && odds.gap > 0 && odds.gap < MISTAKE_GAP) {
     sim = await simulateCards(state, ctx, solver, SECOND_DEALS);
     odds = sim ? oddsOf(sim, card) : odds;

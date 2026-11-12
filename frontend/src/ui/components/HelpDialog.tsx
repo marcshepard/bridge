@@ -217,6 +217,11 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         have taken on the actual deal with perfect play. The review takes a moment: the marks appear as they're
         worked out.
       </Typography>
+      <Typography sx={{ mt: 1 }}>
+        One exception: an opening lead from ace–king against a suit contract is never a close call. Cashing a top card
+        lets you see dummy before you choose what to do next, which the deals can't measure. It's only marked as a
+        mistake when another lead was best on more than 10% more of the deals.
+      </Typography>
 
       <Heading>Playing online</Heading>
       <Typography sx={{ mb: 1 }}>

@@ -370,6 +370,18 @@ describe("opener after a limit raise (1♠–3♠): the same count as the delaye
   });
 });
 
+describe("what an overcall shows partner", () => {
+  it("a simple overcall at the one level: a decent suit", () => {
+    const steps = readAuction({ dealer: "N", vul: "None" }, calls("1C 1H"));
+    expect(steps.at(-1)!.position.shown.E.quality).toEqual({ H: "decent" });
+  });
+
+  it("a weak jump overcall: a good suit", () => {
+    const steps = readAuction({ dealer: "N", vul: "None" }, calls("1D 2S"));
+    expect(steps.at(-1)!.position.shown.E.quality).toEqual({ S: "good" });
+  });
+});
+
 describe("what a response shows partner", () => {
   it("2♣ over 1♠ promises only three clubs (it can be the last resort)", () => {
     const steps = readAuction({ dealer: "N", vul: "None" }, calls("1S PASS 2C"));

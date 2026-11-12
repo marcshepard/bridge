@@ -3,6 +3,7 @@
 
 import { hcp as hcpOf } from "../deal";
 import { type Hand, type Suit, SUITS } from "../types";
+import { meetsQuality } from "./model";
 
 export interface HandFacts {
   hand: Hand;
@@ -85,12 +86,12 @@ export function topHonours(h: HandFacts, suit: Suit): number {
 
 /** A suit worth showing on its own: two of the top three honours, or three of the top five. */
 export function goodSuit(h: HandFacts, suit: Suit): boolean {
-  return topHonours(h, suit) >= 2 || honours(h, suit) >= 3;
+  return meetsQuality(h.hand[suit], "good");
 }
 
 /** A suit fit to overcall or preempt in: at least one of the top three and two of the top five. */
 export function decentSuit(h: HandFacts, suit: Suit): boolean {
-  return topHonours(h, suit) >= 1 && honours(h, suit) >= 2;
+  return meetsQuality(h.hand[suit], "decent");
 }
 
 /** A stopper for notrump: A, Kx, Qxx or Jxxx. */

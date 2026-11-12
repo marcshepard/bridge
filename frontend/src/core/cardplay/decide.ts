@@ -1,7 +1,9 @@
 // The bots' card play: deal the hands the bot can't see, many times, keeping deals that fit what it
 // knows (weighted, so light bidding is allowed for); solve every legal card on each deal with double
 // dummy; play the group of cards that's best on the most deals (matchpoints), ties broken by average
-// tricks; then pick the card in the group by the side's leads and signals. Repeatable (seeded), so
+// tricks; then pick the card in the group by the side's leads and signals. Two opening-lead
+// preferences: from AK against a suit contract unless another lead is clearly better (AK_LEAD_MARGIN),
+// then partner's suit on a near tie. Repeatable (seeded), so
 // the play review can run a decision again. Without a solver, the simple rules in core/bot.ts.
 
 import { chooseCard } from "../bot";
@@ -119,6 +121,31 @@ export async function simulateCards(state: PlayState, ctx: PlayContext, solver: 
   return { deals, total, perDeal, groups, note };
 }
 
+/**
+ * How far behind the best lead (share of deals) a lead from AK can be and still be chosen. Double
+ * dummy gives no credit for what the lead lets you see: every simulated defender sees all the cards
+ * and finds the right switch at trick 2 anyway. Cashing a top card and looking at dummy first is
+ * worth more than that, so it's preferred unless another lead is clearly better.
+ */
+export const AK_LEAD_MARGIN = 0.1;
+
+/**
+ * Opening leads from AK in a side suit, against a suit contract, within AK_LEAD_MARGIN of the best
+ * group: each AK suit with its best group (the one holding its A or K), best first.
+ */
+export function akLeads(state: PlayState, groups: CardGroup[]): { suit: Suit; group: CardGroup }[] {
+  const trick = currentTrick(state);
+  if (state.trump === "NT" || state.tricks.length !== 1 || trick.cards.length > 0 || !groups[0]) return [];
+  const hand = state.hands[toPlay(state)];
+  const out: { suit: Suit; group: CardGroup }[] = [];
+  for (const suit of SUITS) {
+    if (suit === state.trump || !hand[suit].startsWith("AK")) continue;
+    const group = groups.find((g) => g.cards.some((c) => c.suit === suit && (c.rank === "A" || c.rank === "K")));
+    if (group && groups[0].best - group.best <= AK_LEAD_MARGIN) out.push({ suit, group });
+  }
+  return out.sort((a, b) => groups.indexOf(a.group) - groups.indexOf(b.group));
+}
+
 /** The bot's card for whoever is to play (declarer decides for dummy). */
 export async function decideCard(state: PlayState, ctx: PlayContext, solver: DoubleDummySolver | null, options: CardPlayOptions = {}): Promise<CardDecision> {
   const mover = toPlay(state);
@@ -131,10 +158,16 @@ export async function decideCard(state: PlayState, ctx: PlayContext, solver: Dou
   if (!sim) return { card: chooseCard(state), reason: "by simple rules (no deal fitted what it knows)" };
   const { deals, groups, note } = sim;
 
-  // An opening lead within a whisker of the best, in partner's suit, is preferred.
   let chosen = groups[0]!;
+  let because = "";
   const partnerSuits = ctx.bidSuits[({ N: "S", S: "N", E: "W", W: "E" } as const)[mover]];
-  if (state.tricks.length === 1 && trick.cards.length === 0) {
+  const ak = akLeads(state, groups)[0];
+  if (ak) {
+    // Lead from AK against a suit contract: see dummy before choosing what to do next.
+    if (ak.group !== chosen) because = `; it leads from AK to see dummy before choosing what to do next`;
+    chosen = { ...ak.group, cards: ak.group.cards.filter((c) => c.suit === ak.suit) };
+  } else if (state.tricks.length === 1 && trick.cards.length === 0) {
+    // An opening lead within a whisker of the best, in partner's suit, is preferred.
     const partners = groups.find((g) => g.cards.some((c) => partnerSuits.includes(c.suit)));
     if (partners && partners !== chosen && chosen.best - partners.best <= 0.03 && chosen.average - partners.average <= 0.1) chosen = partners;
   }
@@ -143,7 +176,7 @@ export async function decideCard(state: PlayState, ctx: PlayContext, solver: Dou
   const others = chosen.cards.length > 1 ? ` (or its equals: ${chosen.cards.filter((c) => cardCode(c) !== cardCode(pick.card)).sort((a, b) => RANK_WORDS.indexOf(a.rank) - RANK_WORDS.indexOf(b.rank)).map(cardText).join(" ")})` : "";
   return {
     card: pick.card,
-    reason: `in ${deals.length} deals that fit what it knows${note}, ${cardText(pick.card)}${others} was best on ${pct}%, for ${chosen.average.toFixed(1)} tricks on average${pick.why ? `; this card of the equals: ${pick.why}` : ""}`,
+    reason: `in ${deals.length} deals that fit what it knows${note}, ${cardText(pick.card)}${others} was best on ${pct}%, for ${chosen.average.toFixed(1)} tricks on average${because}${pick.why ? `; this card of the equals: ${pick.why}` : ""}`,
     simulation: { deals: deals.length, groups },
   };
 }

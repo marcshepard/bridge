@@ -27,7 +27,7 @@ import {
   theirSuits,
   weVul,
 } from "../position";
-import { SUIT_WORDS, SYMBOL, callName, cards, hcpText, len, rule, shapeText } from "./common";
+import { SUIT_WORDS, SYMBOL, callName, cards, hcpText, len, quality, rule, shapeText } from "./common";
 
 export function competitiveRules(p: Position): CallRule[] {
   const theirs = theirActions(p);
@@ -102,7 +102,7 @@ function overcalls(p: Position): CallRule[] {
       const what = balance
         ? `5+ ${SYMBOL[x]} (a decent 6-card suit or a good 5)`
         : `5+ ${SYMBOL[x]} (a decent 6-card suit; two 5-card suits; or a good 5, not vulnerable)`;
-      rules.push(rule(b, `Natural overcall: ${what}, ${8 - adj}–15 HCP.`, (h) => suitOk(h) && h.hcp >= 8 - adj && h.hcp <= 15, { shows: { hcp: [8 - adj, 15], len: len(x, 5) }, why: (h) => `${holding(h, x)}: a long suit to compete with` }));
+      rules.push(rule(b, `Natural overcall: ${what}, ${8 - adj}–15 HCP.`, (h) => suitOk(h) && h.hcp >= 8 - adj && h.hcp <= 15, { shows: { hcp: [8 - adj, 15], len: len(x, 5), quality: quality(x, "decent") }, why: (h) => `${holding(h, x)}: a long suit to compete with` }));
     }
     if (!balance && lb.call.level === 1) {
       // Direct seat: two 5-card suits, 8–15. Bid the higher-ranking: a major scores more when both
@@ -200,7 +200,7 @@ function overcalls(p: Position): CallRule[] {
       rules.push(
         rule(bid(b.level + 1, x), `Weak jump overcall: a good 6-card ${SYMBOL[x]} suit, 5–10 HCP. Like a weak two.`, (h) => h.len[x] >= 6 && h.hcp >= 5 && h.hcp <= 10 && goodSuit(h, x) && b.level + 1 <= 3, {
           name: "Weak jump overcall",
-          shows: { hcp: [5, 10], len: len(x, 6) },
+          shows: { hcp: [5, 10], len: len(x, 6), quality: quality(x, "good") },
           why: (h) => `${hcpText(h)} and ${holding(h, x)}: get in their way`,
         }),
       );
@@ -208,7 +208,7 @@ function overcalls(p: Position): CallRule[] {
     const need = b.level === 1 ? { lo: 8 - adj, len: 5 } : b.level === 2 ? { lo: 11 - adj, len: 5 } : { lo: 13 - adj, len: 6 };
     rules.push(
       rule(b, `Overcall: ${cards(need.len, x)}, ${need.lo}–17 HCP${b.level >= 2 ? ", a good suit" : ""}.`, (h) => h.len[x] >= need.len && h.hcp >= need.lo && h.hcp <= 17 && (b.level === 1 ? decentSuit(h, x) : goodSuit(h, x) || h.len[x] >= 6), {
-        shows: { hcp: [need.lo, 17], len: len(x, need.len) },
+        shows: { hcp: [need.lo, 17], len: len(x, need.len), ...(b.level === 1 ? { quality: quality(x, "decent") } : {}) },
         why: (h) => `${hcpText(h)} and ${holding(h, x)}`,
       }),
     );
@@ -251,7 +251,7 @@ function overArtificial(p: Position): CallRule[] {
             : `Preemptive: a long, good ${SYMBOL[x]} suit. The higher the bid, the longer the suit and the more tricks it takes.`,
           (h) => suitFor(h) === x && levelFor(h, x) === level,
           {
-            shows: { len: len(x, level === cheap ? 5 : 6) },
+            shows: { len: len(x, level === cheap ? 5 : 6), quality: quality(x, "good") },
             why: (h) => {
               const lengthLevel = h.len[x] - 4;
               const trickLevel = h.tricks + allowance - 6;
