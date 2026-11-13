@@ -1,9 +1,10 @@
-// The field as a traveller: every score the original field got on this board, best for your side
-// at the top, with the matchpoints that score earns and how many tables got it. Your result is
-// slotted into place. Each column heading has a "?" that explains it, so the list needs no notes.
+// The field as a traveller: every score the original field got, with its matchpoints and table count.
+// The reader can sort by score or frequency, and their result is highlighted.
 
-import { LinearProgress, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
-import { Fragment } from "react";
+import {
+  LinearProgress, Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel, Typography, type SxProps, type Theme,
+} from "@mui/material";
+import { Fragment, useState } from "react";
 import { matchpointPct, type BoardComparison, type ScoreGroup } from "../../core/compare";
 import { formatScore } from "../../core/scoring";
 import { ResultText, ScoreText } from "../controls/BridgeText";
@@ -15,7 +16,14 @@ interface Row {
   score: number;
 }
 
+const sortLabelSx: SxProps<Theme> = {
+  minHeight: (t) => t.spacing(5.5),
+  color: "primary.main",
+  "&.Mui-focusVisible": { outline: "revert" },
+};
+
 export function Traveller({ c }: { c: BoardComparison }) {
+  const [sortBy, setSortBy] = useState<"score" | "tables">("score");
   const max = Math.max(1, ...c.groups.map((g) => g.count));
 
   const rows: Row[] = c.groups.map((g) => ({ group: g, score: g.score }));
@@ -23,20 +31,44 @@ export function Traveller({ c }: { c: BoardComparison }) {
     const at = rows.findIndex((r) => r.score < c.ourScore);
     rows.splice(at === -1 ? rows.length : at, 0, { group: null, score: c.ourScore });
   }
+  if (sortBy === "tables") {
+    rows.sort((a, b) => (b.group?.count ?? 0) - (a.group?.count ?? 0) || b.score - a.score);
+  }
 
   return (
-    <Table size="small" aria-label="Field results, best for your side first" sx={{ "& td, & th": { px: 1 } }}>
+    <Table size="small" aria-label="Field results" sx={{ "& td, & th": { px: 1 } }}>
       <TableHead>
         <TableRow>
-          <TableCell>Score</TableCell>
-          <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+          <TableCell sortDirection={sortBy === "score" ? "desc" : false}>
+            <TableSortLabel
+              component="button"
+              active={sortBy === "score"}
+              direction="desc"
+              onClick={() => setSortBy("score")}
+              sx={sortLabelSx}
+            >
+              Score
+            </TableSortLabel>
+          </TableCell>
+          <TableCell align="right" sx={{ whiteSpace: { sm: "nowrap" } }}>
             Matchpoints
             <HelpTip label="About the matchpoints column">
               <MatchpointsHelp c={c} />
             </HelpTip>
           </TableCell>
-          <TableCell sx={{ whiteSpace: "nowrap" }}>
-            Tables
+          <TableCell
+            sortDirection={sortBy === "tables" ? "desc" : false}
+            sx={{ whiteSpace: { sm: "nowrap" }, "& > .MuiIconButton-root": { my: { xs: 0, sm: -1.5 } } }}
+          >
+            <TableSortLabel
+              component="button"
+              active={sortBy === "tables"}
+              direction="desc"
+              onClick={() => setSortBy("tables")}
+              sx={sortLabelSx}
+            >
+              Tables
+            </TableSortLabel>
             <HelpTip label="About the tables column">
               <span>The number and percent of tables that got this score.</span>
               <span>

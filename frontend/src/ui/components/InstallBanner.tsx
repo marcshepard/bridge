@@ -10,6 +10,7 @@ import { useState } from "react";
 import { profile } from "../../services";
 import { SheetDialog } from "../controls/SheetDialog";
 import { useInstall } from "../install";
+import { SafariShareStep } from "./SafariShareStep";
 
 interface Props {
   /** The install dialog is open (from the banner or the avatar menu). */
@@ -121,10 +122,11 @@ export function InstallBanner({ open, onOpen, onClose }: Props) {
             ) : install.platform === "ios" ? (
               <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 0.5 }}>
                 <li>
-                  Tap the <strong>Share</strong> button (the square with an arrow pointing up).
+                  <SafariShareStep />
                 </li>
                 <li>
-                  Scroll down and tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.
+                  Scroll down and tap <strong>Add to Home Screen</strong>. If you see <strong>Open as Web App</strong>,
+                  turn it on. Then tap <strong>Add</strong>.
                 </li>
                 <li>Open Bridge Replay from its new icon on your home screen.</li>
               </Box>

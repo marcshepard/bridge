@@ -5,6 +5,7 @@ import { Box, Link, Typography } from "@mui/material";
 import type { ReactNode } from "react";
 import { SheetDialog } from "../controls/SheetDialog";
 import { FEEDBACK_EMAIL } from "../feedback";
+import { SafariShareStep } from "./SafariShareStep";
 
 const LEARN_MORE = "https://en.wikipedia.org/wiki/Duplicate_bridge#Scoring";
 
@@ -386,7 +387,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         your side first, with your result highlighted. Under each score is the contract behind it, when the game
         file gives it. The <strong>Matchpoints</strong> column is the % you'd have got with that score, and{" "}
         <strong>Tables</strong> is how many tables got it, with their share of the field: 20 of 100 shows as 20
-        (20%). A very small share shows as &lt;1%. Tap the ? beside a heading for a reminder.
+        (20%). A very small share shows as &lt;1%. Tap <strong>Tables</strong> to see the most common scores first,
+        or <strong>Score</strong> to go back to the best scores first. Tap the ? beside a heading for a reminder.
       </Typography>
       <Typography sx={{ mb: 1 }}>
         The field also shows <strong>IMPs</strong> (International Match Points), the scoring used in team games.
@@ -415,7 +417,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           <strong>Add to Home screen</strong>).
         </li>
         <li>
-          <strong>iPhone or iPad (Safari):</strong> tap the Share button, then <strong>Add to Home Screen</strong>.
+          <strong>iPhone or iPad (Safari).</strong> <SafariShareStep /> Tap <strong>Add to Home Screen</strong>.
+          If you see <strong>Open as Web App</strong>, turn it on. Then tap <strong>Add</strong>.
         </li>
         <li>
           <strong>Computer (Chrome or Edge):</strong> click the install icon at the right of the address bar.

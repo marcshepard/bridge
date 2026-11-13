@@ -13,6 +13,8 @@ import {
   Stack,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { useState } from "react";
 import { SEATS, SEAT_NAMES, type Seat } from "../../core/types";
@@ -168,6 +170,8 @@ function PlayerList({
  * the game can start. Their hands have to reach them some other way.
  */
 function AddWithoutApp({ code }: { code: string }) {
+  const theme = useTheme();
+  const phone = useMediaQuery(theme.breakpoints.down("sm"));
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -217,12 +221,16 @@ function AddWithoutApp({ code }: { code: string }) {
             if (name.trim()) void add();
           }}
         >
-          <Typography>For someone at the table who isn't using the app on a device of their own.</Typography>
+          <TextField
+            label="Their name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus={!phone}
+            autoComplete="off"
+          />
           <Alert severity="warning">
-            The app can't show them their cards, so they'll need their hands some other way, such as a printed hand
-            record. You enter the results as usual.
+            They’ll need a printed hand record or another way to see their cards.
           </Alert>
-          <TextField label="Their name" value={name} onChange={(e) => setName(e.target.value)} autoFocus autoComplete="off" />
           {error && <Alert severity="error">{error}</Alert>}
         </Stack>
       </SheetDialog>

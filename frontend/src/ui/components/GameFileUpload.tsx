@@ -6,6 +6,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutlineOutlined";
 import { Alert, Box, Button, Collapse, IconButton, Link, Stack, Typography } from "@mui/material";
 import { type ReactNode, useState } from "react";
 import { ACCEPTED_FILES } from "../../providers/importFile";
+import { SafariShareStep } from "./SafariShareStep";
 
 interface Props {
   /** A file is already loaded: the button offers a different one. */
@@ -81,7 +82,7 @@ function TcgHelp({ extra }: { extra?: ReactNode }) {
               download button (<strong>↓</strong>) at the top of the menu.
             </li>
             <li>
-              <strong>On an iPhone or iPad (Safari):</strong> tap the Share button, then <strong>Options</strong> under
+              <strong>On an iPhone or iPad (Safari).</strong> <SafariShareStep /> Tap <strong>Options</strong> under
               the page's name, choose <strong>Web Archive</strong> and tap <strong>Done</strong>. Then tap{" "}
               <strong>Save to Files</strong> and <strong>Save</strong>.
             </li>
