@@ -15,6 +15,7 @@ import type {
   ResultDto,
   SaveResultRequest,
   SeatRequestStatus,
+  SkipBoardResponse,
 } from "../../../backend/src/api-types";
 import type { GameFileV1 } from "../providers/gameFile";
 import type { Seat } from "../core/types";
@@ -30,6 +31,7 @@ export type {
   ResultDto,
   SeatRequestDto,
   SeatRequestStatus,
+  SkipBoardResponse,
 } from "../../../backend/src/api-types";
 
 /**
@@ -61,10 +63,12 @@ export interface GameStore {
   addPlayerWithoutApp(code: string, name: string): Promise<void>;
   /** The owner takes a player without the app back out of the lobby. */
   removePlayerWithoutApp(code: string, slot: number): Promise<void>;
-  /** The creator picks a partner (or random partnerships); seats are assigned and play starts. */
-  choosePartnerships(code: string, choice: PartnershipsRequest): Promise<void>;
+  /** The owner assigns seats or chooses random seats, then play starts. */
+  assignSeats(code: string, choice: PartnershipsRequest): Promise<void>;
   /** The owner moves the table to a board; every device follows. */
   moveTo(code: string, board: number): Promise<void>;
+  /** Skip the current real-cards board without scoring it. */
+  skipBoard(code: string, board: number): Promise<SkipBoardResponse>;
   /** The owner saves or corrects the table's result on a board. Everyone sees it straight away. */
   saveResult(code: string, board: number, result: SaveResultRequest): Promise<ResultDto>;
   /**

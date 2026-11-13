@@ -103,12 +103,16 @@ export async function deletePlayer(db: D1Database, code: string, playerId: strin
 }
 
 export async function setSeatsAndStart(db: D1Database, code: string, seats: Map<number, Seat>) {
-  await db.batch([
+  const results = await db.batch([
     ...[...seats].map(([slot, seat]) =>
-      db.prepare("UPDATE players SET seat = ? WHERE event_code = ? AND slot = ?").bind(seat, code, slot),
+      db.prepare(
+        `UPDATE players SET seat = ? WHERE event_code = ? AND slot = ?
+         AND EXISTS (SELECT 1 FROM events WHERE code = ? AND status = 'lobby')`,
+      ).bind(seat, code, slot, code),
     ),
-    db.prepare("UPDATE events SET status = 'playing' WHERE code = ?").bind(code),
+    db.prepare("UPDATE events SET status = 'playing' WHERE code = ? AND status = 'lobby'").bind(code),
   ]);
+  return results.at(-1)?.meta.changes === 1;
 }
 
 /** The owner moves the table to a board. */
@@ -120,18 +124,40 @@ export async function setStatus(db: D1Database, code: string, status: EventStatu
   await db.prepare("UPDATE events SET status = ? WHERE code = ?").bind(status, code).run();
 }
 
+/** Record the skip and move the table together. A scored board or stale request changes neither. */
+export async function skipBoard(
+  db: D1Database, code: string, board: number, next: number, slot: number, updatedAt: string,
+): Promise<ResultDto | null> {
+  const [marked] = await db.batch([
+    db.prepare(
+      `INSERT INTO results (event_code, table_no, board, contract, declarer, tricks, entered_by, updated_at)
+       SELECT code, 1, ?, 'SKIP', NULL, NULL, ?, ? FROM events
+       WHERE code = ? AND status = 'playing' AND COALESCE(current_board, start_board) = ?
+       ON CONFLICT (event_code, table_no, board) DO UPDATE SET
+         contract = excluded.contract, declarer = NULL, entered_by = excluded.entered_by, updated_at = excluded.updated_at
+       WHERE tricks IS NULL AND on_devices = 0 AND contract <> 'SKIP'`,
+    ).bind(board, slot, updatedAt, code, board),
+    db.prepare("UPDATE events SET current_board = ? WHERE code = ? AND changes() = 1").bind(next, code),
+  ]);
+  return marked?.meta.changes
+    ? { board, contract: "SKIP", declarer: null, tricks: null, enteredBy: slot, updatedAt, onDevices: false }
+    : null;
+}
+
 /** Saves a result. `onDevices` isn't changed here: see `setOnDevices`. */
 export async function upsertResult(db: D1Database, code: string, r: Omit<ResultDto, "onDevices">) {
-  await db
+  const saved = await db
     .prepare(
       `INSERT INTO results (event_code, table_no, board, contract, declarer, tricks, entered_by, updated_at)
        VALUES (?, 1, ?, ?, ?, ?, ?, ?)
        ON CONFLICT (event_code, table_no, board) DO UPDATE SET
          contract = excluded.contract, declarer = excluded.declarer, tricks = excluded.tricks,
-         entered_by = excluded.entered_by, updated_at = excluded.updated_at`,
+         entered_by = excluded.entered_by, updated_at = excluded.updated_at
+       WHERE contract <> 'SKIP'`,
     )
     .bind(code, r.board, r.contract, r.declarer, r.tricks, r.enteredBy, r.updatedAt)
     .run();
+  return saved.meta.changes === 1;
 }
 
 export async function getResult(db: D1Database, code: string, board: number): Promise<ResultDto | null> {
@@ -152,7 +178,7 @@ export async function setOnDevices(db: D1Database, code: string, board: number, 
     db.prepare("DELETE FROM claims WHERE event_code = ? AND board = ?").bind(code, board),
     db.prepare("DELETE FROM calls WHERE event_code = ? AND board = ?").bind(code, board),
     db
-      .prepare("UPDATE results SET on_devices = ?, updated_at = ? WHERE event_code = ? AND board = ?")
+      .prepare("UPDATE results SET on_devices = ?, updated_at = ? WHERE event_code = ? AND board = ? AND contract <> 'SKIP'")
       .bind(on ? 1 : 0, updatedAt, code, board),
   ]);
 }
@@ -172,7 +198,8 @@ export async function startAuction(db: D1Database, code: string, board: number, 
          VALUES (?, 1, ?, '', NULL, NULL, ?, ?, 1)
          ON CONFLICT (event_code, table_no, board) DO UPDATE SET
            contract = '', declarer = NULL, tricks = NULL, entered_by = excluded.entered_by,
-           updated_at = excluded.updated_at, on_devices = 1`,
+           updated_at = excluded.updated_at, on_devices = 1
+         WHERE contract <> 'SKIP'`,
       )
       .bind(code, board, enteredBy, updatedAt),
   ]);

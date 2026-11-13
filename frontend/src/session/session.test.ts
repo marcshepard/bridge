@@ -83,6 +83,13 @@ describe("sessions", () => {
     expect(pendingContract(shared, 5)).toBeNull(); // nothing yet
   });
 
+  it("keeps a skipped board out of the running tally", () => {
+    const scored = { board: 4, contract: "3NT", declarer: "E" as const, tricks: 9 };
+    const skipped = { board: 3, contract: "SKIP", declarer: null, tricks: null };
+    expect(tally(sessionFromShared(game, "S", 3, [skipped, scored]), game))
+      .toEqual(tally(sessionFromShared(game, "S", 3, [scored]), game));
+  });
+
   it("spots corrections by someone else to finished boards", () => {
     const entry = (board: number, tricks: number | null, enteredBy: number, updatedAt: string) => ({
       board,

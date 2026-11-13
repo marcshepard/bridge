@@ -25,6 +25,8 @@ import type {
   SeatRequestRequest,
   SeatRequestState,
   SeatRequestStatus,
+  SkipBoardRequest,
+  SkipBoardResponse,
 } from "../../../backend/src/api-types";
 import type { GameFileV1 } from "../providers/gameFile";
 import type { Seat } from "../core/types";
@@ -129,13 +131,18 @@ export class ApiGameStore implements GameStore {
     await this.request<void>("DELETE", `/events/${code}/players/no-app/${slot}`, code);
   }
 
-  async choosePartnerships(code: string, choice: PartnershipsRequest): Promise<void> {
+  async assignSeats(code: string, choice: PartnershipsRequest): Promise<void> {
     await this.request<unknown>("POST", `/events/${code}/partnerships`, code, choice);
   }
 
   async moveTo(code: string, board: number): Promise<void> {
     const body: CurrentBoardRequest = { board };
     await this.request<unknown>("PUT", `/events/${code}/current`, code, body);
+  }
+
+  skipBoard(code: string, board: number): Promise<SkipBoardResponse> {
+    const body: SkipBoardRequest = { board };
+    return this.request<SkipBoardResponse>("POST", `/events/${code}/skip-board`, code, body);
   }
 
   saveResult(code: string, board: number, result: SaveResultRequest): Promise<ResultDto> {

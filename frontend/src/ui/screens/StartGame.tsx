@@ -90,7 +90,7 @@ export function StartGame({ open, name, onClose, onCreated }: Props) {
       actions={
         <Stack spacing={1} sx={{ width: 1 }}>
           <Button variant="contained" size="large" fullWidth disabled={toDo.length > 0 || busy} onClick={() => void create()}>
-            {busy ? "Creating the game…" : loaded ? `Create the game, starting at board ${startBoard}` : "Create the game"}
+            {busy ? "Creating game…" : "Create game"}
           </Button>
           {toDo.length > 0 && (
             <Stack

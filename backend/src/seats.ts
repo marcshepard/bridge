@@ -1,10 +1,15 @@
-// Assigning seats once partnerships are chosen.
-//
-// Which seat anyone gets doesn't matter for fairness: nobody knows the hands in advance, and each
-// pair is compared only with the field in its own direction. So the only real choice is who
-// partners whom; the seats themselves are assigned at random.
+// Assign the compass seats before play starts.
 
-import type { Seat } from "../../frontend/src/core/types";
+import { SEATS, type Seat } from "../../frontend/src/core/types";
+
+/** Every player at this table must be assigned exactly one of the four seats. */
+export function manualSeats(slots: number[], chosen: Record<Seat, number>): Map<number, Seat> {
+  const assigned = SEATS.map((seat) => chosen?.[seat]);
+  if (new Set(assigned).size !== SEATS.length || !assigned.every((slot) => slots.includes(slot))) {
+    throw new Error("Assign one different player to each seat");
+  }
+  return new Map(SEATS.map((seat) => [chosen[seat], seat]));
+}
 
 /** `random` returns a number in [0, 1); injectable so tests can be deterministic. */
 export function assignSeats(

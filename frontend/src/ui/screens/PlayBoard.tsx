@@ -62,6 +62,9 @@ interface Props {
   onEnterResult: () => void;
   /** Enter or change the contract, once the bidding is over (the owner), so everyone sees it during the play. */
   onEnterContract: () => void;
+  onSkip?: () => void;
+  skipping: boolean;
+  skipped: boolean;
   /** Start the board on the devices by hand (the owner, in a game played on the devices). */
   onStartPlay?: () => void;
   /** While the board is being bid on the devices: the auction takes over the page. */
@@ -214,6 +217,16 @@ export function PlayBoard(p: Props) {
       Waiting for {p.owner} to start the next board…
     </Typography>
   );
+  if (p.skipped) {
+    return (
+      <Screen footer={nextFooter}>
+        {top}
+        <BoardHeader title={p.title} board={board.number} onInfo={p.onBoardInfo} rows={setup} />
+        <Typography color="text.secondary">This board was skipped.</Typography>
+      </Screen>
+    );
+  }
+
   const allHands = (trump: Contract["strain"] | null) => {
     const seats = Object.fromEntries(
       SEATS.map((s) => [s, <SeatHand key={s} seat={s} name={p.names[s]} away={p.away[s]} hand={board.hands[s]} trump={trump} />]),
@@ -280,20 +293,37 @@ export function PlayBoard(p: Props) {
       ) : (
         // The contract after the bidding (so everyone sees it during the play), then the result
         // after the play: whichever is next is the main button.
-        <Stack direction="row" spacing={1}>
-          <Button variant={p.contract ? "outlined" : "contained"} size="large" fullWidth onClick={p.onEnterContract}>
+        <Box
+          sx={{
+            display: "grid",
+            gap: 1,
+            gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: `repeat(${p.onSkip ? 3 : 2}, minmax(0, 1fr))` },
+          }}
+        >
+          <Button variant={p.contract ? "outlined" : "contained"} size="large" fullWidth disabled={p.skipping} onClick={p.onEnterContract}>
             {p.contract ? "Edit the contract" : "Enter the contract"}
           </Button>
           <Button
             variant={p.contract ? "contained" : "outlined"}
             size="large"
             fullWidth
-            disabled={!p.contract}
+            disabled={!p.contract || p.skipping}
             onClick={p.onEnterResult}
           >
             Enter the result
           </Button>
-        </Stack>
+          {p.onSkip && (
+            <Button
+              variant="outlined"
+              fullWidth
+              disabled={p.skipping}
+              onClick={p.onSkip}
+              sx={{ gridColumn: { xs: "1 / -1", sm: "auto" } }}
+            >
+              {p.skipping ? "Skipping…" : "Skip board"}
+            </Button>
+          )}
+        </Box>
       )
     ) : (
       <Typography color="text.secondary" role="status">

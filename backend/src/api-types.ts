@@ -44,10 +44,10 @@ export interface PublicPlayer {
 
 export interface ResultDto {
   board: number;
-  /** "4SX", "3NT", "PASS"; empty while the board is being bid on the devices (see `onDevices`). */
+  /** "4SX", "3NT", "PASS", or "SKIP" for a board left unscored; empty during online bidding. */
   contract: string;
   declarer: Seat | null;
-  /** null while only the contract is in (bidding over, play not finished). */
+  /** null before a board is scored, including when it is skipped. */
   tricks: number | null;
   /** Slot of the player who entered (or last corrected) it. */
   enteredBy: number;
@@ -170,8 +170,18 @@ export interface PracticeRequest {
 export interface CurrentBoardRequest {
   board: number;
 }
-/** The creator picks a partner by slot, or asks for random partnerships. */
-export type PartnershipsRequest = { partnerSlot: number } | { random: true };
+/** Start with a slot per compass seat or random seats. Older clients can pick a partner. */
+export type PartnershipsRequest = { seats: Record<Seat, number> } | { random: true } | { partnerSlot: number };
+
+export interface SkipBoardRequest {
+  /** The board the owner confirmed they want to skip. */
+  board: number;
+}
+
+export interface SkipBoardResponse {
+  currentBoard: number;
+  skipped: ResultDto;
+}
 /** A board's result, or just its contract (`tricks: null`) once the bidding is over. */
 export interface SaveResultRequest {
   contract: string;
@@ -264,6 +274,7 @@ export interface ErrorResponse {
 export type PushMessage =
   | { type: "result"; result: ResultDto }
   | { type: "board"; board: number } // the owner moved the table to this board
+  | ({ type: "boardSkipped" } & SkipBoardResponse)
   | { type: "call"; call: CallDto } // a call in an auction on the devices
   | { type: "play"; play: PlayDto } // a card played on a device
   | { type: "claim"; board: number; claim: ClaimDto | null } // a claim made or answered; null: refused or taken back

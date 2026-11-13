@@ -22,6 +22,7 @@ import {
   tricksLeft,
 } from "../../frontend/src/core/play";
 import { parseGameFile, type GameFileV1 } from "../../frontend/src/providers/gameFile";
+import { boardOrderFrom } from "../../frontend/src/session/session";
 import type {
   AnswerClaimRequest,
   CallDto,
@@ -47,12 +48,14 @@ import type {
   SeatRequestCreated,
   SeatRequestRequest,
   SeatRequestState,
+  SkipBoardRequest,
+  SkipBoardResponse,
 } from "./api-types";
 import * as db from "./db";
 import type { Env } from "./env";
 import type { Seat } from "../../frontend/src/core/types";
 import { newJoinCode, newPlayerId, normaliseJoinCode } from "./ids";
-import { assignSeats } from "./seats";
+import { assignSeats, manualSeats } from "./seats";
 
 export { EventHub } from "./hub";
 
@@ -356,7 +359,7 @@ app.delete("/events/:code/players/no-app/:slot", async (c) => {
 
 /**
  * Leave the game. Before play starts this frees the place; if the creator leaves the lobby, the
- * game is cancelled (nobody else can set partnerships). Leaving during play isn't done here: the
+ * game is cancelled (nobody else can assign seats). Leaving during play isn't done here: the
  * seat stays the player's (they can rejoin with the code), and anyone can take it over by asking
  * for it (seat requests, below).
  */
@@ -374,28 +377,30 @@ app.delete("/events/:code/players/me", async (c) => {
   return c.body(null, 204);
 });
 
-/** The creator chooses partnerships; seats are assigned and play starts. */
+/** The owner assigns seats and starts play. */
 app.post("/events/:code/partnerships", async (c) => {
   const event = await loadEvent(c);
   const players = await db.getPlayers(c.env.DB, event.code);
   const me = caller(c, players);
-  ownerOnly(me, "choose partnerships");
+  ownerOnly(me, "assign seats");
   if (event.status !== "lobby") throw new HttpError(409, "Play has already started");
   if (players.length !== MAX_PLAYERS) throw new HttpError(409, "Waiting for 4 players");
 
   const req = await body<PartnershipsRequest>(c);
-  const partner = "random" in req && req.random ? "random" : Number((req as { partnerSlot: number }).partnerSlot);
+  if (!req || typeof req !== "object") throw new HttpError(400, "Choose how to assign seats");
+  const slots = players.map((p) => p.slot);
   let seats;
   try {
-    seats = assignSeats(
-      players.map((p) => p.slot),
-      me.slot,
-      partner,
-    );
+    if ("seats" in req) seats = manualSeats(slots, req.seats);
+    else if ("random" in req && req.random === true) seats = assignSeats(slots, me.slot, "random");
+    else if ("partnerSlot" in req) seats = assignSeats(slots, me.slot, req.partnerSlot);
+    else throw new Error("Choose how to assign seats");
   } catch (e) {
     throw new HttpError(400, (e as Error).message);
   }
-  await db.setSeatsAndStart(c.env.DB, event.code, seats);
+  if (!(await db.setSeatsAndStart(c.env.DB, event.code, seats))) {
+    throw new HttpError(409, "Play has already started");
+  }
   await push(c, event.code, { type: "players" });
   await push(c, event.code, { type: "status", status: "playing" });
   if (onDevicesMode(event.mode)) await startOnDevices(c, event.code, currentBoard(event), me.slot);
@@ -420,6 +425,26 @@ app.put("/events/:code/current", async (c) => {
   await db.setCurrentBoard(c.env.DB, event.code, board);
   await push(c, event.code, { type: "board", board });
   return c.json({ board });
+});
+
+/** Leave the current real-cards board unscored and move the table on. */
+app.post("/events/:code/skip-board", async (c) => {
+  const event = await loadEvent(c);
+  const me = caller(c, await db.getPlayers(c.env.DB, event.code));
+  ownerOnly(me, "skip a board");
+  if (event.status !== "playing" || event.mode !== "cards") {
+    throw new HttpError(409, "You can only skip a board in a real-cards game in play");
+  }
+  const board = (await body<SkipBoardRequest>(c))?.board;
+  if (board !== currentBoard(event)) throw new HttpError(409, "The table has already moved on");
+  const game = JSON.parse(event.game_json) as GameFileV1;
+  const order = boardOrderFrom(game.boards.map((b) => b.number), event.start_board);
+  const next = order[order.indexOf(board) + 1] ?? board;
+  const skipped = await db.skipBoard(c.env.DB, event.code, board, next, me.slot, nowIso());
+  if (!skipped) throw new HttpError(409, "The board has already been scored or the table has moved on");
+  const response: SkipBoardResponse = { currentBoard: next, skipped };
+  await push(c, event.code, { type: "boardSkipped", ...response });
+  return c.json(response);
 });
 
 /**
@@ -461,7 +486,9 @@ app.put("/events/:code/boards/:board", async (c) => {
     enteredBy: me.slot,
     updatedAt: nowIso(),
   };
-  await db.upsertResult(c.env.DB, event.code, result);
+  if (!(await db.upsertResult(c.env.DB, event.code, result))) {
+    throw new HttpError(409, "This board was skipped");
+  }
   await push(c, event.code, { type: "result", result });
   return c.json(result);
 });
@@ -488,6 +515,7 @@ app.post("/events/:code/boards/:board/play", async (c) => {
   const me = caller(c, await db.getPlayers(c.env.DB, event.code));
   ownerOnly(me, "start playing on the devices");
   const { board, result } = await boardInPlay(c, event);
+  if (result?.contract === "SKIP") throw new HttpError(409, "This board was skipped");
   if (result && result.tricks !== null) throw new HttpError(409, "This board already has a result");
   const other = (await db.getResults(c.env.DB, event.code)).find(
     (r) => r.onDevices && r.tricks === null && r.board !== board.number,
@@ -500,6 +528,7 @@ app.post("/events/:code/boards/:board/play", async (c) => {
     await db.startAuction(c.env.DB, event.code, board.number, me.slot, nowIso());
   }
   const started = (await db.getResult(c.env.DB, event.code, board.number))!;
+  if (started.contract === "SKIP") throw new HttpError(409, "This board was skipped");
   await push(c, event.code, { type: "result", result: started });
   return c.json(started);
 });

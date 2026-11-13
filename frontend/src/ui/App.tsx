@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parseGameFile } from "../providers/gameFile";
 import { games, profile } from "../services";
 import { ApiError } from "../session/apiGameStore";
-import type { CallDto, ClaimDto, CurrentGameInfo, EventSnapshot, PlayDto, ResultDto } from "../session/store";
+import type { CallDto, ClaimDto, CurrentGameInfo, EventSnapshot, PlayDto, ResultDto, SkipBoardResponse } from "../session/store";
 import { AppHeader } from "./controls/AppHeader";
 import { Screen } from "./controls/Layout";
 import { Notice, type NoticeMessage } from "./controls/Notice";
@@ -121,6 +121,7 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
     setSnapshot((s) => {
       if (!s) return s;
       const before = s.results.find((r) => r.board === result.board);
+      if (before?.contract === "SKIP") return s;
       const keepPlays = result.onDevices && !!before && isLive(before);
       const freshStart = result.onDevices && result.contract === "" && !(before && isLive(before));
       return {
@@ -139,6 +140,14 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
   /** The owner moved the table to a board (here, or pushed to everyone). */
   const mergeCurrent = useCallback((board: number) => {
     setSnapshot((s) => s && { ...s, currentBoard: board });
+  }, []);
+
+  const mergeSkip = useCallback(({ currentBoard, skipped }: SkipBoardResponse) => {
+    setSnapshot((s) => s && {
+      ...s,
+      currentBoard: s.currentBoard === skipped.board ? currentBoard : s.currentBoard,
+      results: [...s.results.filter((r) => r.board !== skipped.board), skipped],
+    });
   }, []);
 
   /** A claim made, answered or ended (null) here or on another device. */
@@ -191,6 +200,8 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
         mergeResult(m.result);
       } else if (m.type === "board") {
         mergeCurrent(m.board);
+      } else if (m.type === "boardSkipped") {
+        mergeSkip(m);
       } else if (m.type === "call") {
         mergeCall(m.call);
       } else if (m.type === "play") {
@@ -217,7 +228,7 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
         void refresh();
       }
     });
-  }, [code, refresh, onGone, onNews, mergeResult, mergeCurrent, mergeCall, mergePlay, mergeClaim]);
+  }, [code, refresh, onGone, onNews, mergeResult, mergeCurrent, mergeSkip, mergeCall, mergePlay, mergeClaim]);
 
   // While disconnected, keep checking: if your seat was given to someone else meanwhile, the live
   // connection can't come back, and this is how you find out.
@@ -228,7 +239,7 @@ function useGame(code: string | null, onGone: (why: string) => void, onNews: (te
     return () => clearInterval(timer);
   }, [online, code, refresh]);
 
-  return { snapshot, error, refresh, mergeResult, mergeCurrent, mergeCall, mergePlay, mergeClaim, online };
+  return { snapshot, error, refresh, mergeResult, mergeCurrent, mergeSkip, mergeCall, mergePlay, mergeClaim, online };
 }
 
 export function App() {
@@ -271,7 +282,7 @@ export function App() {
   const [laterRequests, setLaterRequests] = useState<string[]>([]);
 
   const live = useGame(code, onGone, onNews);
-  const { error, mergeResult, mergeCurrent, mergeCall, mergePlay, mergeClaim, online } = live;
+  const { error, mergeResult, mergeCurrent, mergeSkip, mergeCall, mergePlay, mergeClaim, online } = live;
   const snapshot = useSteadyPresence(live.snapshot);
   // Say "Reconnecting" only once the connection has been down a while: a blip that's back within
   // a few seconds (the usual case) shows nothing.
@@ -375,6 +386,7 @@ export function App() {
         seat={mySeat}
         onSaved={mergeResult}
         onMoved={mergeCurrent}
+        onSkipped={mergeSkip}
         onCalled={mergeCall}
         onPlayed={mergePlay}
         onClaim={mergeClaim}
@@ -409,7 +421,7 @@ export function App() {
   return (
     // The app fills the window: header (and install banner) on top, then the screen, whose middle
     // is all that scrolls (see Screen in controls/Layout.tsx).
-    <Box sx={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
+    <Box sx={{ height: "100vh", "@supports (height: 100dvh)": { height: "100dvh" }, display: "flex", flexDirection: "column" }}>
       <AppHeader
         name={name}
         onHelp={() => setDialog("help")}

@@ -41,9 +41,9 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           them their cards, so they need their hands some other way, such as a printed hand record.
         </li>
         <li>
-          <strong>Partners:</strong> once all four have joined, the owner taps their partner's name, or{" "}
-          <strong>Let the app choose</strong> for random partners, then starts the game. Each screen then shows
-          where everyone sits.
+          <strong>Seats:</strong> once all four players are in the lobby, the owner sees a seat next to each
+          name. The seats start out random. To match where people are sitting, change a player's seat in the
+          list. For example, choosing East for North swaps those two players. Then tap <strong>Start game</strong>.
         </li>
         <li>
           <strong>Practice with bots</strong> to practise bidding and play on your own: you sit South, and bots
@@ -88,6 +88,11 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           Every screen then shows the result.
         </li>
         <li>
+          If the table can't finish a board, the owner taps <strong>Skip board</strong> at the bottom and
+          confirms. Everyone moves to the next board if there is one. The skipped board adds nothing to
+          either side's score and is left out of the tally.
+        </li>
+        <li>
           The result card says what happened, for example <strong>2♣× by N, made</strong>, with two buttons
           under it: your <strong>Score</strong> (+180 N/S; tap it to see how it adds up) and your{" "}
           <strong>Matchpoints</strong> (83% N/S; tap it to see what the original pairs scored, and your net). Below are all
@@ -102,7 +107,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           the bottom of the screen) to move everyone on. To correct an earlier board, the owner opens the running
           tally and taps that board's row. The running
           tally at the top (for example NS +140) adds up how far ahead or behind the field you are; anyone can tap
-          it to see every board.
+          it to see every board with a result.
         </li>
         <li>
           If someone's phone goes to sleep or loses signal, their name is greyed out with a small no-signal icon

@@ -1,5 +1,5 @@
 // The lobby: the join code to share, who has joined (live), and, once all four are in, the
-// owner's choice of partnerships. In a real-cards game the owner can also add a player who isn't
+// owner's choice of seats. In a real-cards game the owner can also add a player who isn't
 // using the app. When play starts, the board screen takes over (Play.tsx).
 
 import {
@@ -9,18 +9,15 @@ import {
   List,
   ListItem,
   ListItemText,
-  Divider,
   Paper,
   Stack,
   TextField,
-  ToggleButton,
   Typography,
 } from "@mui/material";
-import CasinoIcon from "@mui/icons-material/CasinoOutlined";
 import { useState } from "react";
+import { SEATS, SEAT_NAMES, type Seat } from "../../core/types";
 import { devMode, games } from "../../services";
 import type { EventSnapshot, PublicPlayer } from "../../session/store";
-import { ChoiceGroup } from "../controls/ChoiceGroup";
 import { Screen, Section } from "../controls/Layout";
 import { SheetDialog } from "../controls/SheetDialog";
 import { GameModeHelp } from "../components/GameModeHelp";
@@ -52,18 +49,29 @@ function ShareCode({ code }: { code: string }) {
   }
 
   return (
-    // Compact, so the whole lobby fits on a phone without scrolling: the code on one line, Share under it.
-    <Paper variant="outlined" sx={{ px: 2, py: 1.5, textAlign: "center" }}>
+    <Paper
+      variant="outlined"
+      sx={{
+        px: { xs: 1, sm: 2 },
+        py: 1.5,
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 1,
+        textAlign: "center",
+      }}
+    >
       <Typography variant="h6" component="p">
         <Box component="span" sx={{ color: "text.secondary", typography: "body1" }}>
           Join code{" "}
         </Box>
-        <Box component="span" className="num" sx={{ letterSpacing: "0.1em" }}>
+        <Box component="span" className="num" sx={{ letterSpacing: "0.1em", whiteSpace: "nowrap" }}>
           {formatJoinCode(code)}
         </Box>
       </Typography>
       {canShare && (
-        <Button variant="outlined" onClick={() => void share()} sx={{ mt: 1 }}>
+        <Button variant="outlined" onClick={() => void share()}>
           Share
         </Button>
       )}
@@ -75,25 +83,31 @@ function PlayerList({
   players,
   mySlot,
   onRemove,
+  seating,
 }: {
   players: PublicPlayer[];
   mySlot: number | null;
   /** The owner takes a player without the app back out. */
   onRemove?: (slot: number) => void;
+  seating?: {
+    seats: Record<Seat, number>;
+    busy: boolean;
+    onChange: (from: Seat, to: Seat) => void;
+  };
 }) {
   const places = Array.from({ length: PLACES }, (_, i) => players.find((p) => p.slot === i + 1) ?? null);
   return (
     <List disablePadding aria-label="Players" sx={{ display: "grid", gap: 0.75 }}>
       {places.map((p, i) => {
         const away = !!p && isAway(p, mySlot);
+        const seat = seating && p ? SEATS.find((s) => seating.seats[s] === p.slot) : undefined;
         return (
           <ListItem key={i} disablePadding>
             <Paper
               variant="outlined"
               sx={{
                 width: "100%",
-                // Dense, one line each, so the lobby fits a phone without scrolling.
-                px: 2,
+                px: { xs: 1, sm: 2 },
                 py: 0.5,
                 minHeight: (t) => t.spacing(5.5),
                 display: "flex",
@@ -103,7 +117,7 @@ function PlayerList({
               }}
             >
               <ListItemText
-                sx={{ my: 0 }}
+                sx={{ my: 0, minWidth: 0, overflowWrap: "anywhere" }}
                 primary={
                   p ? (
                     <>
@@ -124,9 +138,22 @@ function PlayerList({
                 }}
               />
               {p?.noApp && onRemove && (
-                <Button variant="outlined" onClick={() => onRemove(p.slot)} aria-label={`Remove ${p.name}`}>
+                <Button variant="outlined" disabled={seating?.busy} onClick={() => onRemove(p.slot)} aria-label={`Remove ${p.name}`}>
                   Remove
                 </Button>
+              )}
+              {p && seat && seating && (
+                <TextField
+                  select
+                  size="small"
+                  value={seat}
+                  disabled={seating.busy}
+                  onChange={(e) => seating.onChange(seat, e.target.value as Seat)}
+                  slotProps={{ select: { native: true, inputProps: { "aria-label": `Seat for ${p.name}` } } }}
+                  sx={{ flexShrink: 0, "& select": { minHeight: (t) => t.spacing(5.5), boxSizing: "border-box" } }}
+                >
+                  {SEATS.map((s) => <option key={s} value={s} aria-label={SEAT_NAMES[s]}>{s}</option>)}
+                </TextField>
               )}
             </Paper>
           </ListItem>
@@ -203,23 +230,30 @@ function AddWithoutApp({ code }: { code: string }) {
   );
 }
 
-/**
- * The owner picks a partner from the other three, or lets the app choose: a separate button under
- * an "or", so random doesn't look like a fourth player. One choice at a time, and the Start button
- * says which it is.
- */
-function Partnerships({ code, players, mySlot }: { code: string; players: PublicPlayer[]; mySlot: number }) {
-  const [choice, setChoice] = useState<number | "random" | null>(null);
+function Seating({ code, players, mySlot, onRemove }: {
+  code: string;
+  players: PublicPlayer[];
+  mySlot: number;
+  onRemove?: (slot: number) => void;
+}) {
+  const [seats, setSeats] = useState<Record<Seat, number>>(() => {
+    const slots = players.map((p) => p.slot);
+    // Shuffle once when the table fills, so presence updates don't change anyone's seat.
+    for (let i = slots.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [slots[i], slots[j]] = [slots[j]!, slots[i]!];
+    }
+    return { N: slots[0]!, E: slots[1]!, S: slots[2]!, W: slots[3]! };
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const others = players.filter((p) => p.slot !== mySlot);
 
   async function start() {
-    if (choice === null) return;
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      await games.choosePartnerships(code, choice === "random" ? { random: true } : { partnerSlot: choice });
+      await games.assignSeats(code, { seats });
       // The new seats arrive as a live update.
     } catch (e) {
       setError((e as Error).message);
@@ -227,50 +261,23 @@ function Partnerships({ code, players, mySlot }: { code: string; players: Public
     }
   }
 
-  const partner = typeof choice === "number" ? others.find((p) => p.slot === choice) : undefined;
-  const startLabel = busy
-    ? "Starting…"
-    : choice === "random"
-      ? "Start the game with random partners"
-      : partner
-        ? `Start the game: ${partner.name} is your partner`
-        : "Choose a partner first";
-
   return (
-    <Section title="Choose your partner" id="partnerships" tight>
-      <ChoiceGroup<number>
-        value={typeof choice === "number" ? choice : null}
-        onChange={setChoice}
-        choices={others.map((p) => ({ value: p.slot, label: p.name }))}
+    <Stack spacing={1.5}>
+      <PlayerList
+        players={players}
+        mySlot={mySlot}
+        onRemove={onRemove}
+        seating={{
+          seats,
+          busy,
+          onChange: (from, to) => setSeats((s) => ({ ...s, [from]: s[to], [to]: s[from] })),
+        }}
       />
-      <Divider sx={{ my: 1.5, color: "text.secondary", typography: "body2" }}>or</Divider>
-      <ToggleButton
-        value="random"
-        fullWidth
-        selected={choice === "random"}
-        onChange={() => setChoice("random")}
-      >
-        <CasinoIcon sx={{ mr: 1 }} />
-        <Typography variant="h6" component="span">
-          Let the app choose
-        </Typography>
-      </ToggleButton>
-      {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {error}
-        </Alert>
-      )}
-      <Button
-        variant="contained"
-        size="large"
-        fullWidth
-        sx={{ mt: 2 }}
-        disabled={choice === null || busy}
-        onClick={() => void start()}
-      >
-        {startLabel}
+      {error && <Alert severity="error">{error}</Alert>}
+      <Button variant="contained" size="large" fullWidth disabled={busy} onClick={() => void start()}>
+        {busy ? "Starting…" : "Start game"}
       </Button>
-    </Section>
+    </Stack>
   );
 }
 
@@ -323,6 +330,12 @@ export function Lobby({ snapshot, onDone }: Props) {
   const creator = snapshot.players.find((p) => p.isCreator);
   const waitingFor = PLACES - snapshot.players.length;
   const ownsCardsGame = !!you?.isCreator && snapshot.mode === "cards";
+  const removePlayer = ownsCardsGame
+    ? (slot: number) => {
+        setRemoveError(null);
+        games.removePlayerWithoutApp(snapshot.code, slot).catch((e: Error) => setRemoveError(e.message));
+      }
+    : undefined;
 
   return (
     <Screen>
@@ -339,18 +352,11 @@ export function Lobby({ snapshot, onDone }: Props) {
       <ShareCode code={snapshot.code} />
 
       <Section title="Players" id="players" tight>
-        <PlayerList
-          players={snapshot.players}
-          mySlot={you?.slot ?? null}
-          onRemove={
-            ownsCardsGame
-              ? (slot) => {
-                  setRemoveError(null);
-                  games.removePlayerWithoutApp(snapshot.code, slot).catch((e: Error) => setRemoveError(e.message));
-                }
-              : undefined
-          }
-        />
+        {full && you?.isCreator ? (
+          <Seating key={snapshot.code} code={snapshot.code} players={snapshot.players} mySlot={you.slot} onRemove={removePlayer} />
+        ) : (
+          <PlayerList players={snapshot.players} mySlot={you?.slot ?? null} onRemove={removePlayer} />
+        )}
         {removeError && (
           <Alert severity="error" sx={{ mt: 2 }}>
             {removeError}
@@ -364,10 +370,9 @@ export function Lobby({ snapshot, onDone }: Props) {
         {!full && ownsCardsGame && <AddWithoutApp code={snapshot.code} />}
       </Section>
 
-      {full && you?.isCreator && <Partnerships code={snapshot.code} players={snapshot.players} mySlot={you.slot} />}
       {full && !you?.isCreator && (
         <Box sx={{ mt: 3 }}>
-          <Alert severity="info">Everyone's here. Waiting for {creator?.name ?? "the game's owner"} to choose partnerships.</Alert>
+          <Alert severity="info">Everyone's here. Waiting for {creator?.name ?? "the game's owner"} to start the game.</Alert>
         </Box>
       )}
 

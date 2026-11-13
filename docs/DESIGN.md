@@ -274,23 +274,24 @@ owner is away or the name you're joining with is the owner's, it first asks: **J
 a Common Game page) and carries on from their phone: it's a seat request for the owner's seat.
 
 **Lobby:** kept compact so it fits a phone (a Pixel 9) without scrolling: the game's title, "Game
-type: **Real cards** ?", the join code on one line with **Share** under it. The share sheet gets one text with the link
+type: **Real cards** ?", and the join code with **Share** beside it when there's room. The share sheet gets one text with the link
 inside it, "Join our game on Bridge Replay: https://…/?join=CODE", because apps handle a separate
 link differently (Outlook drops it). Without a share sheet there's no button; the code is on screen.
 Below that, who has joined, live, one dense line each ("Marc (you) · Owner").
 In a real-cards game the owner
 can **Add a player without the app** (a name, with a warning that they need their hands some other
-way, such as a printed hand record) and remove one again. When 4 have joined, the owner chooses
-**partnerships**: pick a partner from the three names, *or* (a separate button under an "or", so
-it doesn't look like a fourth player) **Let the app choose**. The Start button says which it is
-("Start the game: Ann is your partner", "Start the game with random partners"). Seats are then
-assigned by the app (see "Seats"),
-and each device shows where to sit physically: "You're North, opposite Bob, with Ann on your left."
+way, such as a printed hand record) and remove one again. When all four players are in the lobby,
+the owner sees a random seat beside each player's name. Picking another seat swaps the two players.
+The owner taps **Start game** and each device shows where
+to sit physically: "You're North, opposite Bob, with Ann on your left."
 
 **Moving together:** every device shows the board the table is on (`currentBoard`, stored on the
 game). Only the owner moves it on (**Next board**, on the result screen); there's no Previous or
 Next for anyone else, so nobody gets lost. Everyone else sees "Waiting for Marc to start the next
-board…". The owner can look back at an earlier board from the tally (a tap anywhere on its row), to
+board…". In real-cards games, the owner can also confirm **Skip board** before a result is entered.
+The skip and move are saved together. The skipped board stays out of the tally and the score. If
+it was the last board, everyone sees that it was skipped. The owner can look back at an earlier
+scored board from the tally (a tap anywhere on its row), to
 correct it; the bottom bar then says **Back to board N** instead of Next board. Other players'
 tallies don't open boards (the API doesn't stop it, the screens do).
 
@@ -416,14 +417,12 @@ played. If a board somehow hasn't started, the owner has **Play online**.
 
 ### Decisions made
 
-1. **Seats don't need choosing; partnerships do.** Nobody knows the hands in advance, so which seat
-   anyone gets makes no difference, and each pair is compared only with the field in its own
-   direction, so which pair is North–South doesn't matter either. The creator picks partnerships
-   (or random); the app assigns seats and tells people where to sit.
+1. **Seats start out random and the owner can swap them.** In either game mode, the owner can
+   accept the initial seats or match the places people already occupy at the table.
 2. **The owner runs the table.** (This replaced "no owner-only powers after setup", after the
    first real game: with everyone able to enter results and look at the analysis, it lost the feel
    of an in-person game, and people got lost moving through the boards on their own.) The creator is
-   the game's owner: they pick partnerships, enter and correct results, move the table from board to
+   the game's owner: they assign seats, enter and correct results, move the table from board to
    board, and end or delete the game. Everyone else can look at the score, the field and the tally.
    Being the owner belongs to the seat, so it moves with a seat request: a new device for the owner,
    or whoever takes over the owner's seat. A seat request is allowed straight away when nobody is
@@ -558,7 +557,7 @@ bundled-games list are removed along with solo play.
 - **Table**: tables 1..n at the event. Each table plays the boards and records one result per board.
   The first version has exactly one table of 4 (see "Shared game UX").
 - **Player**: a device that joined, with a display name, a table and a seat (assigned by the app
-  once partnerships are chosen). Identified by a random player ID kept on the device. No accounts.
+  once seats are assigned). Identified by a random player ID kept on the device. No accounts.
 
 ### Database (D1)
 
@@ -576,7 +575,7 @@ The schema is `backend/migrations/0001_init.sql`. In short:
   never handed out), `seat` (assigned when play starts).
 - **results**: one row per board per table: `contract`, `declarer`, `tricks`, `entered_by` (slot),
   `updated_at`, `on_devices` (the cards are played on the devices; with `tricks` NULL the board is
-  being played right now).
+  being played right now). A skipped real-cards board has `contract = 'SKIP'` and no tricks.
 - **plays** (`0004_card_play.sql`): each card played on the devices, in order: `board`, `seq`
   (1–52), `seat` (dummy's when declarer plays it), `card` ("SA"). The snapshot sends every board's
   cards, finished boards' too, for the play review (stage 5 in [BOT.md](BOT.md)); starting a board
@@ -604,8 +603,9 @@ the player with `isCreator`; there's no separate host key.
 | `POST /api/events/:code/players/no-app` | Owner | Real-cards games, in the lobby: add a player without the app, `{ name }` → `{ slot }` |
 | `DELETE /api/events/:code/players/no-app/:slot` | Owner | In the lobby: take a player without the app back out |
 | `PUT /api/events/:code/current` | Owner | `{ board }`: move the table to a board; pushed to everyone as `board`. On the devices, starts its auction (refused while another board is being played) |
+| `POST /api/events/:code/skip-board` | Owner | `{ board }`: skip the current unscored real-cards board. Stores `SKIP` with no tricks, moves on if there's another board, and pushes `boardSkipped`. |
 | `DELETE /api/events/:code/players/me` | A player | Leave the lobby (frees the place). If the creator leaves the lobby, the game is cancelled |
-| `POST /api/events/:code/partnerships` | Owner | `{ partnerSlot }` or `{ random: true }`; assigns seats (partners opposite, at random) and starts play (on the devices, with the start board's auction) |
+| `POST /api/events/:code/partnerships` | Owner | `{ seats: { N, E, S, W } }` (one player slot per seat) or `{ random: true }`. Assigns seats and starts play. Online, starts the first auction. Older clients can send `{ partnerSlot }`. |
 | `PUT /api/events/:code/boards/:board` | Owner | Save or correct a result: `{ contract, declarer, tricks }`. `tricks: null` saves just the contract (bidding over, play not); passed out is always complete |
 | `POST /api/events/:code/requests` | Anyone with the code | Ask to take over a player's seat (lobby or play), `{ name, slot }` → `{ requestId, playerId, status }`: `allowed` at once when nobody is connected, else `pending` |
 | `GET /api/events/:code/requests/:id` | The requester (its `playerId`) | `{ status }`: pending, allowed, denied, cancelled or expired (10 minutes) |
@@ -666,7 +666,7 @@ state.**
   guessing. (Rate-limiting failed lookups is in the backlog.)
 - A player's `playerId` is a random UUID, never shown to other players; it's the only way to act as
   that player.
-- Only the owner can choose partnerships, enter results, move the table on, or end or delete the
+- Only the owner can assign seats, enter results, move the table on, or end or delete the
   game. Anyone with the code can ask for a seat; with nobody connected it's granted at once.
 - Events and their results expire 30 days after creation: expired games are treated as not found
   at once, and a nightly clean-up deletes them (03:00 UTC, logged).
@@ -685,7 +685,7 @@ bridge/
 │   ├── src/api-types.ts      request/response/push types, shared with the frontend
 │   ├── src/db.ts             all SQL
 │   ├── src/hub.ts            EventHub Durable Object: WebSockets, presence, push
-│   ├── src/seats.ts          seat assignment from partnerships
+│   ├── src/seats.ts          manual and random seat assignment
 │   ├── src/ids.ts            join codes and player IDs
 │   ├── migrations/           D1 schema migrations (0001_init.sql, ...)
 │   ├── test/                 API tests, run inside the Workers runtime

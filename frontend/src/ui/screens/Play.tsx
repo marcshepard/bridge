@@ -5,7 +5,7 @@
 // Bidding practice (mode "bidding") is the same table with bots in three seats: each board is only
 // bid, then its result screen shows the bidding review. There's never a card play.
 
-import { Alert, Container } from "@mui/material";
+import { Alert, Button, Container, Typography } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Seat, type TableResult, SEATS, directionOf } from "../../core/types";
 import {
@@ -19,7 +19,7 @@ import {
   tally as tallyOf,
 } from "../../session/session";
 import type { Game } from "../../providers/types";
-import type { CallDto, ClaimDto, EventSnapshot, PlayDto, ResultDto } from "../../session/store";
+import type { CallDto, ClaimDto, EventSnapshot, PlayDto, ResultDto, SkipBoardResponse } from "../../session/store";
 import { callCode, isAuctionOver, parseCall } from "../../core/auction";
 import { parseContract } from "../../core/contract";
 import { cardCode, parseCard } from "../../core/play";
@@ -30,6 +30,7 @@ import { TallyDialog } from "../components/TallyDialog";
 import { ResultText } from "../controls/BridgeText";
 import type { NoticeMessage } from "../controls/Notice";
 import { toneOf } from "../controls/ScoreChip";
+import { SheetDialog } from "../controls/SheetDialog";
 import { formatMargin, isAway } from "../labels";
 import { EnterResultDialog, type EntryStep } from "./EnterResult";
 import { PlayBoard } from "./PlayBoard";
@@ -37,7 +38,7 @@ import { PlayBoard } from "./PlayBoard";
 /** How long the finished table stays on screen after the play ends, before the result screen. */
 const END_PAUSE_MS = 3000;
 
-type Dialog = EntryStep | "tally" | "info" | "breakdown" | "field" | null;
+type Dialog = EntryStep | "tally" | "info" | "breakdown" | "field" | "skip" | null;
 
 interface Props {
   snapshot: EventSnapshot;
@@ -47,6 +48,7 @@ interface Props {
   onSaved: (result: ResultDto) => void;
   /** Called with the board the owner moved the table to, likewise. */
   onMoved: (board: number) => void;
+  onSkipped: (skip: SkipBoardResponse) => void;
   /** Called with a call you made, likewise. */
   onCalled: (call: CallDto) => void;
   /** Called with a card you played, likewise. */
@@ -57,7 +59,7 @@ interface Props {
   onNotice: (notice: NoticeMessage) => void;
 }
 
-export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlayed, onClaim, onNotice }: Props) {
+export function Play({ snapshot, game, seat, onSaved, onMoved, onSkipped, onCalled, onPlayed, onClaim, onNotice }: Props) {
   const session = useMemo(
     () => sessionFromShared(game, seat, snapshot.startBoard, snapshot.results),
     [game, seat, snapshot.startBoard, snapshot.results],
@@ -83,6 +85,7 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
   const current = isOwner && lookingAt !== null ? lookingAt : tableBoard;
   const [dialog, setDialog] = useState<Dialog>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [skipping, setSkipping] = useState(false);
 
   // When the table moves on, any look back ends, and so do dialogs about the old board.
   useEffect(() => {
@@ -173,6 +176,8 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
 
   const position = order.indexOf(board.number);
   const next = order[order.indexOf(tableBoard) + 1] ?? null;
+  const skipped = shared?.contract === "SKIP";
+  const canSkip = isOwner && snapshot.mode === "cards" && board.number === tableBoard && !comparison && !skipped;
 
   const tallyLabel = tally.played === 0 ? `${dir}: no boards yet` : `${dir} ${formatMargin(tally.margin)}`;
 
@@ -225,6 +230,17 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
     }
   }
 
+  async function skip() {
+    if (!canSkip || skipping) return;
+    setSkipping(true);
+    setDialog(null);
+    try {
+      await act("Couldn't skip the board", async () => onSkipped(await games.skipBoard(snapshot.code, board.number)));
+    } finally {
+      setSkipping(false);
+    }
+  }
+
   return (
     <>
       {/* Above the screen, outside the part that scrolls, so it can't be missed. */}
@@ -258,6 +274,9 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
         onBoardInfo={() => setDialog("info")}
         onEnterResult={() => setDialog("result")}
         onEnterContract={() => setDialog("contract")}
+        onSkip={canSkip ? () => setDialog("skip") : undefined}
+        skipping={skipping}
+        skipped={skipped}
         onStartPlay={
           isOwner && snapshot.mode !== "cards"
             ? () => void act("Couldn't start playing", async () => onSaved(await games.startCardPlay(snapshot.code, board.number)))
@@ -331,6 +350,24 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onCalled, onPlaye
             : undefined
         }
       />
+
+      {canSkip && dialog === "skip" && (
+        <SheetDialog
+          open
+          title={`Skip board ${board.number}?`}
+          onClose={() => setDialog(null)}
+          actions={
+            <>
+              <Button onClick={() => setDialog(null)}>Cancel</Button>
+              <Button variant="contained" onClick={() => void skip()}>Skip board</Button>
+            </>
+          }
+        >
+          <Typography>
+            This board won't count in the score. {next === null ? "This is the last board." : `Everyone will move to board ${next}.`}
+          </Typography>
+        </SheetDialog>
+      )}
 
       {isOwner && (dialog === "contract" || dialog === "result" || dialog === "correct") && (
         <EnterResultDialog

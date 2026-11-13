@@ -12,6 +12,7 @@ import type {
   ResultDto,
   SeatRequestCreated,
   SeatRequestState,
+  SkipBoardResponse,
 } from "../src/api-types";
 import { chooseCard } from "../../frontend/src/core/bot";
 import { parseHand } from "../../frontend/src/core/deal";
@@ -147,6 +148,18 @@ describe("joining", () => {
 // ---- Starting play -------------------------------------------------------------------------------
 
 describe("partnerships and seats", () => {
+  it.each(["cards", "devices"] as const)("starts a %s game in the exact seats the owner assigns", async (mode) => {
+    const { code, creator } = await lobbyOfFour(mode);
+    const path = `/events/${code}/partnerships`;
+    expect((await api("POST", path, { seats: { N: 3, E: 1, S: 4, W: 1 } }, creator.playerId)).status).toBe(400);
+    expect((await api("POST", path, { seats: { N: 3, E: 1, S: 4, W: 9 } }, creator.playerId)).status).toBe(400);
+    expect((await api("POST", path, { seats: { N: 3, E: 1, S: 4, W: 2 } }, creator.playerId)).status).toBe(200);
+    const snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
+    expect(snap.status).toBe("playing");
+    expect(snap.players.map((p) => p.seat)).toEqual(["E", "W", "N", "S"]);
+    expect(snap.results.some((r) => r.board === 1 && r.onDevices)).toBe(mode === "devices");
+  });
+
   it("only the creator chooses, and only with 4 players", async () => {
     const created = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, mode: "cards" })).json;
     const early = await api("POST", `/events/${created.code}/partnerships`, { random: true }, created.playerId);
@@ -785,6 +798,42 @@ describe("how a game is played", () => {
 });
 
 describe("the current board", () => {
+  it("lets the real-cards owner skip an unscored board and tells the table where to go", async () => {
+    const { code, creator, others } = await gameInPlay();
+    const path = `/events/${code}/skip-board`;
+    const resultPath = `/events/${code}/boards/1`;
+    const contract = { contract: "3NT", declarer: "N", tricks: null };
+    expect((await api("PUT", resultPath, contract, creator.playerId)).status).toBe(200);
+    expect((await api("POST", path, { board: 1 }, others[0]!.playerId)).status).toBe(403);
+    const ann = await connect(code, others[0]!.playerId);
+    const skip = await api<SkipBoardResponse>("POST", path, { board: 1 }, creator.playerId);
+    expect(skip.status).toBe(200);
+    expect(skip.json).toMatchObject({
+      currentBoard: 2, skipped: { board: 1, contract: "SKIP", declarer: null, tricks: null },
+    });
+    await ann.waitFor((m) => m.type === "boardSkipped" && m.currentBoard === 2 && m.skipped.board === 1);
+    ann.ws.close();
+    const snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
+    expect(snap.currentBoard).toBe(2);
+    expect(snap.results).toEqual([skip.json.skipped]);
+    expect((await api("POST", path, { board: 1 }, creator.playerId)).status).toBe(409);
+    expect((await api("PUT", resultPath, { ...contract, tricks: 9 }, creator.playerId)).status).toBe(409);
+  });
+
+  it("lets the owner skip the last real-cards board but refuses scored or online boards", async () => {
+    const { code, creator } = await gameInPlay();
+    const skip = (board: number) => api<SkipBoardResponse>("POST", `/events/${code}/skip-board`, { board }, creator.playerId);
+    await api("PUT", `/events/${code}/boards/1`, { contract: "3NT", declarer: "N", tricks: 9 }, creator.playerId);
+    expect((await skip(1)).status).toBe(409);
+    const last = Math.max(...game.boards.map((b) => b.number));
+    await api("PUT", `/events/${code}/current`, { board: last }, creator.playerId);
+    expect((await skip(last)).json).toMatchObject({ currentBoard: last, skipped: { board: last, tricks: null } });
+    expect((await skip(last)).status).toBe(409);
+
+    const online = await gameInPlay("devices");
+    expect((await api("POST", `/events/${online.code}/skip-board`, { board: 1 }, online.creator.playerId)).status).toBe(409);
+  });
+
   it("starts at the start board; only the owner moves it, and everyone is told", async () => {
     const { code, creator, others } = await gameInPlay();
     expect((await api<EventSnapshot>("GET", `/events/${code}`)).json.currentBoard).toBe(1);
