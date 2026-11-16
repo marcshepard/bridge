@@ -7,6 +7,11 @@ import type { HandFacts } from "./evaluate";
 /** A range, inclusive. 0–37 HCP and 0–13 cards are "nothing known". */
 export type Range = [number, number];
 
+/** Strength measured with distribution, in the suit and at the trump length used for the call. */
+export type AdjustedStrength = { kind: "length"; range: Range }
+  | { kind: "support"; suit: Suit; range: Range }
+  | { kind: "fit"; suit: Suit; shownTrumps: number; range: Range };
+
 /**
  * How good a suit is (as `decentSuit` and `goodSuit` in evaluate.ts): "decent", one of the top three
  * honours and two of the top five; "good", two of the top three or three of the top five.
@@ -16,6 +21,7 @@ export type SuitQuality = "decent" | "good";
 /** What the auction has shown about one hand. */
 export interface Shown {
   hcp: Range;
+  strength?: AdjustedStrength[];
   len: Record<Suit, Range>;
   balanced: boolean;
   /** Suits shown to be of at least this quality (an overcall's suit); absent says nothing. */
@@ -25,6 +31,7 @@ export interface Shown {
 /** Part of what a call shows; anything left out says nothing new. */
 export interface ShowsPatch {
   hcp?: Range;
+  strength?: AdjustedStrength;
   len?: Partial<Record<Suit, Range>>;
   balanced?: boolean;
   quality?: Partial<Record<Suit, SuitQuality>>;
@@ -100,6 +107,9 @@ export function applyShows(known: Shown, patch: ShowsPatch | undefined): Shown {
     len,
     balanced: known.balanced || !!patch.balanced,
   };
+  if (known.strength || patch.strength) {
+    out.strength = patch.strength ? [...(known.strength ?? []), patch.strength] : known.strength;
+  }
   // Quality only ever goes up: "good" stays good when a later call shows the suit is decent.
   const quality = { ...known.quality };
   for (const s of SUITS) if (patch.quality?.[s] && quality[s] !== "good") quality[s] = patch.quality[s];

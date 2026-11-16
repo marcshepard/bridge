@@ -31,6 +31,7 @@ import {
   partnerPoints,
   partnerShown,
   sameCall,
+  shownPoints,
   theirSuits,
 } from "../position";
 import { SUIT_WORDS, SYMBOL, callName, rule, strainSymbol } from "./common";
@@ -45,9 +46,8 @@ const SLAM_INVITE_FROM = 31;
 const ANSWER_NAMES = new Set(["Blackwood answer", "Roman Key Card answer", "Queen answer"]);
 
 /** The likely point of the range my bidding has shown (the same measure as partnerPoints). */
-function myLikely(p: Position): number {
-  const [min, max] = p.shown[p.seat].hcp;
-  return min + Math.min(2, Math.floor((max - min) / 2));
+function myLikely(p: Position, strain: Strain = "NT"): number {
+  return shownPoints(p.shown[p.seat], strain === "NT" ? undefined : strain).likely;
 }
 
 export function slamRules(p: Position): CallRule[] {
@@ -62,13 +62,14 @@ export function slamRules(p: Position): CallRule[] {
     const game = bid(gameLevel(strain), strain);
     const unit = strain === "NT" ? "HCP" : "points";
     const count = (h: HandFacts) => (strain === "NT" ? h.hcp : valuation(p, h).mine);
-    const top = myLikely(p) + 1;
+    const likely = myLikely(p, strain);
+    const top = likely + 1;
     return [
       rule(game, "Accepts the game invitation: the top of my range.", (h) => count(h) >= top, {
-        why: (h) => `${count(h)} ${unit}, more than the ${myLikely(p)} or so I've shown: accept`,
+        why: (h) => `${count(h)} ${unit}, more than the ${likely} or so I've shown: accept`,
       }),
       rule(PASS, "Declines the game invitation: not the top of my range.", () => true, {
-        why: (h) => `${count(h)} ${unit}, no more than the ${myLikely(p)} or so I've shown: decline`,
+        why: (h) => `${count(h)} ${unit}, no more than the ${likely} or so I've shown: decline`,
       }),
     ];
   }
@@ -78,13 +79,14 @@ export function slamRules(p: Position): CallRule[] {
     const strain = pl.call.strain;
     const unit = strain === "NT" ? "HCP" : "points";
     const count = (h: HandFacts) => (strain === "NT" ? h.hcp : valuation(p, h).mine);
-    const top = myLikely(p) + 1;
+    const likely = myLikely(p, strain);
+    const top = likely + 1;
     return [
       rule(bid(6, strain), "Accepts the slam invitation: more than I've shown so far.", (h) => count(h) >= top, {
-        why: (h) => `${count(h)} ${unit}, more than the ${myLikely(p)} or so I've shown: slam`,
+        why: (h) => `${count(h)} ${unit}, more than the ${likely} or so I've shown: slam`,
       }),
       rule(PASS, "Declines the slam invitation: no more than I've shown.", () => true, {
-        why: (h) => `${count(h)} ${unit}, no more than the ${myLikely(p)} or so I've shown: stop`,
+        why: (h) => `${count(h)} ${unit}, no more than the ${likely} or so I've shown: stop`,
       }),
     ];
   }
@@ -245,7 +247,7 @@ function controlRules(p: Position, pl: NonNullable<ReturnType<typeof partnerLast
   if (me?.rule?.name !== "Control bid") {
     // Partner started: cooperate with extras, or with control of a suit partner skipped.
     const skipped = deniedBy(pl.call, rankBefore(p, pl), trump);
-    const extras = (h: HandFacts) => valuation(p, h).mine >= myLikely(p) + 1;
+    const extras = (h: HandFacts) => valuation(p, h).mine >= myLikely(p, trump) + 1;
     const helps = (h: HandFacts) => skipped.some((s) => hasControl(h, s));
     const out: CallRule[] = controlBids(p, trump).map((b) =>
       rule(b, controlWords(trump, b.strain as Suit), (h) => (extras(h) || helps(h)) && sameCall(myControlBid(p, h, trump) ?? PASS, b), {
@@ -399,13 +401,12 @@ function valuation(p: Position, h: HandFacts) {
 
 function plan(p: Position, h: HandFacts): Plan {
   const ps = partnerShown(p);
-  const pp = partnerPoints(p);
   const { fit, raising, mine } = valuation(p, h);
+  const fitEstimate = partnerPoints(p, fit ?? undefined);
   /** "a 9+ card hearts fit" with partner's support, or just "6 hearts" for a suit of our own. */
   const fitWords = (s: Suit) =>
     ps.len[s][0] >= 2 ? `${aOrAn(h.len[s] + ps.len[s][0])} ${h.len[s] + ps.len[s][0]}+ card ${SUIT_WORDS[s]} fit` : `${h.len[s]} ${SUIT_WORDS[s]}`;
-  const likely = mine + pp.likely;
-  const least = mine + pp.min;
+  const likelyFit = mine + fitEstimate.likely;
   const theirs = theirSuits(p);
   const stopped = theirs.every((t) => stopper(h, t));
   const ntOk = (h.semiBalanced || ps.balanced) && stopped;
@@ -416,7 +417,7 @@ function plan(p: Position, h: HandFacts): Plan {
   if (fit && isMajor(fit)) {
     strain = fit;
     why = fitWords(fit);
-  } else if (ntOk && (!fit || (likely >= GAME_POINTS.NT && likely < GAME_POINTS.minor))) {
+  } else if (ntOk && (!fit || (likelyFit >= GAME_POINTS.NT && likelyFit < GAME_POINTS.minor))) {
     strain = "NT";
     why = "no major fit, a balanced hand";
   } else if (fit) {
@@ -430,12 +431,16 @@ function plan(p: Position, h: HandFacts): Plan {
     why = "no fit found";
   }
 
-  const points = `${mine} points here and about ${pp.likely} (${pp.min}${pp.max >= 37 ? "+" : `–${pp.max}`}) with partner`;
+  const pp = strain === "NT" ? partnerPoints(p) : fitEstimate;
+  const ownPoints = strain === "NT" ? h.points : mine;
+  const likely = ownPoints + pp.likely;
+  const least = ownPoints + pp.min;
+  const points = `${ownPoints} points here and about ${pp.likely} (${pp.min}${pp.max >= 37 ? "+" : `–${pp.max}`}) with partner`;
   const ours = ourContract(p);
   let game = gameLevel(strain);
   const kindOf = strain === "NT" ? "NT" : isMajor(strain as Suit) ? "major" : "minor";
   const needed = GAME_POINTS[kindOf];
-  const possible = mine + pp.max >= needed;
+  const possible = ownPoints + pp.max >= needed;
   let target = likely >= 37 && least >= 35 ? 7 : likely >= 33 && least >= 31 ? 6 : likely >= needed ? game : likely >= INVITE_FROM[kindOf] && possible ? game - 1 : 0;
   const mustBid = forced(p);
 
@@ -478,7 +483,7 @@ function plan(p: Position, h: HandFacts): Plan {
     const cb = controlBid(`with a void in ${SYMBOL[voidSuit]} Blackwood can't tell which ace is missing`);
     if (cb) return cb;
   }
-  if (!byTricks && target < 6 && likely >= SLAM_INVITE_FROM && mine + pp.max >= SLAM_POINTS && !asked) {
+  if (!byTricks && target < 6 && likely >= SLAM_INVITE_FROM && ownPoints + pp.max >= SLAM_POINTS && !asked) {
     if (strain !== "NT" && isMajor(strain as Suit) && fit === strain && ourSuits(p).includes(strain) && cheapest(p, strain) <= 5) {
       const loser = SUITS.find((s) => s !== strain && !ourSuits(p).includes(s) && h.len[s] >= 2 && !h.hand[s].includes("A") && !h.hand[s].includes("K"));
       const cb = loser

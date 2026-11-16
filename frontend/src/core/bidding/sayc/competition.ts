@@ -15,6 +15,7 @@ import {
   bids,
   cheapBid,
   cheapest,
+  gameLevel,
   isBid,
   isNatural,
   isOurs,
@@ -48,6 +49,10 @@ export function competitiveRules(p: Position): CallRule[] {
       return michaelsMinor();
     }
   } else {
+    if (mine.length === 1 && partners.length === 1 && justActed && partners[0]!.rule?.name === "Penalty double"
+        && lastBid(p)?.call.level === 1 && lastBid(p)?.call.strain === "NT" && rhoCall(p)?.call.kind === "pass") {
+      return [rule(PASS, "Defends their 1NT doubled.", () => true, { why: () => "partner's double is for penalties" })];
+    }
     if (p.read.filter((r) => r.seat === p.seat).length === 0 && partners.length === 1 && justActed && isBid(partners[0]!.call) && partners[0]!.call.level === 1) {
       return responderInCompetition(p, partners[0]!.call.strain as Suit);
     }
@@ -368,12 +373,12 @@ function advances(p: Position, pa: ReadCall): CallRule[] {
     if (t && raise) {
       const cue = cheapBid(p, t);
       if (cue && cue.level <= raise.level + 1 && cue.level <= 3) {
-        rules.push(rule(cue, `Cuebid: support for ${SYMBOL[x]} (3+) and 10+ points: a limit raise or better.`, (h) => h.len[x] >= 3 && sp(h) >= 10, { name: "Cuebid raise", shows: { hcp: [10, 37], len: len(x, 3) }, forcing: "one round", why: (h) => `${h.len[x]} ${SUIT_WORDS[x]} and ${sp(h)} points` }));
+        rules.push(rule(cue, `Cuebid: support for ${SYMBOL[x]} (3+) and 10+ points: a limit raise or better.`, (h) => h.len[x] >= 3 && sp(h) >= 10, { name: "Cuebid raise", shows: { strength: { kind: "support", suit: x, range: [10, 50] }, len: len(x, 3) }, forcing: "one round", why: (h) => `${h.len[x]} ${SUIT_WORDS[x]} and ${sp(h)} points` }));
       }
       if (raise.level + 1 <= 4) {
         rules.push(rule(bid(raise.level + 1, x), `Jump raise: 4+ ${SYMBOL[x]}, weak. Blocks the opponents.`, (h) => h.len[x] >= 4 && sp(h) < 10 && h.hcp <= 8, { shows: { hcp: [0, 8], len: len(x, 4) }, why: (h) => `${h.len[x]} ${SUIT_WORDS[x]} but few points: raise high to get in the way` }));
       }
-      rules.push(rule(raise, `Raises: 3+ ${SYMBOL[x]}, 6–9 points.`, (h) => h.len[x] >= 3 && sp(h) >= 6, { shows: { hcp: [5, 9], len: len(x, 3) }, why: (h) => `${h.len[x]} ${SUIT_WORDS[x]}: support partner` }));
+      rules.push(rule(raise, `Raises: 3+ ${SYMBOL[x]}, 6–9 points.`, (h) => h.len[x] >= 3 && sp(h) >= 6, { shows: { strength: { kind: "support", suit: x, range: [6, 50] }, len: len(x, 3) }, why: (h) => `${h.len[x]} ${SUIT_WORDS[x]}: support partner` }));
       const nt = cheapBid(p, "NT");
       if (nt && nt.level <= 3) {
         const r: [number, number] = nt.level === 1 ? [8, 11] : nt.level === 2 ? [12, 14] : [15, 19];
@@ -410,9 +415,9 @@ function responderInCompetition(p: Position, o: Suit): CallRule[] {
   if (rho.call.kind === "double") {
     rules.push(
       rule({ kind: "redouble" }, "Redouble: 10+ HCP, usually no fit. Says we have the balance of strength.", (h) => h.hcp >= 10 && h.len[o] < fitLen, { shows: { hcp: [10, 37] }, why: (h) => `${hcpText(h)}: our hand` }),
-      rule(bid(2, "NT"), `Jordan 2NT: 4+ ${SYMBOL[o]}, 10+ points. A limit raise or better.`, (h) => h.len[o] >= 4 && sp(h) >= 10, { name: "Jordan 2NT", shows: { hcp: [10, 37], len: len(o, 4) }, forcing: "one round", why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${sp(h)} points` }),
+      rule(bid(2, "NT"), `Jordan 2NT: 4+ ${SYMBOL[o]}, 10+ points. A limit raise or better.`, (h) => h.len[o] >= 4 && sp(h) >= 10, { name: "Jordan 2NT", shows: { strength: { kind: "support", suit: o, range: [10, 50] }, len: len(o, 4) }, forcing: "one round", why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${sp(h)} points` }),
       rule(bid(3, o), `Weak jump raise: 4+ ${SYMBOL[o]}, few points. Blocks the opponents.`, (h) => h.len[o] >= 4 && sp(h) < 10, { shows: { hcp: [0, 8], len: len(o, 4) }, why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${sp(h)} points: raise high` }),
-      rule(bid(2, o), `Raises: ${cards(fitLen, o)}, 6–9 points.`, (h) => h.len[o] >= fitLen && sp(h) >= 6 && sp(h) <= 9, { shows: { hcp: [6, 9], len: len(o, fitLen) }, why: (h) => `${h.len[o]} ${SUIT_WORDS[o]}: support` }),
+      rule(bid(2, o), `Raises: ${cards(fitLen, o)}, 6–9 points.`, (h) => h.len[o] >= fitLen && sp(h) >= 6 && sp(h) <= 9, { shows: { strength: { kind: "support", suit: o, range: [6, 9] }, len: len(o, fitLen) }, why: (h) => `${h.len[o]} ${SUIT_WORDS[o]}: support` }),
     );
     for (const x of SUITS.filter((x) => x !== o && cheapest(p, x) === 1)) {
       rules.push(rule(bid(1, x), `New suit: 4+ ${SYMBOL[x]}, 6+ points. Forcing.`, (h) => h.len[x] >= 4 && h.hcp >= 6, { shows: { hcp: [6, 37], len: len(x, 4) }, forcing: "one round", why: (h) => `${h.len[x]} ${SUIT_WORDS[x]}` }));
@@ -435,9 +440,9 @@ function responderInCompetition(p: Position, o: Suit): CallRule[] {
 
   const cue = cheapBid(p, t);
   if (cue && raise && cue.level <= 3) {
-    rules.push(rule(cue, `Cuebid: ${cards(fitLen, o)} and 10+ points. A limit raise or better.`, (h) => h.len[o] >= fitLen && sp(h) >= 10, { name: "Cuebid raise", shows: { hcp: [10, 37], len: len(o, fitLen) }, forcing: "one round", why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${sp(h)} points` }));
+    rules.push(rule(cue, `Cuebid: ${cards(fitLen, o)} and 10+ points. A limit raise or better.`, (h) => h.len[o] >= fitLen && sp(h) >= 10, { name: "Cuebid raise", shows: { strength: { kind: "support", suit: o, range: [10, 50] }, len: len(o, fitLen) }, forcing: "one round", why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${sp(h)} points` }));
     rules.push(rule(bid(raise.level + 1, o), `Jump raise: 4+ ${SYMBOL[o]}, weak. Blocks the opponents.`, (h) => h.len[o] >= 4 && sp(h) < 10, { shows: { hcp: [0, 9], len: len(o, 4) }, why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} but few points: raise high` }));
-    rules.push(rule(raise, `Raises: ${cards(fitLen, o)}, 6–10 points.`, (h) => h.len[o] >= fitLen && sp(h) >= 6 && sp(h) <= 10, { shows: { hcp: [6, 10], len: len(o, fitLen) }, why: (h) => `${h.len[o]} ${SUIT_WORDS[o]}: support straight away` }));
+    rules.push(rule(raise, `Raises: ${cards(fitLen, o)}, 6–10 points.`, (h) => h.len[o] >= fitLen && sp(h) >= 6 && sp(h) <= 10, { shows: { strength: { kind: "support", suit: o, range: [6, 10] }, len: len(o, fitLen) }, why: (h) => `${h.len[o]} ${SUIT_WORDS[o]}: support straight away` }));
   }
   if (throughOk) {
     const negative = (h: HandFacts) => {
@@ -510,7 +515,7 @@ function afterNegativeDouble(p: Position, opened: Bid): CallRule[] {
   for (const m of SUITS.filter((x) => isMajor(x) && x !== o && x !== t)) {
     const b = cheapBid(p, m);
     if (!b) continue;
-    rules.push(rule(bid(b.level + 1, m), `4+ ${SYMBOL[m]} and 15+ points.`, (h) => h.len[m] >= 4 && h.points >= 15 && b.level + 1 <= 3, { shows: { hcp: [15, 21], len: len(m, 4) }, why: (h) => `${h.len[m]} ${SUIT_WORDS[m]} and ${h.points} points` }));
+    rules.push(rule(bid(b.level + 1, m), `4+ ${SYMBOL[m]} and 15+ points.`, (h) => h.len[m] >= 4 && h.points >= 15 && b.level + 1 <= 3, { shows: { strength: { kind: "length", range: [15, 50] }, len: len(m, 4) }, why: (h) => `${h.len[m]} ${SUIT_WORDS[m]} and ${h.points} points` }));
     rules.push(rule(b, `4+ ${SYMBOL[m]}, minimum.`, (h) => h.len[m] >= 4, { shows: { len: len(m, 4) }, why: (h) => `${h.len[m]} ${SUIT_WORDS[m]}: the suit partner's double asked about` }));
   }
   const own = cheapBid(p, o);
@@ -562,7 +567,8 @@ function contested(p: Position): CallRule[] {
     rule(PASS, "Lets them play it: not enough trumps or points to compete further.", (h) => {
       const f = fit(h);
       const close = f ? h.len[f] + ps.len[f][0] - 6 === cheapest(p, f) - 1 : false;
-      return close || (lb.call.level >= 3 && h.hcp + ps.hcp[0] >= 20);
+      const gameAlreadyBid = ourActions(p).some((r) => isBid(r.call) && r.call.level >= gameLevel(r.call.strain));
+      return close || gameAlreadyBid || (lb.call.level >= 3 && h.hcp + ps.hcp[0] >= 20);
     }, {
       name: "Competing",
       hard: { candidates: [PASS, DOUBLE], rule: "pass when we lack the trumps to compete and the points to double" },
