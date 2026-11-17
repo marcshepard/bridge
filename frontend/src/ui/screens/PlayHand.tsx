@@ -469,14 +469,18 @@ export function PlayHand(p: Props) {
               aria-label={picked ? `Play the ${cardWords(picked)}${turn === dummy ? " from dummy" : ""}` : undefined}
               sx={{ minWidth: (t) => t.spacing(20) }}
             >
-              Play
-              {picked && (
-                <>
-                  &nbsp;{picked.rank === "T" ? "10" : picked.rank}
-                  <StrainSymbol strain={picked.suit} />
-                  {turn === dummy && " from dummy"}
-                </>
-              )}
+              {/* One span, so the label flows as text: in the button's flex row, " from dummy" on its own
+                  would lose its leading space. */}
+              <span>
+                Play
+                {picked && (
+                  <>
+                    &nbsp;{picked.rank === "T" ? "10" : picked.rank}
+                    <StrainSymbol strain={picked.suit} />
+                    {turn === dummy && " from dummy"}
+                  </>
+                )}
+              </span>
             </Button>
           </Stack>
         )}
@@ -634,7 +638,7 @@ function TrickView({
 
 /**
  * The row under the trick, always the same height so nothing below it moves. Before a trick is won:
- * who led trick 1. Then the pile of tricks played, face down, as the button that turns the last
+ * who led trick 1. Then the last trick's pile, face down, as the button that turns the last
  * trick face up in the middle and back, with what it does beside it while closed. While the last
  * trick is open: just the pile, unless it's your turn, when the row becomes a warning that you
  * still have to close it to play.
@@ -692,7 +696,7 @@ function TrickRow({ state, open, yourTurn, onToggle }: { state: PlayState; open:
         "&.Mui-focusVisible": { outline: `${t.spacing(0.25)} solid ${t.vars!.palette.primary.main}` },
       })}
     >
-      <TrickPile count={finished} open={open} />
+      <TrickPile open={open} />
     </ButtonBase>
   );
   return (
@@ -718,14 +722,14 @@ function TrickRow({ state, open, yourTurn, onToggle }: { state: PlayState; open:
 }
 
 /**
- * The tricks played so far, face down: a small, tightly overlapped fan of card backs, one per trick
- * (the same backs as the hidden hands). Outlined in the primary colour while the last trick is
- * turned up.
+ * The last trick, face down: a small, tightly overlapped fan of its four card backs (the same backs
+ * as the hidden hands). Always four, whatever the trick number, since it stands for the trick you
+ * can turn up. Outlined in the primary colour while the last trick is turned up.
  */
-function TrickPile({ count, open }: { count: number; open: boolean }) {
+function TrickPile({ open }: { open: boolean }) {
   return (
     <Box aria-hidden sx={{ display: "flex" }}>
-      {Array.from({ length: count }, (_, i) => (
+      {Array.from({ length: 4 }, (_, i) => (
         <Box
           key={i}
           sx={(t) => ({

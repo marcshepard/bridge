@@ -316,9 +316,9 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           this, but in a friendly game it does no harm: dummy has no cards to play.
         </li>
         <li>
-          When a trick is complete, it stays face up in the middle for a couple of seconds, then goes face down
-          onto the pile under the table, one card back for each trick played (sooner if someone plays to the next
-          trick). Want another look? Tap the pile (<strong>← Tap to review last trick</strong>), at any time, dummy
+          When a trick is complete, it stays face up in the middle for a couple of seconds (less if someone plays
+          to the next trick), then goes face down onto a small pile of four card backs under the table: the last
+          trick. Want another look? Tap the pile (<strong>← Tap to review last trick</strong>), at any time, dummy
           too: the last trick turns face up in the middle, and the cards of the trick being played are hidden while
           you look. Tap the pile again to go back. While you're looking back you can't pick or play a card (or
           claim), so you never play without seeing the trick in front of you; if it becomes your turn, a banner says{" "}
