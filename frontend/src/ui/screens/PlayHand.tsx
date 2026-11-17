@@ -4,7 +4,7 @@
 // When the play is over (the last card, or a claim accepted) it shows how the contract went, while
 // the backend saves the result; a moment later every device moves on to the result screen.
 
-import { Alert, Box, Button, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, ButtonBase, Paper, Stack, type Theme, Typography } from "@mui/material";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { Call } from "../../core/auction";
 import { playContext } from "../../core/cardplay/context";
@@ -37,14 +37,15 @@ import { scoreResult } from "../../core/scoring";
 import { type Contract, type Seat, SEATS, SEAT_NAMES, SUIT_SYMBOLS, directionOf } from "../../core/types";
 import type { Board } from "../../providers/types";
 import { BiddingReview } from "../components/BiddingReview";
-import { Hand, HandTiles } from "../components/Hand";
-import { ContractText, SUIT_NAMES } from "../controls/BridgeText";
+import { CardBacksFan, Hand, HandTiles, cardBackSx } from "../components/Hand";
+import { ContractText, StrainSymbol, SUIT_NAMES } from "../controls/BridgeText";
 import { NumberStepper } from "../controls/NumberStepper";
 import { PlayerName } from "../controls/PlayerName";
 import { PlayingCard } from "../controls/PlayingCard";
 import { SheetDialog } from "../controls/SheetDialog";
 import { TurnStrip } from "../controls/TurnStrip";
 import { relationTo } from "../labels";
+import { useBotHints } from "../botHints";
 import { rememberDecision } from "../botMemory";
 
 /** How long a finished trick stays face up before it turns over by itself. */
@@ -105,10 +106,11 @@ export function PlayHand(p: Props) {
   const dummyShown = state.tricks[0]!.cards.length > 0;
 
   // A friendly game, not strict duplicate: each trick shows face up as it's won, then turns over
-  // by itself after TURN_OVER_MS, or as soon as anyone plays to the next trick. Anyone, dummy too,
-  // can tap "See trick N" under the trick to look back at the last one at any time; the current
-  // trick's cards are hidden while they look, and "Hide trick N" (or playing a card) goes back to
-  // it. The board's last trick stays face up, and can be hidden and shown again.
+  // by itself after TURN_OVER_MS (onto the face-down pile in the trick's bottom-right corner), or as
+  // soon as anyone plays to the next trick. Anyone, dummy too, can tap the pile to look back at the
+  // last trick at any time; the current trick's cards are hidden while they look, and tapping the
+  // pile again (or playing a card) goes back to it. The board's last trick stays face up, and can
+  // be hidden and shown again.
   const finished = finishedTricks(state).length;
   const allPlayed = isComplete(state);
   const nextStarted = finished > 0 && !allPlayed && currentTrick(state).cards.length > 0;
@@ -132,10 +134,22 @@ export function PlayHand(p: Props) {
     return () => clearTimeout(timer);
   }, [justWon, nextStarted, finished]);
   const toggleTrick = finished > 0 ? () => setShowing(isOpen ? null : { trick: finished, how: "look" }) : undefined;
+  // Looking back on purpose: the current trick's cards are hidden, so no card can be picked or
+  // played (nor a claim made) until the last trick is closed again. A pick made before stays.
+  const lookingBack = isOpen && showing?.how === "look";
 
-  // When you have only one card you can play, it's picked for you: one tap plays it.
-  const onlyCard = !over && !claim && yours(turn) ? legalCards(state, turn) : [];
+  // Tap a card to pick it, then Play: the same two steps as a bid and Submit. A pick lasts until a
+  // card is played (anyone's). When you have only one card you can play, it's picked for you.
+  const myTurn = !over && !claim && yours(turn);
+  const [pickedCard, setPickedCard] = useState<{ at: number; card: Card } | null>(null);
+  const onlyCard = myTurn ? legalCards(state, turn) : [];
   const preselect = onlyCard.length === 1 ? onlyCard[0]! : null;
+  const picked = myTurn ? ((pickedCard?.at === cards.length ? pickedCard.card : null) ?? preselect) : null;
+
+  // Bot hints (the avatar menu): what the bot would play for you here, worked out as your turn
+  // starts, to say so when your pick matches. A nudge, not the answer.
+  const hints = useBotHints();
+  const [botCard, setBotCard] = useState<{ at: number; card: Card } | null>(null);
 
   /** Runs one action against the backend, showing why if it's refused. */
   async function act(what: string, run: () => Promise<void>) {
@@ -150,23 +164,30 @@ export function PlayHand(p: Props) {
     }
   }
 
-  /** Tap to pick, tap again to play: only for the hand whose turn it is. */
+  /** Tap to pick: only in the hand whose turn it is. */
   const playFor = (s: Seat) =>
-    !over && !claim && busy === null && turn === s && yours(s)
+    myTurn && busy === null && turn === s && !lookingBack
       ? {
           canPlay: (card: Card) => legalCards(state, s).some((c) => sameCard(c, card)),
-          onPlay: (card: Card) => {
-            // Playing a card goes back to the trick in play.
-            setShowing(null);
-            void act("Playing your card…", () => p.onPlay(cards.length + 1, card));
+          picked,
+          onPick: (card: Card) => {
+            setHint(null);
+            setPickedCard({ at: cards.length, card });
           },
-          preselect,
           onBlocked: () => {
             const led = currentTrick(state).cards[0]!.card.suit;
             setHint(`Follow suit: play a ${SUIT_NAMES[led].slice(0, -1)} ${SUIT_SYMBOLS[led]}`);
           },
         }
       : undefined;
+
+  function playPicked() {
+    if (!picked) return;
+    const card = picked;
+    // Playing a card goes back to the trick in play.
+    setShowing(null);
+    void act("Playing your card…", () => p.onPlay(cards.length + 1, card));
+  }
 
   const won = tricksWon(state);
   const ourSide = directionOf(seat) === directionOf(declarer) ? won.declarer : won.defence;
@@ -216,6 +237,22 @@ export function PlayHand(p: Props) {
     };
   }, [botTurn, state]);
 
+  // The bot's card for your turn, for the hint (see `hints` above).
+  useEffect(() => {
+    if (!myTurn || !hints) return;
+    let cancelled = false;
+    const at = cards.length;
+    void decideCard(state, context, doubleDummy)
+      .catch(() => decideCard(state, context, null))
+      .then((d) => {
+        if (!cancelled) setBotCard({ at, card: d.card });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [myTurn, hints, state]);
+  const botAgrees = hints && !!picked && botCard?.at === cards.length && sameCard(botCard.card, picked);
+
   // A claim the bots have to answer: the owner's device checks it for each of them in turn.
   const botAnswerer = claim && p.playsForBots ? claimAnswerers(claim.seat, declarer).find((s) => p.bots.includes(s) && !claim.acceptedBy.includes(s)) : undefined;
   useEffect(() => {
@@ -238,7 +275,6 @@ export function PlayHand(p: Props) {
   // Whose turn it is, in the middle of the contract row: "Your turn", "Dummy's turn" or "East's
   // turn". When it's yours (your hand, or dummy's when you're declarer) it's in the primary colour,
   // pulsing. Nothing once play stops.
-  const myTurn = !over && !claim && yours(turn);
   const awayNote = away[waitingFor] && !p.bots.includes(waitingFor) ? " (away)" : "";
   const turnLabel =
     over || claim
@@ -256,17 +292,39 @@ export function PlayHand(p: Props) {
       : claim
         ? `${claimText}: waiting for ${waitingOn.map((s) => SEAT_NAMES[s]).join(" and ")}`
         : preselect
-          ? "Only one card can go: tap it to play"
+          ? "Only one card can go: it's picked for you"
           : "";
 
-  /** A seat you can't see into: who's there, how many cards, and a highlight when it's their turn. */
-  const closed = (s: Seat) => (
-    <SeatBox key={s} active={!over && !claim && turn === s} title={SEAT_NAMES[s]}>
-      <Typography variant="body2" color="text.secondary" component="div">
-        <PlayerName name={names[s]} away={away[s]} /> · {Object.values(state.hands[s]).join("").length} cards
-      </Typography>
-    </SeatBox>
-  );
+  // Dummy can peek at partner's (declarer's) hand: not strict bridge, but a friendly game, and
+  // dummy has no cards to play. Hidden again on each new board.
+  const canPeek = seat === dummy && dummyShown && !over;
+  const [peek, setPeek] = useState(false);
+  useEffect(() => setPeek(false), [board.number]);
+
+  /** A seat you can't see into: who's there, how many cards (and their backs), and a highlight when it's their turn. */
+  const closed = (s: Seat) => {
+    const count = Object.values(state.hands[s]).join("").length;
+    const peekable = canPeek && s === declarer;
+    return (
+      <SeatBox key={s} active={!over && !claim && turn === s} title={peekable && peek ? `${SEAT_NAMES[s]}: partner's hand` : SEAT_NAMES[s]}>
+        <Typography variant="body2" color="text.secondary" component="div">
+          <PlayerName name={names[s]} away={away[s]} /> · {count} {count === 1 ? "card" : "cards"}
+        </Typography>
+        {peekable && peek ? (
+          <Hand hand={state.hands[s]} trump={trump} />
+        ) : (
+          <Box sx={{ mt: 0.5 }}>
+            <CardBacksFan count={count} />
+          </Box>
+        )}
+        {peekable && (
+          <Button variant="outlined" size="small" sx={{ mt: 0.5 }} onClick={() => setPeek(!peek)}>
+            {peek ? "Hide hand" : "Show hand"}
+          </Button>
+        )}
+      </SeatBox>
+    );
+  };
 
   /** What sits at each edge: dummy's cards once it's down, a claimer's cards, else just who's there. */
   const edge = (s: Seat): ReactNode => {
@@ -381,22 +439,52 @@ export function PlayHand(p: Props) {
         {edge(at("partner"))}
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 1, alignItems: "center" }}>
           {edge(at("lho"))}
-          <TrickView state={state} seat={seat} open={isOpen} onToggle={toggleTrick} />
+          <TrickView state={state} seat={seat} open={isOpen} />
           {edge(at("rho"))}
         </Box>
+        {/* The warning only while you're looking back on purpose, not during a trick's moment face up as it's won. */}
+        <TrickRow
+          state={state}
+          open={isOpen}
+          yourTurn={myTurn && lookingBack}
+          onToggle={toggleTrick ?? (() => {})}
+        />
         <SeatBox
           active={!over && !claim && turn === seat && yours(seat)}
           title={seat === dummy && dummyShown ? "You're dummy: partner is playing your cards" : `You: ${SEAT_NAMES[seat]}`}
         >
           <HandTiles hand={state.hands[seat]} trump={trump} inPlay play={playFor(seat)} />
         </SeatBox>
-        <Stack direction="row" spacing={1} sx={{ justifyContent: "center", pt: 1 }}>
-          {!over && !claim && seat !== dummy && (
-            <Button variant="outlined" onClick={() => setClaiming(true)}>
+        {/* Play the picked card (it says which, and "from dummy" when it's dummy's), and Claim beside it. */}
+        {!over && !claim && seat !== dummy && (
+          <Stack direction="row" spacing={1} sx={{ justifyContent: "center", pt: 1 }}>
+            <Button variant="outlined" disabled={lookingBack} onClick={() => setClaiming(true)}>
               Claim
             </Button>
-          )}
-        </Stack>
+            <Button
+              variant="contained"
+              size="large"
+              disabled={!myTurn || !picked || busy !== null || lookingBack}
+              onClick={playPicked}
+              aria-label={picked ? `Play the ${cardWords(picked)}${turn === dummy ? " from dummy" : ""}` : undefined}
+              sx={{ minWidth: (t) => t.spacing(20) }}
+            >
+              Play
+              {picked && (
+                <>
+                  &nbsp;{picked.rank === "T" ? "10" : picked.rank}
+                  <StrainSymbol strain={picked.suit} />
+                  {turn === dummy && " from dummy"}
+                </>
+              )}
+            </Button>
+          </Stack>
+        )}
+        {botAgrees && (
+          <Typography variant="body2" color="success.main" sx={{ textAlign: "center", fontWeight: "fontWeightMedium" }} aria-live="polite">
+            ✓ The bot would play this too
+          </Typography>
+        )}
       </Stack>
 
       <SheetDialog
@@ -480,22 +568,19 @@ function SeatBox({ title, active, children }: { title: string; active: boolean; 
 
 /**
  * The trick in the middle, each card on its player's side. The last finished trick shows while it's
- * open (face up), even after the next lead; closed, it lies face down until the next lead. Under it,
- * "See trick N" / "Hide trick N" (when `onToggle` is given) shows or hides the last trick, during
- * the next trick too.
+ * open (face up), even after the next lead. Once a trick is won, a face-down pile sits in the bottom-
+ * right corner; tapping it (when `onToggle` is given) shows or hides the last trick, during the next
+ * trick too.
  */
 function TrickView({
   state,
   seat,
   open,
-  onToggle,
 }: {
   state: PlayState;
   seat: Seat;
   /** The last finished trick is open (face up) on this device. */
   open: boolean;
-  /** Present once a trick has been won: shows or hides the last one. */
-  onToggle?: () => void;
 }) {
   const now = currentTrick(state);
   const last = finishedTricks(state).at(-1);
@@ -526,7 +611,7 @@ function TrickView({
         justifyContent: "center",
       }}
     >
-      {faceUp ? (
+      {faceUp &&
         trick.cards.map(({ seat: s, card }) => (
           <Box key={s} sx={{ gridArea: AREA[relationTo(seat, s)] }}>
             <PlayingCard
@@ -535,80 +620,131 @@ function TrickView({
               label={`${SEAT_NAMES[s]}: ${card.rank === "T" ? "10" : card.rank} of ${SUIT_NAMES[card.suit]}`}
             />
           </Box>
-        ))
-      ) : (
-        <Box sx={{ gridArea: "middle" }}>
-          <CardBack />
-        </Box>
-      )}
+        ))}
     </Box>
   );
 
-  const lastNumber = last ? state.tricks.indexOf(last) + 1 : 0;
-  const caption = showingLast
-    ? `Trick ${number}: ${SEAT_NAMES[winner!]} won it`
-    : `Trick ${number}${trick.cards.length > 0 ? ` · ${SEAT_NAMES[trick.leader]} led` : ""}`;
-  // Face up: the last trick is showing, so the button hides it again.
-  const lastShowing = showingLast && faceUp;
-
   return (
-    <Box sx={{ textAlign: "center" }}>
-      <Box role="group" aria-label={`Trick ${number}`}>
-        {table}
-      </Box>
-      {/* Side by side where there's room. On a narrow phone the middle column stays as narrow as the
-          table, so East's and West's cards keep their space, and the button wraps under the words. */}
-      <Box
-        sx={(t) => ({
-          mt: 0.5,
-          mx: "auto",
-          maxWidth: { xs: t.spacing(17), sm: "none" },
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "center",
-          alignItems: "center",
-          columnGap: 1,
-          rowGap: 0.5,
-        })}
-      >
-        <Typography variant="body2" component="p" color="text.secondary">
-          {caption}
-        </Typography>
-        {onToggle && (
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={onToggle}
-            // About the height of the words beside it, with the usual 44px tap area around it.
-            sx={(t) => ({
-              minHeight: t.spacing(3.5),
-              py: 0,
-              position: "relative",
-              "&::before": { content: '""', position: "absolute", inset: `-${t.spacing(0.75)} 0` },
-            })}
-          >
-            {lastShowing ? `Hide trick ${lastNumber}` : `See trick ${lastNumber}`}
-          </Button>
-        )}
-      </Box>
+    // Centred: the trick's cards centre their rank and suit by it.
+    <Box role="group" aria-label={`Trick ${number}`} sx={{ textAlign: "center" }}>
+      {table}
     </Box>
   );
 }
 
-/** The last trick, gathered up face down. */
-function CardBack() {
+/**
+ * The row under the trick, always the same height so nothing below it moves. Before a trick is won:
+ * who led trick 1. Then the pile of tricks played, face down, as the button that turns the last
+ * trick face up in the middle and back, with what it does beside it while closed. While the last
+ * trick is open: just the pile, unless it's your turn, when the row becomes a warning that you
+ * still have to close it to play.
+ */
+function TrickRow({ state, open, yourTurn, onToggle }: { state: PlayState; open: boolean; yourTurn: boolean; onToggle: () => void }) {
+  const done = finishedTricks(state);
+  const finished = done.length;
+  const now = currentTrick(state);
+  const height = (t: Theme) => t.spacing(7);
+  if (finished === 0) {
+    return (
+      <Box sx={{ minHeight: height, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Typography variant="body2" color="text.secondary">
+          Trick 1{now.cards.length > 0 ? ` · ${SEAT_NAMES[now.leader]} led` : ""}
+        </Typography>
+      </Box>
+    );
+  }
+  const winner = trickWinner(done.at(-1)!, state.trump)!.seat;
+  // Your turn while you look back: the whole row is one warning-coloured button that closes the
+  // last trick (a banner that does something is the button itself, with nothing else inside).
+  if (open && yourTurn && !isComplete(state)) {
+    return (
+      <ButtonBase
+        onClick={onToggle}
+        aria-live="polite"
+        sx={(t) => ({
+          width: 1,
+          minHeight: height(t),
+          px: 2,
+          borderRadius: 1,
+          bgcolor: "warning.light",
+          color: "warning.contrastText",
+          typography: "body2",
+          fontWeight: "fontWeightMedium",
+          "&:hover": { bgcolor: "warning.main" },
+          "&.Mui-focusVisible": { outline: `${t.spacing(0.25)} solid ${t.vars!.palette.primary.main}` },
+        })}
+      >
+        It's your turn to play to trick {finished + 1}. Tap here to close trick {finished}.
+      </ButtonBase>
+    );
+  }
+  const pile = (
+    <ButtonBase
+      onClick={onToggle}
+      aria-label={open ? `Close trick ${finished}` : `Review trick ${finished}, won by ${SEAT_NAMES[winner]}`}
+      aria-pressed={open}
+      sx={(t) => ({
+        flexShrink: 0,
+        position: "relative",
+        borderRadius: 1,
+        // At least 44px to tap, around a pile smaller than that.
+        "&::before": { content: '""', position: "absolute", inset: `-${t.spacing(0.5)}` },
+        "&.Mui-focusVisible": { outline: `${t.spacing(0.25)} solid ${t.vars!.palette.primary.main}` },
+      })}
+    >
+      <TrickPile count={finished} open={open} />
+    </ButtonBase>
+  );
   return (
     <Box
-      aria-hidden
+      aria-live="polite"
       sx={{
-        width: (t) => t.spacing(5),
-        height: (t) => t.spacing(7),
-        bgcolor: "secondary.main",
-        border: 1,
-        borderColor: "card.edge",
-        borderRadius: 1,
-        boxShadow: 2,
+        minHeight: height,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 1.5,
+        px: 1,
       }}
-    />
+    >
+      {pile}
+      {!open && (
+        <Typography variant="body2" color="text.secondary">
+          ← Tap to review last trick
+        </Typography>
+      )}
+    </Box>
   );
+}
+
+/**
+ * The tricks played so far, face down: a small, tightly overlapped fan of card backs, one per trick
+ * (the same backs as the hidden hands). Outlined in the primary colour while the last trick is
+ * turned up.
+ */
+function TrickPile({ count, open }: { count: number; open: boolean }) {
+  return (
+    <Box aria-hidden sx={{ display: "flex" }}>
+      {Array.from({ length: count }, (_, i) => (
+        <Box
+          key={i}
+          sx={(t) => ({
+            flexShrink: 0,
+            width: t.spacing(3),
+            height: t.spacing(4.25),
+            ml: i === 0 ? 0 : `calc(${t.spacing(3)} * -0.85)`,
+            ...cardBackSx(t, t.spacing(0.2)),
+            ...(open && { borderColor: "primary.main" }),
+            borderRadius: 0.5,
+          })}
+        />
+      ))}
+    </Box>
+  );
+}
+
+/** "7 of spades", "10 of hearts", "queen of clubs": a card in words, for screen readers. */
+function cardWords(card: Card): string {
+  const rank = { A: "ace", K: "king", Q: "queen", J: "jack", T: "10" }[card.rank] ?? card.rank;
+  return `${rank} of ${SUIT_NAMES[card.suit]}`;
 }

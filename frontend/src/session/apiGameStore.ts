@@ -131,6 +131,14 @@ export class ApiGameStore implements GameStore {
     await this.request<void>("DELETE", `/events/${code}/players/no-app/${slot}`, code);
   }
 
+  async addBot(code: string): Promise<void> {
+    await this.request<unknown>("POST", `/events/${code}/players/bot`, code, {});
+  }
+
+  async removeBot(code: string, slot: number): Promise<void> {
+    await this.request<void>("DELETE", `/events/${code}/players/bot/${slot}`, code);
+  }
+
   async assignSeats(code: string, choice: PartnershipsRequest): Promise<void> {
     await this.request<unknown>("POST", `/events/${code}/partnerships`, code, choice);
   }

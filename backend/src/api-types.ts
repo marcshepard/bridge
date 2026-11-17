@@ -27,7 +27,7 @@ export interface PublicPlayer {
    */
   noApp: boolean;
   /**
-   * A bot (practice games, dev test players). On the devices the owner's device bids and
+   * A bot (practice games, bots the owner adds to an online game, dev test players). On the devices the owner's device bids and
    * plays for it, by the rules in core/bidding and core/bot.ts.
    */
   isBot: boolean;

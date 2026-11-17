@@ -9,12 +9,26 @@ import {
   handSuitOrder,
   isAway,
   netParts,
+  playerPlace,
+  relationTag,
   sameName,
   seatAndPlayer,
   seatRequestNews,
   timeAgo,
   vulnerableShort,
 } from "./labels";
+
+describe("who's where, from your seat", () => {
+  it("tags each auction column from North's chair", () => {
+    expect((["W", "N", "E", "S"] as const).map((s) => relationTag("N", s))).toEqual(["right", "you", "left", "partner"]);
+  });
+
+  it("says who's bidding and where they sit", () => {
+    expect(playerPlace("S", "W", "Neal")).toBe("Neal, on your left");
+    expect(playerPlace("S", "E", "Ann")).toBe("Ann, on your right");
+    expect(playerPlace("S", "N", "Bob")).toBe("Bob, your partner");
+  });
+});
 
 describe("numbers on screen are whole", () => {
   it("percentages round to whole numbers", () => {
@@ -76,6 +90,10 @@ describe("who is away", () => {
 
   it("is never a player without the app: they're at the table", () => {
     expect(isAway({ slot: 2, connected: false, noApp: true }, 1)).toBe(false);
+  });
+
+  it("is never a bot: it has no device to be away from", () => {
+    expect(isAway({ slot: 2, connected: false, isBot: true }, 1)).toBe(false);
   });
 });
 

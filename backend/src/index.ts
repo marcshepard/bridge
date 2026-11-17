@@ -358,6 +358,42 @@ app.delete("/events/:code/players/no-app/:slot", async (c) => {
 });
 
 /**
+ * The owner adds a bot to an online game in the lobby, in the next free place ("Bot 3": the number
+ * is the place). The owner's device bids and plays for it; someone can take the seat over later
+ * with a seat request. Not in real-cards games: a bot can't hold real cards.
+ */
+app.post("/events/:code/players/bot", async (c) => {
+  const event = await loadEvent(c);
+  const players = await db.getPlayers(c.env.DB, event.code);
+  ownerOnly(caller(c, players), "add a bot");
+  if (event.mode !== "devices") throw new HttpError(409, "Bots can only join games played online");
+  if (event.status !== "lobby") throw new HttpError(409, "This game has already started");
+  const slot = nextFreeSlot(players);
+  if (slot === null) throw new HttpError(409, "This game already has 4 players");
+  try {
+    await db.insertPlayer(c.env.DB, event.code, botRow(slot), nowIso());
+  } catch (e) {
+    if (String(e).includes("UNIQUE")) throw new HttpError(409, "Someone else just took that place; try again");
+    throw e;
+  }
+  await push(c, event.code, { type: "players" });
+  return c.json({ slot }, 201);
+});
+
+/** The owner takes a bot back out of the lobby (to make room for a person). */
+app.delete("/events/:code/players/bot/:slot", async (c) => {
+  const event = await loadEvent(c);
+  const players = await db.getPlayers(c.env.DB, event.code);
+  ownerOnly(caller(c, players), "remove a player");
+  if (event.status !== "lobby") throw new HttpError(409, "This game has already started");
+  const p = players.find((x) => x.slot === Number(c.req.param("slot")));
+  if (!p || !p.is_bot) throw new HttpError(404, "No bot in that place");
+  await db.deletePlayer(c.env.DB, event.code, p.player_id);
+  await push(c, event.code, { type: "players" });
+  return c.body(null, 204);
+});
+
+/**
  * Leave the game. Before play starts this frees the place; if the creator leaves the lobby, the
  * game is cancelled (nobody else can assign seats). Leaving during play isn't done here: the
  * seat stays the player's (they can rejoin with the code), and anyone can take it over by asking
@@ -933,12 +969,17 @@ async function addBots(c: Ctx, code: string): Promise<number[]> {
   const players = await db.getPlayers(c.env.DB, code);
   const added: number[] = [];
   for (let slot = nextFreeSlot(players); slot !== null; slot = nextFreeSlot(players)) {
-    const row = { player_id: newPlayerId(), slot, name: `Bot ${slot}`, is_creator: 0, is_bot: 1, no_app: 0, seat: null, system_json: null };
+    const row = botRow(slot);
     await db.insertPlayer(c.env.DB, code, row, nowIso());
     players.push(row);
     added.push(slot);
   }
   return added;
+}
+
+/** A bot in a place: named by the place ("Bot 2"), with no bidding system of its own. */
+function botRow(slot: number): db.PlayerRow {
+  return { player_id: newPlayerId(), slot, name: `Bot ${slot}`, is_creator: 0, is_bot: 1, no_app: 0, seat: null, system_json: null };
 }
 
 app.all("*", (c) => c.json({ error: "Not found" }, 404));

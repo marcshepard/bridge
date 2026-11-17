@@ -13,6 +13,13 @@ export interface Choice<T extends string | number> {
   ariaLabel?: string;
   /** Can't be picked right now (greyed out). */
   disabled?: boolean;
+  /**
+   * Not on offer at all: its place stays empty, so the others keep theirs and can be tapped by
+   * habit (the bidding box's levels and suits).
+   */
+  hidden?: boolean;
+  /** A light shade of this palette colour behind it until it's picked (the bidding box's Pass, X and XX). */
+  color?: "success" | "error";
 }
 
 interface Props<T extends string | number> {
@@ -53,24 +60,48 @@ export function ChoiceGroup<T extends string | number>({ label, help, choices, v
           if (v !== null) onChange(v);
         }}
       >
-        {choices.map((c) => (
-          <ToggleButton
-            key={String(c.value)}
-            value={c.value}
-            aria-label={c.ariaLabel}
-            disabled={disabled || c.disabled}
-            sx={{ flexDirection: "column" }}
-          >
-            <Typography variant="h6" component="span">
-              {c.label}
-            </Typography>
-            {c.sub && (
-              <Typography component="span" variant="caption">
-                {c.sub}
+        {choices.map((c, i) => {
+          // The buttons are joined into one strip. Next to an empty place, a button gets back the
+          // edge and rounded corners the strip would otherwise share with its neighbour.
+          const afterGap = i > 0 && !!choices[i - 1]!.hidden;
+          const beforeGap = i < choices.length - 1 && !!choices[i + 1]!.hidden;
+          return (
+            <ToggleButton
+              key={String(c.value)}
+              value={c.value}
+              aria-label={c.ariaLabel}
+              aria-hidden={c.hidden || undefined}
+              tabIndex={c.hidden ? -1 : undefined}
+              disabled={disabled || c.disabled || c.hidden}
+              color={c.color}
+              sx={(t) => ({
+                flexDirection: "column",
+                ...(c.hidden && { visibility: "hidden" }),
+                // "&&&" outranks the group's own rules for joined buttons.
+                "&&&": {
+                  ...(afterGap && {
+                    borderLeftColor: t.vars!.palette.divider,
+                    borderTopLeftRadius: t.shape.borderRadius,
+                    borderBottomLeftRadius: t.shape.borderRadius,
+                  }),
+                  ...(beforeGap && {
+                    borderTopRightRadius: t.shape.borderRadius,
+                    borderBottomRightRadius: t.shape.borderRadius,
+                  }),
+                },
+              })}
+            >
+              <Typography variant="h6" component="span">
+                {c.label}
               </Typography>
-            )}
-          </ToggleButton>
-        ))}
+              {c.sub && (
+                <Typography component="span" variant="caption">
+                  {c.sub}
+                </Typography>
+              )}
+            </ToggleButton>
+          );
+        })}
       </ToggleButtonGroup>
     </Box>
   );

@@ -35,3 +35,12 @@ describe("the current game in the profile", () => {
     expect(p.currentGameInfo()).toBeNull();
   });
 });
+
+describe("bot hints", () => {
+  it("are off until turned on", () => {
+    const p = new LocalProfileStore();
+    expect(p.botHints()).toBe(false);
+    p.setBotHints(true);
+    expect(p.botHints()).toBe(true);
+  });
+});

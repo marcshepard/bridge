@@ -1,7 +1,7 @@
 // The bar at the top of every screen: app icon and name (in a game, one button that goes Home, your
 // game staying current), help, and your avatar. The avatar menu
-// holds the Dark mode switch, the bidding system the bots use, "Leave game", and "Install to home
-// screen" until the app is installed.
+// holds the Dark mode switch, the Bot hints switch (during a game on the devices), the bidding
+// system the bots use, "Leave game", and "Install to home screen" until the app is installed.
 // While this device's live connection to the game is down, a small no-signal icon ("Reconnecting")
 // sits beside Help: in the bar, so it never moves the page or covers anything.
 
@@ -38,6 +38,8 @@ interface Props {
   reconnecting?: boolean;
   /** Open the bidding system page. */
   onSystem: () => void;
+  /** The Bot hints switch: only during a game bid and played on the devices (online or practice). */
+  botHints?: { on: boolean; onChange: (on: boolean) => void };
 }
 
 const BRAND = { display: "flex", alignItems: "center", gap: 1, minWidth: 0, color: "inherit" } as const;
@@ -56,7 +58,7 @@ function Brand() {
   );
 }
 
-export function AppHeader({ name, onHelp, onHome, onLeaveGame, onInstall, onSystem, reconnecting = false }: Props) {
+export function AppHeader({ name, onHelp, onHome, onLeaveGame, onInstall, onSystem, botHints, reconnecting = false }: Props) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const { mode, setMode } = useColorScheme();
   const dark = mode === "dark";
@@ -145,6 +147,12 @@ export function AppHeader({ name, onHelp, onHome, onLeaveGame, onInstall, onSyst
           <ListItemText>Dark mode</ListItemText>
           <Switch edge="end" checked={dark} tabIndex={-1} slotProps={{ input: { "aria-hidden": true } }} />
         </MenuItem>
+        {botHints && (
+          <MenuItem role="menuitemcheckbox" aria-checked={botHints.on} onClick={() => botHints.onChange(!botHints.on)}>
+            <ListItemText>Bot hints</ListItemText>
+            <Switch edge="end" checked={botHints.on} tabIndex={-1} slotProps={{ input: { "aria-hidden": true } }} />
+          </MenuItem>
+        )}
         <MenuItem
           onClick={() => {
             setAnchor(null);

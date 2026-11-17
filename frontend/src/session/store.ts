@@ -63,6 +63,10 @@ export interface GameStore {
   addPlayerWithoutApp(code: string, name: string): Promise<void>;
   /** The owner takes a player without the app back out of the lobby. */
   removePlayerWithoutApp(code: string, slot: number): Promise<void>;
+  /** The owner adds a bot in the next free place (online games, in the lobby). */
+  addBot(code: string): Promise<void>;
+  /** The owner takes a bot back out of the lobby. */
+  removeBot(code: string, slot: number): Promise<void>;
   /** The owner assigns seats or chooses random seats, then play starts. */
   assignSeats(code: string, choice: PartnershipsRequest): Promise<void>;
   /** The owner moves the table to a board; every device follows. */
@@ -144,6 +148,9 @@ export interface ProfileStore {
   /** In this practice game, the bots bid your seat too (you watch). */
   botsBidForMe(code: string): boolean;
   setBotsBidForMe(code: string, on: boolean): void;
+  /** Show bot hints ("✓ The bot would bid this too") while bidding and playing on the devices. Off unless turned on. */
+  botHints(): boolean;
+  setBotHints(on: boolean): void;
   /** The install banner was closed on this device: don't show it again. */
   installBannerClosed(): boolean;
   setInstallBannerClosed(): void;

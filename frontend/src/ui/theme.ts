@@ -6,7 +6,8 @@
 //   cards). Sizes and weights stay MUI's defaults.
 // - Buttons in sentence case (no ALL-CAPS), and at least 44px tall for tapping at the table.
 // - Selected toggle buttons filled with the primary colour, so the picked level/strain/declarer
-//   stands out at a glance.
+//   stands out at a glance. Unpicked ones in full text colour rather than MUI's grey, so an
+//   enabled button never looks disabled.
 // - Tabular digits for any element with class "num", so score columns line up.
 //
 // - Colours (light and dark), the only custom ones in the app:
@@ -22,6 +23,7 @@
 //   - Card faces (palette.card), for hands drawn as playing cards: a white face with near-black
 //     and red ink, as on real cards, so they read the same in both modes. Dark mode dims the face
 //     a little so the cards don't glare.
+//   - The bidding box (BID_COLOURS): Pass shaded success green, X and XX shaded error red.
 //   Everything else (error red for hearts and diamonds, text colours) is MUI's default.
 //
 // Light unless you turn on Dark mode in the avatar menu (MUI's useColorScheme; MUI remembers the
@@ -45,6 +47,12 @@ declare module "@mui/material/styles" {
     card?: CardColours;
   }
 }
+
+/**
+ * The bidding box's shades, as on a club's bidding cards: Pass green, X and XX red. Palette roles,
+ * so they follow light and dark mode; change them here.
+ */
+export const BID_COLOURS = { pass: "success", double: "error", redouble: "error" } as const;
 
 /** Card-table green: the app icon, the header and the browser bar. */
 export const TABLE_GREEN = "#1b7f5e";
@@ -95,13 +103,25 @@ export const theme = createTheme({
     },
     MuiToggleButton: {
       styleOverrides: {
-        root: ({ theme }) => ({
-          textTransform: "none",
-          "&.Mui-selected, &.Mui-selected:hover": {
-            backgroundColor: theme.vars.palette.primary.main,
-            color: theme.vars.palette.primary.contrastText,
-          },
-        }),
+        // Selected: filled with the primary colour. A button with a colour of its own (the bidding
+        // box's Pass and X / XX) keeps the same border and text as the rest and only takes a light
+        // shade of that colour as its background until it's picked.
+        root: ({ theme, ownerState }) => {
+          const own = ownerState.color && ownerState.color !== "standard" ? theme.vars.palette[ownerState.color] : null;
+          return {
+            textTransform: "none",
+            // Unpicked in full text colour, not MUI's grey, which looked nearly as off as a disabled button.
+            color: theme.vars.palette.text.primary,
+            ...(own && {
+              "&:not(.Mui-disabled):not(.Mui-selected)": { backgroundColor: `rgba(${own.mainChannel} / 0.14)` },
+              "&:not(.Mui-disabled):not(.Mui-selected):hover": { backgroundColor: `rgba(${own.mainChannel} / 0.24)` },
+            }),
+            "&.Mui-selected, &.Mui-selected:hover": {
+              backgroundColor: theme.vars.palette.primary.main,
+              color: theme.vars.palette.primary.contrastText,
+            },
+          };
+        },
       },
     },
   },

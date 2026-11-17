@@ -1,5 +1,5 @@
 // A board's auction as bridge players write it down: four columns, West North East South, each
-// headed by its player (in red when vulnerable), the first call under the dealer and the empty
+// headed by its direction, who that is to you ("North (partner)") and its player (direction in red when vulnerable), the first call under the dealer and the empty
 // places before it blank. While the auction is going, the next place to call is marked.
 //
 // In the bidding review the calls can be tapped (each opens its explanation), and some carry a
@@ -10,6 +10,7 @@ import { Box, Button, Table, TableBody, TableCell, TableHead, TableRow, Typograp
 import { type Call, isAuctionOver, seatOfCall } from "../../core/auction";
 import { type Seat, type Vulnerability, SEAT_NAMES, directionOf, isVulnerable } from "../../core/types";
 import { CallText, callWords } from "../controls/BridgeText";
+import { relationTag, seatWithRelation } from "../labels";
 
 /** Printed auctions start with West. */
 const COLUMNS: readonly Seat[] = ["W", "N", "E", "S"];
@@ -61,14 +62,23 @@ export function AuctionTable({ dealer, vul, names, calls, seat, onOpenCall, mark
                 key={s}
                 align="center"
                 sx={{ px: 0.5 }}
-                aria-label={`${SEAT_NAMES[s]}, ${names[s]}${vulnerable ? ", vulnerable" : ""}`}
+                aria-label={`${seatWithRelation(seat, s)}, ${names[s]}${vulnerable ? ", vulnerable" : ""}`}
               >
                 <Typography
                   variant="subtitle2"
                   component="span"
                   sx={{ display: "block", color: vulnerable ? "error.main" : undefined, fontWeight: s === seat ? "fontWeightBold" : undefined }}
                 >
-                  {SEAT_NAMES[s]}
+                  {SEAT_NAMES[s]}{" "}
+                  {/* Who they are to you, since the columns stay West to South wherever you sit. */}
+                  <Typography
+                    variant="caption"
+                    component="span"
+                    color="text.secondary"
+                    sx={{ fontWeight: "fontWeightRegular", whiteSpace: "nowrap" }}
+                  >
+                    ({relationTag(seat, s)})
+                  </Typography>
                 </Typography>
                 <Typography variant="caption" component="span" color="text.secondary" noWrap sx={{ display: "block" }}>
                   {names[s]}
@@ -89,13 +99,18 @@ export function AuctionTable({ dealer, vul, names, calls, seat, onOpenCall, mark
                 <TableCell
                   key={s}
                   align="center"
-                  sx={{
+                  sx={(t) => ({
                     px: 0.5,
                     py: onOpenCall ? 0 : undefined,
                     typography: "subtitle1",
                     fontWeight: s === seat ? "fontWeightBold" : undefined,
-                    ...((cell === "next" || (cell && cell.index === shaded)) && { bgcolor: "action.selected" }),
-                  }}
+                    ...(cell && cell !== "next" && cell.index === shaded && { bgcolor: "action.selected" }),
+                    // The next place to call: marked like the play table's seat whose turn it is.
+                    ...(cell === "next" && {
+                      bgcolor: "action.selected",
+                      boxShadow: `inset 0 0 0 2px ${t.vars!.palette.primary.main}`,
+                    }),
+                  })}
                   aria-label={onOpenCall ? undefined : label}
                 >
                   {cell === "next" ? (

@@ -17,6 +17,8 @@ interface Profile {
   installBannerClosed: boolean;
   /** Practice games in which the bots bid your seat too. */
   botsBidForMe: string[];
+  /** Bot hints on (off unless turned on). */
+  botHints: boolean;
   /** Your bidding system; checked on reading, so an old or damaged one falls back to SAYC. */
   biddingSystem: SystemSettings;
 }
@@ -55,13 +57,14 @@ export class LocalProfileStore implements ProfileStore {
           lastInGameAt: p.lastInGameAt ?? null,
           installBannerClosed: p.installBannerClosed ?? false,
           botsBidForMe: p.botsBidForMe ?? [],
+          botHints: p.botHints === true,
           biddingSystem: parseSystemSettings(p.biddingSystem),
         };
       }
     } catch {
       // Unreadable or unavailable: start fresh.
     }
-    return { name: "", playerIds: {}, currentGame: null, currentGameInfo: null, lastInGameAt: null, installBannerClosed: false, botsBidForMe: [], biddingSystem: parseSystemSettings(null) };
+    return { name: "", playerIds: {}, currentGame: null, currentGameInfo: null, lastInGameAt: null, installBannerClosed: false, botsBidForMe: [], botHints: false, biddingSystem: parseSystemSettings(null) };
   }
 
   private write(): void {
@@ -141,6 +144,15 @@ export class LocalProfileStore implements ProfileStore {
 
   setBotsBidForMe(code: string, on: boolean): void {
     this.profile.botsBidForMe = [...this.profile.botsBidForMe.filter((c) => c !== code), ...(on ? [code] : [])];
+    this.write();
+  }
+
+  botHints(): boolean {
+    return this.profile.botHints;
+  }
+
+  setBotHints(on: boolean): void {
+    this.profile.botHints = on;
     this.write();
   }
 

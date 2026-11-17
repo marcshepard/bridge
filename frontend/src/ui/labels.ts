@@ -27,6 +27,18 @@ export function relationShort(me: Seat, other: Seat): string {
   return RELATION_SHORT[relationTo(me, other)];
 }
 
+const RELATION_TAG: Record<Relation, string> = {
+  you: "you",
+  partner: "partner",
+  lho: "left",
+  rho: "right",
+};
+
+/** One word after a seat where space is tight (the auction's column heads): "North (partner)". */
+export function relationTag(me: Seat, other: Seat): string {
+  return RELATION_TAG[relationTo(me, other)];
+}
+
 export function seatWithRelation(me: Seat, other: Seat): string {
   return `${SEAT_NAMES[other]} (${RELATION_LONG[relationTo(me, other)]})`;
 }
@@ -36,6 +48,12 @@ const RELATION_PLACE: Record<Exclude<Relation, "you">, string> = {
   lho: "on your left",
   rho: "on your right",
 };
+
+/** Who's in another seat and where they sit: "Joe, on your right", "Ann, your partner". */
+export function playerPlace(me: Seat, seat: Seat, name: string): string {
+  const r = relationTo(me, seat);
+  return r === "you" ? name : `${name}, ${RELATION_PLACE[r]}`;
+}
 
 /** A seat and who's in it, as seen from yours: "South (you)", "East (Joe, on your right)". */
 export function seatAndPlayer(me: Seat, seat: Seat, name: string): string {
@@ -155,9 +173,9 @@ function showTenth(n: number): string {
  * A player with no live connection right now (asleep, closed the app, lost signal). You're never
  * shown as away on your own screen: if your connection is down, the header's "Reconnecting" icon says so.
  */
-export function isAway(p: { connected: boolean; slot: number; noApp?: boolean }, mySlot: number | null): boolean {
-  // A player without the app is at the table, just not on a device.
-  return !p.connected && !p.noApp && p.slot !== mySlot;
+export function isAway(p: { connected: boolean; slot: number; noApp?: boolean; isBot?: boolean }, mySlot: number | null): boolean {
+  // A player without the app is at the table, just not on a device; a bot is never connected.
+  return !p.connected && !p.noApp && !p.isBot && p.slot !== mySlot;
 }
 
 /**
