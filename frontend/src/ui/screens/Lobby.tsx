@@ -1,6 +1,6 @@
 // The lobby: the join code to share, who has joined (live), and, once all four are in, the
 // owner's choice of seats. In a real-cards game the owner can also add a player who isn't
-// using the app. When play starts, the board screen takes over (Play.tsx).
+// using the app; in an online game, bots. When play starts, the board screen takes over (Play.tsx).
 
 import {
   Alert,
@@ -34,8 +34,8 @@ function joinLink(code: string): string {
 }
 
 /**
- * The join code, and Share for the invite: the device's share sheet, with the link inside the
- * text. Passed as a separate url, some apps (Outlook) drop it and others move it; one text arrives
+ * The join code, and Share for the invite: the device's share sheet, with a title (the subject,
+ * if it goes by email) and the link inside the text. Passed as a separate url, some apps (Outlook) drop it and others move it; one text arrives
  * the same everywhere. Where the browser can't share there's no button: the code is on screen.
  */
 function ShareCode({ code }: { code: string }) {
@@ -43,8 +43,8 @@ function ShareCode({ code }: { code: string }) {
 
   async function share() {
     try {
-      // The link carries the code.
-      await navigator.share({ text: `Join our game on Bridge Replay: ${joinLink(code)}` });
+      // The link carries the code. Mail apps on Android use the title as the email's subject.
+      await navigator.share({ title: "Join our bridge game", text: `Join our game on Bridge Replay: ${joinLink(code)}` });
     } catch {
       // Share sheet dismissed: the code is on screen to read out anyway.
     }
@@ -89,7 +89,7 @@ function PlayerList({
 }: {
   players: PublicPlayer[];
   mySlot: number | null;
-  /** The owner takes a player without the app back out. */
+  /** The owner takes a player without the app, or a bot, back out. */
   onRemove?: (slot: number) => void;
   seating?: {
     seats: Record<Seat, number>;
@@ -124,10 +124,10 @@ function PlayerList({
                   p ? (
                     <>
                       <PlayerName name={p.name} suffix={p.slot === mySlot ? " (you)" : ""} away={away} />
-                      {(p.isCreator || p.noApp) && (
+                      {(p.isCreator || p.noApp || p.isBot) && (
                         <Box component="span" sx={{ color: "text.secondary", typography: "body2" }}>
                           {" "}
-                          · {p.isCreator ? "Owner" : "Without the app"}
+                          · {p.isCreator ? "Owner" : p.isBot ? "Bot" : "Without the app"}
                         </Box>
                       )}
                     </>
@@ -139,7 +139,7 @@ function PlayerList({
                   primary: { variant: "subtitle1", component: "p", color: !p || away ? "textDisabled" : "textPrimary" },
                 }}
               />
-              {p?.noApp && onRemove && (
+              {(p?.noApp || p?.isBot) && onRemove && (
                 <Button variant="outlined" disabled={seating?.busy} onClick={() => onRemove(p.slot)} aria-label={`Remove ${p.name}`}>
                   Remove
                 </Button>
@@ -234,6 +234,41 @@ function AddWithoutApp({ code }: { code: string }) {
           {error && <Alert severity="error">{error}</Alert>}
         </Stack>
       </SheetDialog>
+    </>
+  );
+}
+
+/**
+ * The owner adds a bot to an online game, in the next free place: one tap, no questions. Their
+ * device bids and plays for it.
+ */
+function AddBot({ code }: { code: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function add() {
+    setBusy(true);
+    setError(null);
+    try {
+      await games.addBot(code);
+      // The bot arrives as a live update.
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <Button variant="outlined" sx={{ mt: 2 }} disabled={busy} onClick={() => void add()}>
+        {busy ? "Adding…" : "Add a bot"}
+      </Button>
+      {error && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
+      )}
     </>
   );
 }
@@ -338,10 +373,13 @@ export function Lobby({ snapshot, onDone }: Props) {
   const creator = snapshot.players.find((p) => p.isCreator);
   const waitingFor = PLACES - snapshot.players.length;
   const ownsCardsGame = !!you?.isCreator && snapshot.mode === "cards";
-  const removePlayer = ownsCardsGame
+  const ownsOnlineGame = !!you?.isCreator && snapshot.mode === "devices";
+  // The owner takes out a player without the app (real cards) or a bot (online).
+  const removePlayer = ownsCardsGame || ownsOnlineGame
     ? (slot: number) => {
         setRemoveError(null);
-        games.removePlayerWithoutApp(snapshot.code, slot).catch((e: Error) => setRemoveError(e.message));
+        const remove = ownsCardsGame ? games.removePlayerWithoutApp : games.removeBot;
+        remove.call(games, snapshot.code, slot).catch((e: Error) => setRemoveError(e.message));
       }
     : undefined;
 
@@ -372,10 +410,12 @@ export function Lobby({ snapshot, onDone }: Props) {
         )}
         {!full && (
           <Typography color="text.secondary" sx={{ mt: 1.5 }}>
-            Waiting for {waitingFor} more {waitingFor === 1 ? "player" : "players"}. Share the code with them.
+            Waiting for {waitingFor} more {waitingFor === 1 ? "player" : "players"} – share the code with them.
+            {ownsOnlineGame && " You can also add bots if you don't have enough players."}
           </Typography>
         )}
         {!full && ownsCardsGame && <AddWithoutApp code={snapshot.code} />}
+        {!full && ownsOnlineGame && <AddBot code={snapshot.code} />}
       </Section>
 
       {full && !you?.isCreator && (
@@ -384,7 +424,8 @@ export function Lobby({ snapshot, onDone }: Props) {
         </Box>
       )}
 
-      {devMode && !full && <DevTools code={snapshot.code} />}
+      {/* Online games have Add a bot instead. */}
+      {devMode && !full && snapshot.mode === "cards" && <DevTools code={snapshot.code} />}
     </Screen>
   );
 }

@@ -18,6 +18,7 @@ import { BiddingSystemDialog } from "./components/BiddingSystemDialog";
 import { HelpDialog } from "./components/HelpDialog";
 import { InstallBanner } from "./components/InstallBanner";
 import { useInstall } from "./install";
+import { BotHintsContext } from "./botHints";
 import { SeatRequestDialog } from "./components/SeatRequestDialog";
 import { formatJoinCode, sameName, seatRequestNews } from "./labels";
 import { Home } from "./screens/Home";
@@ -252,6 +253,7 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [systemOpen, setSystemOpen] = useState(false);
   const [mySystem, setMySystem] = useState(() => profile.biddingSystem());
+  const [botHints, setBotHints] = useState(() => profile.botHints());
   const [leaveError, setLeaveError] = useState<string | null>(null);
 
   /** To Home with your game still current: Home's note about it has Resume. */
@@ -429,10 +431,21 @@ export function App() {
         onLeaveGame={code && snapshot ? () => setDialog("leave") : undefined}
         onInstall={install.canInstall ? () => setDialog("install") : undefined}
         onSystem={() => setSystemOpen(true)}
+        botHints={
+          code && snapshot?.status === "playing" && snapshot.mode !== "cards"
+            ? {
+                on: botHints,
+                onChange: (on) => {
+                  profile.setBotHints(on);
+                  setBotHints(on);
+                },
+              }
+            : undefined
+        }
         reconnecting={reconnecting}
       />
       <InstallBanner open={dialog === "install"} onOpen={() => setDialog("install")} onClose={() => setDialog(null)} />
-      {page}
+      <BotHintsContext.Provider value={botHints}>{page}</BotHintsContext.Provider>
 
       <StartGame open={dialog === "start"} name={name} onClose={() => setDialog(null)} onCreated={enter} />
       <Practice open={dialog === "practice"} name={name} onClose={() => setDialog(null)} onCreated={enter} system={mySystem} onSystem={() => setSystemOpen(true)} />

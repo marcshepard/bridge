@@ -42,6 +42,12 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           them their cards, so they need their hands some other way, such as a printed hand record.
         </li>
         <li>
+          <strong>Short of players?</strong> In an online game, the owner can tap <strong>Add a bot</strong> in
+          the lobby for each empty place. The owner's device bids and plays for the bots, so keep it open while
+          you play. Changed your mind? Tap <strong>Remove</strong> beside the bot. If a friend turns up later,
+          they can join with the code and take over a bot's seat.
+        </li>
+        <li>
           <strong>Seats:</strong> once all four players are in the lobby, the owner sees a seat next to each
           name. The seats start out random. To match where people are sitting, change a player's seat in the
           list. For example, choosing East for North swaps those two players. Then tap <strong>Start game</strong>.
@@ -243,12 +249,19 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
         <li>
           <strong>Bidding:</strong> the auction is written in four columns, West, North, East, South, starting
-          under the dealer; a vulnerable side's names are in red. When it's your turn, tap a level (1 to 7) and
-          then a suit or NT, or tap <strong>Pass</strong>, <strong>X</strong> (double) or <strong>XX</strong>{" "}
-          (redouble). Bids you can't make are greyed out: a bid has to be higher than the last one, you can only
-          double an opponent's bid, and only redouble an opponent's double. The button at the bottom then says
+          under the dealer; each column says who that player is to you, such as <strong>North (partner)</strong>,
+          and a vulnerable side's names are in red. The shaded, outlined box shows whose bid is next. Your hand is
+          under the auction. While someone else bids, the line below your hand says whose bid it is, for example{" "}
+          <strong>East's bid — Neal, on your left</strong>. When it's your turn, the bidding box appears there: tap a
+          level and then a suit or NT, or tap <strong>Pass</strong> (shaded green), or <strong>X</strong> (double) or{" "}
+          <strong>XX</strong> (redouble), shaded red. Only the bids you can make are shown: a bid has to be higher than
+          the last one, you can only double an opponent's bid, and only redouble an opponent's double. For
+          example, after 2♥ the levels start at 2, and at the 2 level only ♠ and NT are left. The button at the bottom then says
           what you picked: tap <strong>Submit 3♥</strong> (or <strong>Submit Pass</strong>, and so on) to make it. A bid
-          can't be taken back.
+          can't be taken back. Under the button is what your bid would tell partner, by your side's bidding
+          system, for example <strong>3♥: invitational raise</strong>. Pick another bid to see what that one means.
+          With <strong>Bot hints</strong> on (see below), it also says <strong>✓ The bot would bid this too</strong>{" "}
+          when the bot would make the same bid with your hand.
         </li>
         <li>
           The auction ends after three passes in a row following a bid. The contract goes in for everyone, and the
@@ -289,20 +302,38 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           <strong>Dummy's turn</strong> in the same green box: play a card from dummy.
         </li>
         <li>
-          To play a card, tap it once to pick it (it lifts up), then tap it again to play it. Cards you can't
-          play right now are greyed out: you have to follow suit when you can. When only one card can be played,
-          it's already picked for you, so one tap plays it. A card can't be taken back once it's played.
+          To play a card, tap it to pick it (it lifts up), then tap <strong>Play</strong> under your cards. The
+          button says which card, for example <strong>Play 7♠</strong>, or <strong>Play 7♠ from dummy</strong>. Changed
+          your mind? Tap another card first. Cards you can't play right now are greyed out: you have to follow suit
+          when you can. When only one card can be played, it's already picked for you. A card can't be taken back
+          once it's played.
+        </li>
+        <li>
+          The other players' boxes show their name, how many cards they have left, and that many cards face down.
         </li>
         <li>
           After the opening lead, dummy's cards are shown to everyone. Declarer plays dummy's cards as well as
-          their own; dummy just watches.
+          their own; dummy just watches. If you're dummy, you can tap <strong>Show hand</strong> in partner's box
+          to look at declarer's cards (and <strong>Hide hand</strong> to put them away). Strict rules don't allow
+          this, but in a friendly game it does no harm: dummy has no cards to play.
         </li>
         <li>
-          When a trick is complete, it stays face up in the middle for a couple of seconds, then turns over by
-          itself (sooner if someone plays to the next trick). Want another look? Tap <strong>See trick 1</strong>{" "}
-          (or whichever trick was last) under the trick, at any time, dummy too; the cards of the trick being
-          played are hidden while you look. Tap <strong>Hide trick 1</strong>, or play a card, to go back. This is friendlier than tournament rules, where you
-          can only ask to see the last trick before your side plays to the next one.
+          When a trick is complete, it stays face up in the middle for a couple of seconds, then goes face down
+          onto the pile under the table, one card back for each trick played (sooner if someone plays to the next
+          trick). Want another look? Tap the pile (<strong>← Tap to review last trick</strong>), at any time, dummy
+          too: the last trick turns face up in the middle, and the cards of the trick being played are hidden while
+          you look. Tap the pile again to go back. While you're looking back you can't pick or play a card (or
+          claim), so you never play without seeing the trick in front of you; if it becomes your turn, a banner says{" "}
+          <strong>It's your turn to play to trick 3. Tap here to close trick 2.</strong> Tap the banner to go back. This is
+          friendlier than tournament rules, where you can only ask to see the last trick before your side plays to
+          the next one.
+        </li>
+        <li>
+          <strong>Bot hints:</strong> tap your initial at the top right and turn on <strong>Bot hints</strong> (it's
+          off to start with, and only there during a game played online or a practice). Then, when the bid or card
+          you've picked is the one the bot would choose with your cards, it says{" "}
+          <strong>✓ The bot would bid this too</strong> (or <strong>play</strong>). It doesn't tell you the bot's
+          choice: try a few and see which gets the tick.
         </li>
         <li>
           <strong>Claim:</strong> when you know how the rest will go, tap <strong>Claim</strong> and say how many

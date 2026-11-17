@@ -1,5 +1,4 @@
-import { Box, ButtonBase, Typography } from "@mui/material";
-import { useEffect, useState } from "react";
+import { Box, ButtonBase, type Theme, Typography } from "@mui/material";
 import type { Card } from "../../core/play";
 import { type Hand as HandT, type Seat, type Strain, type Suit, SEAT_NAMES, SUIT_SYMBOLS } from "../../core/types";
 import { StrainSymbol, SUIT_NAMES } from "../controls/BridgeText";
@@ -26,15 +25,15 @@ interface TilesProps {
   /** A shorter fan (for dummy): the corner index stays full size, less card shows below it. */
   short?: boolean;
   /**
-   * Makes the cards playable: tap a card to pick it (it lifts), tap it again to play it. Cards
-   * `canPlay` rejects are greyed out; tapping one calls `onBlocked` (to say why).
+   * Makes the cards pickable: tap a card to pick it (it lifts); a Play button elsewhere plays it.
+   * Cards `canPlay` rejects are greyed out; tapping one calls `onBlocked` (to say why).
    */
   play?: {
     canPlay: (card: Card) => boolean;
-    onPlay: (card: Card) => void;
+    /** The card picked in this hand, if any. */
+    picked: Card | null;
+    onPick: (card: Card) => void;
     onBlocked?: (card: Card) => void;
-    /** A card already picked for you (your only legal card), so one tap plays it. */
-    preselect?: Card | null;
   };
   /**
    * During card play: sized for a full 13 cards, centred, and always with room above for a picked
@@ -52,15 +51,14 @@ interface TilesProps {
  * row's width with container query units, so the cards fill the row exactly on any screen and the
  * corner index is as big as the strip allows. That's why the sizes here are ratios, not theme units.
  *
- * When playable, a picked card lifts without coming to the front: its full width shows above the
- * fan for the second tap, and the cards beside it stay where they were, so a tap meant for a
- * neighbour can't play it.
+ * When playable, a picked card lifts without coming to the front, so you can see which it is, and
+ * the cards beside it stay where they were.
  */
 export function HandTiles({ hand, trump, label = "Your cards", short = false, play, inPlay = false }: TilesProps) {
-  const [picked, setPicked] = useState<string | null>(null);
+  const picked = play?.picked ? play.picked.suit + play.picked.rank : null;
   const cards = handSuitOrder(trump).flatMap((s) => [...hand[s]].map((r) => ({ suit: s, rank: r })));
   const strip = (k: number) => `calc(var(--strip) * ${k})`;
-  const cardHeight = CARD_WIDTH * (short ? 0.9 : 1.4);
+  const cardHeight = CARD_WIDTH * (short ? 0.9 : CARD_RATIO);
   const faceSx = (suit: Suit) => ({
     display: "block",
     position: "relative",
@@ -76,24 +74,10 @@ export function HandTiles({ hand, trump, label = "Your cards", short = false, pl
     textAlign: "left",
   }) as const;
 
-  // A pick only lasts while it's your turn.
-  useEffect(() => {
-    if (!play) setPicked(null);
-  }, [!play]);
-  const preselected = play?.preselect ? play.preselect.suit + play.preselect.rank : null;
-  useEffect(() => {
-    if (preselected) setPicked(preselected);
-  }, [preselected]);
-
   function tap(card: Card) {
     if (!play) return;
-    if (!play.canPlay(card)) {
-      setPicked(null);
-      play.onBlocked?.(card);
-    } else if (picked === card.suit + card.rank) {
-      setPicked(null);
-      play.onPlay(card);
-    } else setPicked(card.suit + card.rank);
+    if (!play.canPlay(card)) play.onBlocked?.(card);
+    else play.onPick(card);
   }
 
   return (
@@ -145,7 +129,8 @@ export function HandTiles({ hand, trump, label = "Your cards", short = false, pl
               {play ? (
                 <ButtonBase
                   onClick={() => tap(card)}
-                  aria-label={isPicked ? `${name}, picked. Tap again to play it` : blocked ? `${name}, can't be played now` : name}
+                  aria-label={isPicked ? `${name}, picked` : blocked ? `${name}, can't be played now` : name}
+                  aria-pressed={isPicked}
                   sx={{
                     ...faceSx(suit),
                     borderColor: isPicked ? "primary.main" : "card.edge",
@@ -165,6 +150,61 @@ export function HandTiles({ hand, trump, label = "Your cards", short = false, pl
             </Box>
           );
         })}
+      </Box>
+    </Box>
+  );
+}
+
+/**
+ * How a card's back looks, wherever one is drawn (hidden hands, the trick pile): the gold back with
+ * a fine diagonal lattice in a darker gold, as printed card backs have, inside a thin pale frame.
+ */
+export function cardBackSx(t: Theme, frame: string) {
+  const line = `rgba(${t.vars!.palette.secondary.darkChannel} / 0.45)`;
+  const lattice = (angle: number) => `repeating-linear-gradient(${angle}deg, ${line} 0 1px, transparent 1px 5px)`;
+  return {
+    bgcolor: "secondary.main",
+    backgroundImage: `${lattice(45)}, ${lattice(-45)}`,
+    border: 1,
+    borderColor: "card.edge",
+    boxShadow: `inset 0 0 0 ${frame} ${t.vars!.palette.card.face}, ${t.vars!.shadows[1]}`,
+  } as const;
+}
+
+/** A card is about 1.4 times as tall as it's wide, as real ones are. */
+const CARD_RATIO = 1.4;
+
+/**
+ * A hand you can't see: its cards face down, as a fan with the same shape and proportions as
+ * `HandTiles` (taller than wide, like real cards). Sized for 13 cards across the row, so a card
+ * keeps its size as cards are played, and centred.
+ */
+export function CardBacksFan({ count }: { count: number }) {
+  const strip = (k: number) => `calc(var(--strip) * ${k})`;
+  return (
+    <Box sx={{ containerType: "inline-size" }}>
+      <Box
+        aria-hidden
+        sx={{
+          "--strip": `calc(100cqi / ${12 + CARD_WIDTH})`,
+          display: "flex",
+          justifyContent: "center",
+          minHeight: strip(CARD_WIDTH * CARD_RATIO),
+        }}
+      >
+        {Array.from({ length: count }, (_, i) => (
+          <Box
+            key={i}
+            sx={(t) => ({
+              flexShrink: 0,
+              width: strip(CARD_WIDTH),
+              height: strip(CARD_WIDTH * CARD_RATIO),
+              ml: i === 0 ? 0 : strip(1 - CARD_WIDTH),
+              ...cardBackSx(t, strip(0.1)),
+              borderRadius: strip(0.18),
+            })}
+          />
+        ))}
       </Box>
     </Box>
   );

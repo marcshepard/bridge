@@ -40,6 +40,22 @@ sitting there in plain sight.
   during a claim; everything once the board has a result), and every screen that reads
   `board.hands` would cope with hands it doesn't have yet. Much more work than the problem deserves.
 
+## Feedback from the first online game: what's left
+
+The rest of that feedback is built (see DESIGN.md). Still open:
+
+- **Share without a share sheet.** In browsers with no share sheet (Firefox on a computer, Chrome
+  on Linux, plain http, some in-app browsers) the lobby shows the join code with no Share button.
+  On hold until we know Neal's device and browser; the likely fix is a "Copy link" fallback, and
+  the same control beside the join code on the play screen.
+- **Bot hints in games against people.** Each player turns hints on for themselves. Decide whether
+  the owner should be able to turn them off for a game.
+- **The play hint and the play review.** Check whether the bots' card choice is repeatable (seeded,
+  like the bidding simulation). If not, on a close decision "✓ The bot would play this too" could
+  disagree with the play review.
+- **Bots at a shared table.** A "Waiting for Marc's device to play for the bot" message when the
+  owner's device is asleep or gone, and friendlier bot names than "Bot 3".
+
 ## Reviews of earlier boards, for everyone
 
 The bidding and play reviews open from a board's result screen. Only the game's owner can look back

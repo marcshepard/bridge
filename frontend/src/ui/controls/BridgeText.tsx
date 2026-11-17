@@ -13,7 +13,7 @@ export const SUIT_NAMES: Record<Suit, string> = { S: "spades", H: "hearts", D: "
  * ♠ ♥ ♦ ♣, or "NT". Hearts and diamonds in the theme's red; spades and clubs in full-strength text
  * colour (black, or white in dark mode), not the grey of the text around them, so red and black
  * never look alike. On a filled background (a picked toggle, a contained button) they take its text
- * colour instead.
+ * colour instead, and on a disabled button its grey, so it looks as off as the rest.
  */
 export function StrainSymbol({ strain }: { strain: Strain }) {
   if (strain === "NT") return <>NT</>;
@@ -25,6 +25,7 @@ export function StrainSymbol({ strain }: { strain: Strain }) {
       sx={{
         color: red ? "error.main" : "text.primary",
         ...(!red && { ".Mui-selected &, .MuiButton-contained &": { color: "inherit" } }),
+        ".Mui-disabled &": { color: "inherit" },
       }}
     >
       {SUIT_SYMBOLS[strain]}

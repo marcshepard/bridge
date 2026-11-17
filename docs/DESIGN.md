@@ -363,11 +363,23 @@ played. If a board somehow hasn't started, the owner has **Play online**.
 
 - **The auction** (`ui/screens/BidHand.tsx`): the same status strip as the play table
   (`TurnStrip`: "Bidding" and the dealer, whose turn it is, who's vulnerable), then the auction in
-  four columns, West North East South, with the players' names (red when vulnerable), the first
-  call under the dealer and the next place to call marked. Below it a bidding box: levels 1–7,
-  the five strains, Pass, X and XX, greyed out when not your turn or not allowed (`canCall` in
-  `core/auction.ts`). Tap a level then a strain (or Pass, X, XX), and the call shows at the bottom
-  with one contained button to make it ("Submit 3♥", "Submit Pass"); no undo. Your hand is below.
+  four columns, West North East South (each headed "North (partner)" and so on, then the player's
+  name; the direction red when vulnerable), the first call under the dealer and the next place to
+  call shaded and outlined in the primary colour, like the play table's seat whose turn it is.
+  Your hand is next, then, on your turn only, the bidding box (scrolled into view): levels 1–7, the
+  five strains, Pass, and X or XX. Only calls you can make are shown (`canCall` in
+  `core/auction.ts`); the others leave empty places, so every button keeps its place (`hidden` in
+  `ChoiceGroup`). Pass sits left, X or XX (never both) right; they look like the other buttons
+  but with a light shade behind them, green for Pass and red for X and XX (`BID_COLOURS` in
+  `theme.ts`, palette roles), as on club bidding cards. Suit symbols grey out with a disabled
+  button (before a level is picked). Tap a level then a strain (or Pass, X, XX), and the call
+  shows at the bottom with one contained button to make it ("Submit 3♥", "Submit Pass"); no undo.
+  Under it, what the picked call means by your side's card (`readAuction` with the call added,
+  the same reading as the bidding review; a call no rule covers says it's read as natural), and,
+  with Bot hints on, "✓ The bot would bid this too" when the pick matches the bot's call for your
+  hand (worked out as your turn starts, hard calls by the same seeded simulation as the review).
+  Nothing when it doesn't: a nudge to try bids, not the answer. On
+  anyone else's turn the box is replaced by one line: "East's bid — Neal, on your left".
 - **Ending the auction:** three passes after a bid put the contract and declarer in the result
   (the backend works them out with `auctionResult`), and the play table takes over. Four passes
   save the board as passed out; the finished auction stays on screen for 3 seconds, like the play
@@ -391,18 +403,34 @@ played. If a board somehow hasn't started, the owner has **Play online**.
 - **Dummy** goes down after the opening lead. Declarer's dummy is always partner, so it's opposite
   only when you're declarer: a short fan you tap to play from. On your left or right (you're
   defending) it's a read-only suit-per-row list, never rotated. Declarer plays dummy's cards;
-  dummy's player only watches, with their own cards at the bottom.
-- **Tap to pick, tap again to play.** A picked card lifts without coming to the front, so a tap
-  meant for a neighbour can't play it. Unplayable cards are greyed out and say why when tapped. When
-  only one card is legal it's picked already: one tap plays it. No undo (a card shown to partner
-  can't be taken back).
+  dummy's player only watches, with their own cards at the bottom. Dummy's player can tap **Show
+  hand** in declarer's box to see declarer's cards (not strict bridge; hidden again each board).
+- **Other seats** you can't see into show the player's name, the card count and that many
+  cards face down (`CardBacksFan` in `components/Hand.tsx`: the same card shape and proportions as
+  dummy's fan, sized for 13 across the box, so a card keeps its size as the hand shrinks).
+- **Tap to pick, then Play** (as a bid and Submit): a picked card lifts without coming to the
+  front, and a contained **Play 7♠** button under your hand plays it ("from dummy" for dummy's
+  card), with Claim beside it. Tapping a card never plays it. Unplayable cards are greyed out and say
+  why when tapped. When only one card is legal it's picked already. No undo (a card shown to
+  partner can't be taken back). With Bot hints on, "✓ The bot would play this too" shows under the
+  button when the pick matches the bot's card (`decideCard`, worked out as your turn starts).
 - **The trick:** a fixed-size compass in the middle. Friendlier than tournament rules: a finished
-  trick shows face up for 2 seconds (`TURN_OVER_MS`), then turns over by itself, or as soon as
-  anyone plays to the next trick. The bots' lead waits until it has turned over, so it lands on a
-  clear table. Anyone, dummy included, can tap **See trick N** (an outlined button under the trick's
-  caption) at any time to look at the last trick again (the current trick's cards are hidden
-  meanwhile); **Hide trick N** or playing a card goes back. The board's last trick stays face up,
-  and can be hidden and shown the same way.
+  trick shows face up for 2 seconds (`TURN_OVER_MS`), then goes face down onto the pile (or as soon
+  as anyone plays to the next trick). The bots' lead waits until it has turned over, so it lands
+  on a clear table. The pile sits in a fixed-height row under the trick row (`TrickRow`), so nothing
+  below moves: a small, tightly overlapped fan of card backs, one per trick played. It's the button:
+  anyone, dummy included, can tap it at any time to turn the last trick face up in the middle (the
+  current trick's cards are hidden meanwhile); tapping it again goes back. While you're looking
+  back, your cards can't be picked and Play and Claim are greyed out, so nobody plays without seeing
+  the trick; a card picked before stays picked. (During a trick's 2 seconds face up as it's won,
+  nothing is blocked: playing to the next trick closes it.) Beside
+  it, "← Tap to review last trick" while closed, nothing while open, and, when it's your turn and
+  you're looking back, the whole row becomes one warning-coloured button, without the pile: "It's
+  your turn to play to trick 3. Tap here to close trick 2." Before any trick is won the row says who led trick 1. The board's last trick
+  stays face up, and can be hidden and shown the same way.
+- **Bot hints** (avatar menu, only during a game on the devices; off by default, kept on the device,
+  `ProfileStore.botHints`): the bidding and play ticks above. A React context (`ui/botHints.ts`)
+  carries the setting to both screens.
 - **Claims:** a player (not dummy) claims how many of the tricks left their side will take. Their
   hand is shown to everyone and play stops. The claimer's opponents answer, but never dummy: when a
   defender claims, declarer answers alone. One refusal ends the claim and play goes on; the
@@ -484,7 +512,10 @@ runs it (its CPU allowance per request is far too small).
 
 ### Bots at the table
 
-Practice games (and dev test players) put bots in seats. A "Start demo game" on Home (the made-up
+Practice games (and dev test players) put bots in seats, and the owner of an online game can add
+them in the lobby with **Add a bot** (one tap per place, each with a **Remove** beside it, like a
+player without the app in a real-cards game; not offered in real-cards games, since a bot can't hold
+real cards). Bots are never shown as away: they have no device. A "Start demo game" on Home (the made-up
 demo game from board 9, with bots, played with real cards) was removed once practice and importing
 from a phone covered trying the app alone.
 
@@ -498,7 +529,8 @@ The same goes for dev test players. A person who takes over a bot's seat stops b
 
 ### Dev mode: simulated players
 
-- **Fill with test players** (dev builds only): a lobby button that adds Bot 2, Bot 3 and Bot 4 (the
+- **Fill with test players** (dev builds only, real-cards games; online games have Add a bot): a
+  lobby button that adds Bot 2, Bot 3 and Bot 4 (the
   number is the order they joined) so a game starts immediately and every board can be played from one device. Nothing else
   is needed from the test players: the owner enters the results and moves the table on.
 - **Several identities in one browser:** a dev-only URL option `?as=2` gives a tab its own player
@@ -602,6 +634,8 @@ the player with `isCreator`; there's no separate host key.
 | `POST /api/events/:code/players` | Anyone with the code | Join the lobby: `{ name }` → `{ code, playerId, slot }`. Closed once play starts or with 4 players |
 | `POST /api/events/:code/players/no-app` | Owner | Real-cards games, in the lobby: add a player without the app, `{ name }` → `{ slot }` |
 | `DELETE /api/events/:code/players/no-app/:slot` | Owner | In the lobby: take a player without the app back out |
+| `POST /api/events/:code/players/bot` | Owner | Online games, in the lobby: add a bot in the next free place ("Bot 3") → `{ slot }` |
+| `DELETE /api/events/:code/players/bot/:slot` | Owner | In the lobby: take a bot back out |
 | `PUT /api/events/:code/current` | Owner | `{ board }`: move the table to a board; pushed to everyone as `board`. On the devices, starts its auction (refused while another board is being played) |
 | `POST /api/events/:code/skip-board` | Owner | `{ board }`: skip the current unscored real-cards board. Stores `SKIP` with no tricks, moves on if there's another board, and pushes `boardSkipped`. |
 | `DELETE /api/events/:code/players/me` | A player | Leave the lobby (frees the place). If the creator leaves the lobby, the game is cancelled |

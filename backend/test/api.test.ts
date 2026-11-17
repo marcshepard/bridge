@@ -887,6 +887,37 @@ describe("players without the app", () => {
   });
 });
 
+describe("bots in online games", () => {
+  it("are added by the owner, to online games in the lobby, and can be taken out again", async () => {
+    const created = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, mode: "devices" })).json;
+    const { code } = created;
+    const ann = (await api<JoinedResponse>("POST", `/events/${code}/players`, { name: "Ann" })).json;
+    const add = (id = created.playerId, at = code) => api<{ slot: number }>("POST", `/events/${at}/players/bot`, {}, id);
+    expect((await add(ann.playerId)).status).toBe(403);
+    expect((await add()).json).toEqual({ slot: 3 });
+    let snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
+    expect(snap.players.find((p) => p.slot === 3)).toMatchObject({ name: "Bot 3", isBot: true, noApp: false });
+    expect((await api("DELETE", `/events/${code}/players/bot/2`, undefined, created.playerId)).status).toBe(404); // Ann is a person
+    expect((await api("DELETE", `/events/${code}/players/bot/3`, undefined, ann.playerId)).status).toBe(403);
+    expect((await api("DELETE", `/events/${code}/players/bot/3`, undefined, created.playerId)).status).toBe(204);
+    snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
+    expect(snap.players.map((p) => p.name)).toEqual(["Marc", "Ann"]);
+
+    // Two more fill the table; a fifth place doesn't exist.
+    await add();
+    await add();
+    expect((await add()).status).toBe(409);
+
+    const cards = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, mode: "cards" })).json;
+    expect((await add(cards.playerId, cards.code)).status).toBe(409);
+  });
+
+  it("can't be added once play has started", async () => {
+    const { code, creator } = await gameInPlay("devices");
+    expect((await api("POST", `/events/${code}/players/bot`, {}, creator.playerId)).status).toBe(409);
+  });
+});
+
 // ---- Nightly clean-up ------------------------------------------------------------------------------
 
 describe("nightly clean-up", () => {
