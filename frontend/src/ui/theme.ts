@@ -97,6 +97,11 @@ export const theme = createTheme({
     MuiAvatar: {
       styleOverrides: { colorDefault: { backgroundColor: "#ffffff", color: TABLE_GREEN, fontWeight: 700 } },
     },
+    // A <button> doesn't inherit the page font; without this, anything built on ButtonBase (a
+    // playable card, a banner) switches to the browser's button font when it becomes tappable.
+    MuiButtonBase: {
+      styleOverrides: { root: { fontFamily: "inherit" } },
+    },
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: { root: ({ theme }) => ({ minHeight: theme.spacing(5.5) }) },
