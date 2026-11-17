@@ -145,9 +145,6 @@ export interface ProfileStore {
    */
   biddingSystem(): SystemSettings;
   setBiddingSystem(system: SystemSettings): void;
-  /** In this practice game, the bots bid your seat too (you watch). */
-  botsBidForMe(code: string): boolean;
-  setBotsBidForMe(code: string, on: boolean): void;
   /** Show bot hints ("✓ The bot would bid this too") while bidding and playing on the devices. Off unless turned on. */
   botHints(): boolean;
   setBotHints(on: boolean): void;

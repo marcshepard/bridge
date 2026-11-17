@@ -4,11 +4,10 @@
 // contract goes in and the play table takes over; passed out, the board is done.
 //
 // Bots bid by themselves: the game owner's device makes their calls, by the rules in core/bidding,
-// after a short pause so everyone can follow. In bidding practice the bots can bid your seat too
-// ("Bots bid for me"), and then they go quicker.
+// after a short pause so everyone can follow.
 // (Players see "bid" for every call, Pass and doubles included; "call" is only the code's word.)
 
-import { Box, Button, FormControlLabel, Switch, Typography } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Call, auctionResult, canCall, isAuctionOver, toCall } from "../../core/auction";
 import { chooseCall, chooseCallWithSimulation, readAuction } from "../../core/bidding/bidder";
@@ -22,7 +21,7 @@ import { AuctionTable } from "../components/Auction";
 import { HandTiles } from "../components/Hand";
 import { CallText, ContractText, StrainSymbol, SuitString, callWords } from "../controls/BridgeText";
 import { ChoiceGroup } from "../controls/ChoiceGroup";
-import { Panel, Section } from "../controls/Layout";
+import { Section } from "../controls/Layout";
 import { TurnStrip } from "../controls/TurnStrip";
 import { playerPlace } from "../labels";
 import { useBotHints } from "../botHints";
@@ -32,8 +31,6 @@ const STRAIN_WORDS: Record<Strain, string> = { C: "Clubs", D: "Diamonds", H: "He
 
 /** How long a bot takes over its call, so the table can follow the auction. */
 const BOT_DELAY_MS = 1200;
-/** Quicker when the bots bid every seat (you're watching): you'll read it all in the review. */
-const WATCH_DELAY_MS = 350;
 
 interface Props {
   board: Board;
@@ -43,12 +40,10 @@ interface Props {
   away: Record<Seat, boolean>;
   /** Seats held by bots (practice games, dev test players). */
   bots: Seat[];
-  /** The seats this device makes the bots' calls for (the owner's device: the bots, and in practice perhaps your own). */
+  /** The seats this device makes the bots' calls for (on the owner's device, the bots' seats). */
   autoSeats: Seat[];
   /** The card each side bids by. */
   systems: TableSystems;
-  /** Bidding practice: the "Bots bid for me" switch. */
-  watch?: { on: boolean; onChange: (on: boolean) => void; label?: string };
   /** The calls so far, in order. */
   calls: Call[];
   /** Sends a call (`seq` is its number in the auction, from 1); rejects with the reason if it's refused. */
@@ -60,9 +55,9 @@ export function BidHand(p: Props) {
   const dealer = board.dealer;
   const over = isAuctionOver(calls);
   const caller = toCall(dealer, calls);
-  // A call this device makes by the bot's rules: a bot's (on the owner's device), or yours when the bots bid for you.
+  // A call this device makes by the bot's rules: a bot's (on the owner's device).
   const auto = !over && p.autoSeats.includes(caller);
-  const mine = !over && caller === seat && !auto;
+  const mine = !over && caller === seat;
 
   const [level, setLevel] = useState<number | null>(null);
   const [picked, setPicked] = useState<Call | null>(null);
@@ -81,15 +76,14 @@ export function BidHand(p: Props) {
     setHint(null);
   }, [calls.length]);
 
-  // The bots' calls: after a pause (shorter when you're watching them bid your seat too). If the
-  // call is refused (another device got there first, say), the next update starts the timer again.
-  const watching = !!p.watch?.on;
+  // The bots' calls: after a pause. If the call is refused (another device got there first, say),
+  // the next update starts the timer again.
   // A hard call is decided by simulation (double dummy over deals that fit the auction), worked out
   // during the pause, so the bot takes no longer unless the simulation does.
   useEffect(() => {
     if (!auto) return;
     let cancelled = false;
-    const pause = new Promise((resolve) => setTimeout(resolve, watching ? WATCH_DELAY_MS : BOT_DELAY_MS));
+    const pause = new Promise((resolve) => setTimeout(resolve, BOT_DELAY_MS));
     const decision = chooseCallWithSimulation(board.hands[caller], { dealer, vul: board.vul }, calls, p.systems, doubleDummy).catch(
       // If the solver fails, the rules of thumb still give a call.
       () => chooseCall(board.hands[caller], { dealer, vul: board.vul }, calls, p.systems),
@@ -100,7 +94,7 @@ export function BidHand(p: Props) {
     return () => {
       cancelled = true;
     };
-  }, [auto, calls.length, caller, watching]);
+  }, [auto, calls.length, caller]);
 
   // What the bot would bid with your hand here, worked out as your turn starts (a hard call by the
   // same seeded simulation as the bidding review, so the two agree). Only used to say so when your
@@ -151,10 +145,8 @@ export function BidHand(p: Props) {
   const turn = over
     ? ""
     : caller === seat
-      ? auto
-        ? "Bot bidding for you"
-        : "Your turn"
-      : `${SEAT_NAMES[caller]}'s turn${p.bots.includes(caller) ? " (bot)" : awayNote}`;
+      ? "Your turn"
+      :`${SEAT_NAMES[caller]}'s turn${p.bots.includes(caller) ? " (bot)" : awayNote}`;
   const vulText = { None: "None vul", NS: "N/S vul", EW: "E/W vul", Both: "Both vul" }[board.vul];
 
   return (
@@ -195,13 +187,6 @@ export function BidHand(p: Props) {
       </Typography>
 
       <AuctionTable dealer={dealer} vul={board.vul} names={names} calls={calls} seat={seat} />
-      {p.watch && (
-        <FormControlLabel
-          sx={{ mt: 1 }}
-          control={<Switch checked={p.watch.on} onChange={(e) => p.watch!.onChange(e.target.checked)} />}
-          label={p.watch.label ?? "Bots bid for me"}
-        />
-      )}
 
       {/* Your hand sits above the bidding box, so it stays put while the box comes and goes below it. */}
       <Section title={`Your hand (${hcp(board.hands[seat])} HCP)`} id="your-hand" tight>
@@ -209,8 +194,8 @@ export function BidHand(p: Props) {
       </Section>
 
       {/*
-        The bidding box, under its own heading and in a panel, so it reads as the place you act
-        rather than part of the auction above. Only on your turn, and with only the bids you can
+        The bidding box, under its own heading so it reads as the place you act rather than part of
+        the auction above (no panel around it: it took room and the heading does the job). Only on your turn, and with only the bids you can
         make: the rest leave empty places, so every button keeps its place from one turn to the next.
         On someone else's turn, just whose bid it is.
       */}
@@ -218,7 +203,7 @@ export function BidHand(p: Props) {
         <Box ref={boxRef}>
           {mine ? (
             <Section title="Your bid" id="your-bid">
-              <Panel>
+              <Box>
                 <ChoiceGroup
                   value={level}
                   disabled={busy}
@@ -304,11 +289,7 @@ export function BidHand(p: Props) {
                     ✓ The bot would bid this too
                   </Typography>
                 )}
-              </Panel>
-            </Section>
-          ) : caller === seat ? (
-            <Section title="Your bid" id="your-bid">
-              <Typography color="text.secondary">The bots are bidding for you.</Typography>
+              </Box>
             </Section>
           ) : (
             <Section

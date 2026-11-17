@@ -306,7 +306,18 @@ export function PlayHand(p: Props) {
     const count = Object.values(state.hands[s]).join("").length;
     const peekable = canPeek && s === declarer;
     return (
-      <SeatBox key={s} active={!over && !claim && turn === s} title={peekable && peek ? `${SEAT_NAMES[s]}: partner's hand` : SEAT_NAMES[s]}>
+      <SeatBox
+        key={s}
+        active={!over && !claim && turn === s}
+        title={SEAT_NAMES[s]}
+        action={
+          peekable && (
+            <Button variant="outlined" size="small" onClick={() => setPeek(!peek)}>
+              {peek ? "Hide hand" : "Show hand"}
+            </Button>
+          )
+        }
+      >
         <Typography variant="body2" color="text.secondary" component="div">
           <PlayerName name={names[s]} away={away[s]} /> · {count} {count === 1 ? "card" : "cards"}
         </Typography>
@@ -316,11 +327,6 @@ export function PlayHand(p: Props) {
           <Box sx={{ mt: 0.5 }}>
             <CardBacksFan count={count} />
           </Box>
-        )}
-        {peekable && (
-          <Button variant="outlined" size="small" sx={{ mt: 0.5 }} onClick={() => setPeek(!peek)}>
-            {peek ? "Hide hand" : "Show hand"}
-          </Button>
         )}
       </SeatBox>
     );
@@ -370,7 +376,7 @@ export function PlayHand(p: Props) {
                 <ContractText contract={p.contract.contract} />
               </Typography>
               <Typography variant="caption" component="span" color="text.secondary" sx={{ display: "block" }} noWrap>
-                by {SEAT_NAMES[declarer]} · auction
+                by {SEAT_NAMES[declarer]}
               </Typography>
             </Button>
           ) : (
@@ -550,21 +556,30 @@ function ClaimDialog({ left, onClose, onClaim }: { left: number; onClose: () => 
   );
 }
 
-function SeatBox({ title, active, children }: { title: string; active: boolean; children: ReactNode }) {
+/**
+ * One seat's box: a caption title (always the same size), and optionally a button at the top right
+ * (dummy's Show hand). The button is taller than the caption, so the box gives back that space:
+ * less padding above, and no gap below the title row.
+ */
+function SeatBox({ title, active, action, children }: { title: string; active: boolean; action?: ReactNode; children: ReactNode }) {
   return (
     <Paper
       variant="outlined"
       sx={{
         p: 1,
+        ...(action && { pt: 0.5 }),
         ...(active && {
           borderColor: "primary.main",
           bgcolor: "action.selected",
         }),
       }}
     >
-      <Typography variant="caption" component="p" color="text.secondary" sx={{ mb: 0.5 }}>
-        {title}
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: action ? 0 : 0.5 }}>
+        <Typography variant="caption" component="p" color="text.secondary">
+          {title}
+        </Typography>
+        {action}
+      </Box>
       {children}
     </Paper>
   );

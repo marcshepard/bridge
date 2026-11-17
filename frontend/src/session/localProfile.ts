@@ -15,8 +15,6 @@ interface Profile {
   /** When the current game was last on screen (ms since 1970), to decide where the app opens. */
   lastInGameAt: number | null;
   installBannerClosed: boolean;
-  /** Practice games in which the bots bid your seat too. */
-  botsBidForMe: string[];
   /** Bot hints on (off unless turned on). */
   botHints: boolean;
   /** Your bidding system; checked on reading, so an old or damaged one falls back to SAYC. */
@@ -56,7 +54,6 @@ export class LocalProfileStore implements ProfileStore {
           currentGameInfo: readInfo(p.currentGameInfo),
           lastInGameAt: p.lastInGameAt ?? null,
           installBannerClosed: p.installBannerClosed ?? false,
-          botsBidForMe: p.botsBidForMe ?? [],
           botHints: p.botHints === true,
           biddingSystem: parseSystemSettings(p.biddingSystem),
         };
@@ -64,7 +61,7 @@ export class LocalProfileStore implements ProfileStore {
     } catch {
       // Unreadable or unavailable: start fresh.
     }
-    return { name: "", playerIds: {}, currentGame: null, currentGameInfo: null, lastInGameAt: null, installBannerClosed: false, botsBidForMe: [], botHints: false, biddingSystem: parseSystemSettings(null) };
+    return { name: "", playerIds: {}, currentGame: null, currentGameInfo: null, lastInGameAt: null, installBannerClosed: false, botHints: false, biddingSystem: parseSystemSettings(null) };
   }
 
   private write(): void {
@@ -95,7 +92,6 @@ export class LocalProfileStore implements ProfileStore {
 
   forget(code: string): void {
     delete this.profile.playerIds[code];
-    this.profile.botsBidForMe = this.profile.botsBidForMe.filter((c) => c !== code);
     if (this.profile.currentGame === code) this.setCurrentGame(null);
     this.write();
   }
@@ -138,14 +134,6 @@ export class LocalProfileStore implements ProfileStore {
     this.write();
   }
 
-  botsBidForMe(code: string): boolean {
-    return this.profile.botsBidForMe.includes(code);
-  }
-
-  setBotsBidForMe(code: string, on: boolean): void {
-    this.profile.botsBidForMe = [...this.profile.botsBidForMe.filter((c) => c !== code), ...(on ? [code] : [])];
-    this.write();
-  }
 
   botHints(): boolean {
     return this.profile.botHints;

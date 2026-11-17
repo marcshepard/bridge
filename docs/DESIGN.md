@@ -484,9 +484,8 @@ type `devices`) bids and plays each board on the devices. In **bidding only** (g
 `bidding`) each board is only bid: when the auction ends, the backend scores the contract with the game file's double-dummy tricks (a board
 without them ends with just its contract, unscored), and the result screen shows the bidding
 review inline: the auction with every call tappable for its meaning and reason, and your calls
-compared with the bot's. Every practice starts with you in your own seat; "Bots bid for me" ("Bots
-bid and play for me" with play) on the bidding screen, remembered on the device per game, lets the
-bots take your seat too, faster, so you can watch. The goals, design and stages are in [BOT.md](BOT.md).
+compared with the bot's. You always bid and play your own seat; the "Bots bid for me" switch (the
+bots taking your seat too) was removed, since the reviews already show what the bots would do. The goals, design and stages are in [BOT.md](BOT.md).
 
 ### Bidding systems
 

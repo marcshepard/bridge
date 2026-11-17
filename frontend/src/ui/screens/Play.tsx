@@ -23,7 +23,7 @@ import type { CallDto, ClaimDto, EventSnapshot, PlayDto, ResultDto, SkipBoardRes
 import { callCode, isAuctionOver, parseCall } from "../../core/auction";
 import { parseContract } from "../../core/contract";
 import { cardCode, parseCard } from "../../core/play";
-import { doubleDummy, games, profile } from "../../services";
+import { doubleDummy, games } from "../../services";
 import { BoardInfoDialog, BreakdownDialog, FieldDialog } from "../components/BoardDialogs";
 import { BiddingSystemDialog } from "../components/BiddingSystemDialog";
 import { TallyDialog } from "../components/TallyDialog";
@@ -68,17 +68,14 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onSkipped, onCall
   const isOwner = snapshot.you?.isCreator ?? false;
   const practice = snapshot.mode === "bidding";
   const bots = snapshot.players.filter((pl) => pl.isBot && pl.seat).map((pl) => pl.seat!);
-  // On your own with three bots (practice): the bots can bid, and play, your seat too
-  // (remembered on this device, per game).
-  const withBotsOnly = isOwner && bots.length === 3;
-  // Bidding-and-play practice: the result screen shows the bidding and play reviews, not buttons for them.
-  const practicePlay = withBotsOnly && snapshot.mode === "devices";
-  const [watch, setWatch] = useState(() => withBotsOnly && profile.botsBidForMe(snapshot.code));
+  // On your own with three bots, bidding and playing (practice, or an online game filled with bots):
+  // the result screen shows the bidding and play reviews, not buttons for them.
+  const practicePlay = isOwner && bots.length === 3 && snapshot.mode === "devices";
   // The card each side bids by (fixed when the game started), for the bots and the review.
   const systems = useMemo(() => tableSystems(snapshot.players), [snapshot.players]);
   const [cardsOpen, setCardsOpen] = useState(false);
-  // The owner's device makes the bots' calls (and yours, when you're watching them).
-  const autoSeats: Seat[] = isOwner ? [...bots, ...(withBotsOnly && watch ? [seat] : [])] : [];
+  // The owner's device makes the bots' calls.
+  const autoSeats: Seat[] = isOwner ? bots : [];
   const tableBoard = snapshot.currentBoard;
   // The owner looking back at an earlier board (from the tally); everyone else stays on the table's.
   const [lookingAt, setLookingAt] = useState<number | null>(null);
@@ -288,16 +285,6 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onSkipped, onCall
                 bots,
                 autoSeats,
                 systems,
-                ...(withBotsOnly && {
-                  watch: {
-                    label: snapshot.mode === "devices" ? "Bots bid and play for me" : "Bots bid for me",
-                    on: watch,
-                    onChange: (on: boolean) => {
-                      setWatch(on);
-                      profile.setBotsBidForMe(snapshot.code, on);
-                    },
-                  },
-                }),
                 calls,
                 onCall: async (seq, call) => onCalled(await games.call(snapshot.code, board.number, seq, callCode(call))),
               }
@@ -317,8 +304,7 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onSkipped, onCall
         play={
           !practice && !bidding && (live || ending === board.number) && playContract
             ? {
-                // Watching: the bots play your cards too.
-                bots: withBotsOnly && watch ? [...bots, seat] : bots,
+                bots,
                 playsForBots: isOwner,
                 calls,
                 systems,

@@ -74,8 +74,6 @@ interface Props {
     autoSeats: Seat[];
     /** The card each side bids by. */
     systems: TableSystems;
-    /** Bidding practice: the "Bots bid for me" switch. */
-    watch?: { on: boolean; onChange: (on: boolean) => void; label?: string };
     calls: Call[];
     onCall: (seq: number, call: Call) => Promise<void>;
   } | null;
@@ -169,7 +167,6 @@ export function PlayBoard(p: Props) {
           bots={p.bidding.bots}
           autoSeats={p.bidding.autoSeats}
           systems={p.bidding.systems}
-          watch={p.bidding.watch}
           calls={p.bidding.calls}
           onCall={p.bidding.onCall}
         />

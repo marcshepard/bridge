@@ -141,11 +141,6 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           (your 1NT range, weak twos and so on). Then tap <strong>Start practice</strong>.
         </li>
         <li>
-          Want to see how the bots would handle a hand? Turn on <strong>Bots bid for me</strong> (or{" "}
-          <strong>Bots bid and play for me</strong>) on the bidding screen, and they take your seat too while you
-          read why. It stays on for the rest of that practice until you turn it off.
-        </li>
-        <li>
           In <strong>Bidding and play</strong>, the result screen after each board opens on the{" "}
           <strong>Play</strong> tab (the play review); the <strong>Bidding</strong> tab has the bidding review, with
           the four hands under it. See <strong>The bidding review</strong> and{" "}
@@ -264,7 +259,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         <li>
           The auction ends after three passes in a row following a bid. The contract goes in for everyone, and the
           card play starts. If all four pass first, the board is passed out and scored as that. During the play,
-          tap the contract at the top (it says <strong>auction</strong> under it) to see the auction again, and tap
+          tap the contract at the top left to see the auction again, and tap
           any bid in it to see what it means.
         </li>
         <li>
@@ -311,8 +306,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
         <li>
           After the opening lead, dummy's cards are shown to everyone. Declarer plays dummy's cards as well as
-          their own; dummy just watches. If you're dummy, you can tap <strong>Show hand</strong> in partner's box
-          to look at declarer's cards (and <strong>Hide hand</strong> to put them away). Strict rules don't allow
+          their own; dummy just watches. If you're dummy, you can tap <strong>Show hand</strong> at the top right of
+          partner's box to look at declarer's cards (and <strong>Hide hand</strong> to put them away). Strict rules don't allow
           this, but in a friendly game it does no harm: dummy has no cards to play.
         </li>
         <li>

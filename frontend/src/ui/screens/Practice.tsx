@@ -1,7 +1,6 @@
 // Practice with bots: you as South, bots in the other three seats, on freshly dealt random boards or
 // a game file you import (to compare with its field). Bidding and play, or bidding only (each board
-// goes from its auction to the bidding review). You always start in your own seat; "Bots bid for me"
-// on the bidding screen lets the bots take it over.
+// goes from its auction to the bidding review).
 
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import TuneIcon from "@mui/icons-material/Tune";

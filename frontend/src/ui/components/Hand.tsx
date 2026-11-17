@@ -14,6 +14,8 @@ const RANK_NAMES: Record<string, string> = { A: "ace", K: "king", Q: "queen", J:
 
 /** How much wider than its visible strip each card is: the last card shows in full. */
 const CARD_WIDTH = 2.4;
+/** Dummy's narrower cards: room for the corner index, card-shaped at CARD_RATIO. */
+const SHORT_CARD_WIDTH = 1.55;
 /** How far a picked card lifts, in strips: enough to show its whole width above the fan. */
 const LIFT = 1.2;
 
@@ -22,7 +24,11 @@ interface TilesProps {
   trump: Strain | null;
   /** Names the fan for screen readers. */
   label?: string;
-  /** A shorter fan (for dummy): the corner index stays full size, less card shows below it. */
+  /**
+   * A shorter fan (for dummy): narrower cards, still card-shaped, so the fan is about as tall as the
+   * old short one while the last card no longer looks wider than it is tall. No big suit at the
+   * bottom right, which wouldn't fit under the corner index.
+   */
   short?: boolean;
   /**
    * Makes the cards pickable: tap a card to pick it (it lifts); a Play button elsewhere plays it.
@@ -58,7 +64,8 @@ export function HandTiles({ hand, trump, label = "Your cards", short = false, pl
   const picked = play?.picked ? play.picked.suit + play.picked.rank : null;
   const cards = handSuitOrder(trump).flatMap((s) => [...hand[s]].map((r) => ({ suit: s, rank: r })));
   const strip = (k: number) => `calc(var(--strip) * ${k})`;
-  const cardHeight = CARD_WIDTH * (short ? 0.9 : CARD_RATIO);
+  const cardWidth = short ? SHORT_CARD_WIDTH : CARD_WIDTH;
+  const cardHeight = cardWidth * CARD_RATIO;
   const faceSx = (suit: Suit) => ({
     display: "block",
     position: "relative",
@@ -86,7 +93,7 @@ export function HandTiles({ hand, trump, label = "Your cards", short = false, pl
         role="list"
         aria-label={label}
         sx={{
-          "--strip": `calc(100cqi / ${Math.max(1, (inPlay ? 13 : cards.length) - 1 + CARD_WIDTH)})`,
+          "--strip": `calc(100cqi / ${Math.max(1, (inPlay ? 13 : cards.length) - 1 + cardWidth)})`,
           display: "flex",
           justifyContent: inPlay ? "center" : undefined,
           pt: play || inPlay ? strip(LIFT) : 0,
@@ -124,7 +131,7 @@ export function HandTiles({ hand, trump, label = "Your cards", short = false, pl
               key={suit + rank}
               role="listitem"
               aria-label={play ? undefined : name}
-              sx={{ flexShrink: 0, width: strip(CARD_WIDTH), ml: i === 0 ? 0 : strip(1 - CARD_WIDTH) }}
+              sx={{ flexShrink: 0, width: strip(cardWidth), ml: i === 0 ? 0 : strip(1 - cardWidth) }}
             >
               {play ? (
                 <ButtonBase
