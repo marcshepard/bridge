@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { type Call, parseCall } from "../auction";
-import { parseHand } from "../deal";
+import { type Call, auctionResult, parseCall } from "../auction";
+import { hcp, parseHand, parsePbnDeal } from "../deal";
 import { SyncSolver } from "../../dds/syncSolver";
-import { decideWithSimulation, positionAt } from "./bidder";
+import { continueWithRules, decideWithSimulation, positionAt } from "./bidder";
+import { seeded } from "../random";
 import { dealsFittingAuction, simulateHardCall } from "./simulate";
 
 const calls = (text: string): Call[] => text.split(" ").filter(Boolean).map((t) => parseCall(t)!);
@@ -49,5 +50,38 @@ describe("simulating hard calls", () => {
   it("keeps the rule of thumb without a solver", async () => {
     const d = await decideWithSimulation(positionAt(deal, auction), north, null);
     expect(d.simulation).toBeUndefined();
+  });
+
+  it("samples a cuebid raise as support points with the fit in hearts", () => {
+    const p = positionAt(deal, calls("1H 1S 2S 3H"));
+    const hand = parseHand("87.AKT84.Q87.A76");
+    const layouts = dealsFittingAuction(p, hand, 60, 40_000, seeded(1382));
+    expect(p.shown.S.hcp[0]).toBe(0);
+    expect(p.shown.S.strength).toContainEqual({ kind: "support", suit: "H", range: [10, 50] });
+    expect(layouts.some((layout) => hcp(layout.S) < 10)).toBe(true);
+  });
+
+  it("relaxes inconsistent HCP evidence without changing the bidder's real hand", async () => {
+    const p = positionAt(deal, calls("1H 1S 2S 3H"));
+    p.shown.S.hcp = [17, 37];
+    p.shown.W.hcp = [10, 37];
+    const hand = parseHand("87.AKT84.Q87.A76");
+    const zeroTricks = { ...solver, tricks: async (jobs: Parameters<typeof solver.tricks>[0]) => {
+      expect(jobs.length).toBeGreaterThan(0);
+      expect(jobs.every((job) => job.hands.N === hand)).toBe(true);
+      return jobs.map(() => 7);
+    }, cards: solver.cards.bind(solver), table: solver.table.bind(solver) };
+    const result = await simulateHardCall(p, hand, calls("PASS X"), zeroTricks);
+    expect(result?.relaxed).toBe(true);
+  });
+
+  it("continues an open pass and respects a closing pass", () => {
+    const hands = parsePbnDeal("N:87.AKT84.Q87.A76 QJ9632.J9.A654.8 5.7632.3.KQJ9543 AKT4.Q5.KJT92.T2");
+    const prefix = calls("1H 1S 2S 3H");
+    const pass: Call = { kind: "pass" };
+    const played = continueWithRules(positionAt(deal, prefix), pass, hands);
+    expect(auctionResult(deal.dealer, played)?.contract).toMatchObject({ level: 4, strain: "S" });
+    const closing = [...prefix, pass, pass];
+    expect(continueWithRules(positionAt(deal, closing), pass, hands)).toEqual([...closing, pass]);
   });
 });

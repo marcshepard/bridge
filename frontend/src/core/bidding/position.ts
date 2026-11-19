@@ -89,7 +89,21 @@ export function forced(p: Position): boolean {
   if (!pl) return false;
   const rho = rhoCall(p);
   if (pl.forcing === "one round" && rho?.call.kind === "pass") return true;
+  if (responderOwesRebid(p)) return true;
   return gameForced(p) && !atGame(p);
+}
+
+/** An unpassed SAYC two-over-one responder owes a rebid below game, even after a suit repeat. */
+export function responderOwesRebid(p: Position): boolean {
+  if (atGame(p) || theirActions(p).length > 0) return false;
+  const ours = ourActions(p);
+  if (ours.length !== 3) return false;
+  const [opener, response, rebid] = ours;
+  return !!opener && !!response && !!rebid && response.seat === p.seat && opener.seat === rebid.seat
+    && isBid(opener.call) && opener.call.level === 1 && opener.call.strain !== "NT"
+    && isBid(response.call) && response.call.level === 2 && response.call.strain !== "NT"
+    && response.call.strain !== opener.call.strain && isNatural(response) && isBid(rebid.call)
+    && callsBy(p, p.seat)[0] === response;
 }
 
 /** Has our side made a game-forcing call? */
@@ -118,10 +132,13 @@ export const partnerShown = (p: Position) => p.shown[partner(p)];
  * the bottom, not the middle: "19+" means 19 or a little more, and anything extra is partner's to
  * show. So the bottom plus at most 2 (the middle of a narrow range like 15–17).
  */
-export function partnerPoints(p: Position): { min: number; likely: number; max: number } {
-  const [min, max] = partnerShown(p).hcp;
+export function shownPoints(shown: Shown, trump?: Suit): { min: number; likely: number; max: number } {
+  const fit = trump && shown.strength?.filter((e) => e.kind !== "length" && e.suit === trump).at(-1);
+  const [min, max] = fit ? [Math.max(shown.hcp[0], fit.range[0]), Math.max(shown.hcp[0], fit.range[1])] : shown.hcp;
   return { min, likely: min + Math.min(2, Math.floor((max - min) / 2)), max };
 }
+
+export const partnerPoints = (p: Position, trump?: Suit) => shownPoints(partnerShown(p), trump);
 
 /** Our best fit (8+ cards between us, counting what partner has shown), majors first, then longest. */
 export function fitWith(p: Position, h: HandFacts): Suit | null {

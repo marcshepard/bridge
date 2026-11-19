@@ -76,24 +76,31 @@ export function readAuction(deal: Deal, calls: Call[], settings: Systems = SAYC_
   for (const call of calls) {
     const read = readCall(position, call);
     steps.push({ position, read });
-    const patch = read.rule?.shows ?? (read.guessed ? naturalShows(call) : undefined);
-    let shown = applyShows(position.shown[position.seat], patch);
-    if (fastArrival(position, call, read)) {
-      // Bidding game when it's already forced: no extras, so the bottom of what's been shown.
-      shown = { ...shown, hcp: [shown.hcp[0], Math.min(shown.hcp[1], shown.hcp[0] + 1)] };
-      read.meaning = `${read.meaning} Game was already forced, so bidding it directly shows no extra strength.`;
-    }
-    position = {
-      ...position,
-      seat: nextSeat(position.seat),
-      s: systemFor(settings, nextSeat(position.seat)),
-      calls: [...position.calls, call],
-      read: [...position.read, read],
-      shown: { ...position.shown, [position.seat]: shown },
-    };
+    position = advancePosition(position, read, settings);
   }
   steps.push({ position });
   return steps;
+}
+
+function advancePosition(position: Position, read: ReadCall, settings: Systems): Position {
+  const patch = read.rule?.shows ?? (read.guessed ? naturalShows(read.call) : undefined);
+  let shown = applyShows(position.shown[position.seat], patch);
+  if (fastArrival(position, read.call, read)) {
+    // If the auction has shown fit or length values, "minimum" doesn't narrow its HCP.
+    if (!shown.strength?.length && shown.hcp[0] > 0) {
+      shown = { ...shown, hcp: [shown.hcp[0], Math.min(shown.hcp[1], shown.hcp[0] + 1)] };
+    }
+    read.meaning = `${read.meaning} Game was already forced, so bidding it directly shows no extra strength.`;
+  }
+  const seat = nextSeat(position.seat);
+  return {
+    ...position,
+    seat,
+    s: systemFor(settings, seat),
+    calls: [...position.calls, read.call],
+    read: [...position.read, read],
+    shown: { ...position.shown, [position.seat]: shown },
+  };
 }
 
 /**
@@ -203,10 +210,12 @@ export function botAuction(hands: Record<Seat, Hand>, deal: Deal, settings: Syst
  * auction). Without a solver, or when too few deals fit, the rule of thumb stands. On a tie the rule
  * of thumb's choice stands too.
  */
-export async function decideWithSimulation(p: Position, hand: Hand, solver: DoubleDummySolver | null, options?: SimulationOptions): Promise<Decision> {
+export async function decideWithSimulation(p: Position, hand: Hand, solver: DoubleDummySolver | null, options?: SimulationOptions, settings: Systems = p.s): Promise<Decision> {
   const d = decide(p, hand);
   if (!d.hard || !solver) return d;
-  const sim = await simulateHardCall(p, hand, d.hard.candidates, solver, options);
+  const continueFrom = options?.continueAuction ? (call: Call, hands: Record<Seat, Hand>) =>
+    continueWithRules(p, call, hands, settings) : undefined;
+  const sim = await simulateHardCall(p, hand, d.hard.candidates, solver, options, continueFrom);
   if (!sim) return d;
   const rule = sim.results.find((r) => sameCall(r.call, d.call));
   const best = rule && rule.share >= sim.results[0]!.share ? rule.call : sim.best;
@@ -220,9 +229,19 @@ export async function decideWithSimulation(p: Position, hand: Hand, solver: Doub
     ...d,
     call: best,
     meaning,
-    reason: `In ${sim.deals} deals that fit the bidding, ${callName(best)} scored best: ${Math.round(chosen.share * 100)}% of the matchpoints against the other choices (${others})`,
+    reason: `In ${sim.deals} deals that fit the bidding${sim.relaxed ? " with some leeway" : ""}, ${callName(best)} scored best: ${Math.round(chosen.share * 100)}% of the matchpoints against the other choices (${others})`,
     simulation: sim,
   };
+}
+
+/** Follow a candidate with the ordinary bidder, using only each new caller's own hand. */
+export function continueWithRules(p: Position, first: Call, hands: Record<Seat, Hand>, settings: Systems = p.s): Call[] {
+  let position = advancePosition(p, readCall(p, first), settings);
+  while (!isAuctionOver(position.calls)) {
+    const { call } = decide(position, hands[position.seat]);
+    position = advancePosition(position, readCall(position, call), settings);
+  }
+  return position.calls;
 }
 
 /** chooseCall, with any hard call decided by simulation. */
@@ -234,7 +253,7 @@ export async function chooseCallWithSimulation(
   solver: DoubleDummySolver | null,
   options?: SimulationOptions,
 ): Promise<Decision> {
-  return decideWithSimulation(positionAt(deal, calls, settings), hand, solver, options);
+  return decideWithSimulation(positionAt(deal, calls, settings), hand, solver, options, settings);
 }
 
 /** botAuction, with hard calls decided by simulation (for the report). */
@@ -249,7 +268,7 @@ export async function botAuctionWithSimulation(
   const calls: Call[] = [];
   for (let i = 0; i < 60 && !isAuctionOver(calls); i++) {
     const p = positionAt(deal, calls, settings);
-    const d = await decideWithSimulation(p, hands[p.seat], solver, options);
+    const d = await decideWithSimulation(p, hands[p.seat], solver, options, settings);
     out.push(d);
     calls.push(d.call);
   }

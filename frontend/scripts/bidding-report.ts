@@ -37,7 +37,8 @@ import { fileToGameFile } from "../src/providers/importFile";
 const args = process.argv.slice(2);
 const boardArg = args.indexOf("--board");
 const only = boardArg >= 0 ? Number(args[boardArg + 1]) : null;
-const simulate = args.includes("--simulate");
+const continueAuction = args.includes("--continue-auction");
+const simulate = args.includes("--simulate") || continueAuction;
 const play = args.includes("--play");
 const solver = simulate || play ? new SyncSolver() : null;
 let played = 0;
@@ -57,7 +58,7 @@ const lines: string[] = [`Bidding report: ${game.summary.title} (${file})`, ""];
 for (const board of game.boards) {
   if (only !== null && board.number !== only) continue;
   const deal = { dealer: board.dealer, vul: board.vul };
-  const decisions: Decision[] = solver ? await botAuctionWithSimulation(board.hands, deal, SAYC_DEFAULTS, solver) : botAuction(board.hands, deal);
+  const decisions: Decision[] = solver ? await botAuctionWithSimulation(board.hands, deal, SAYC_DEFAULTS, solver, { continueAuction }) : botAuction(board.hands, deal);
   const calls = decisions.map((d) => d.call);
   const end = auctionResult(board.dealer, calls);
   lines.push(`Board ${board.number}  dealer ${board.dealer}  vul ${board.vul}`);

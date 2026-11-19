@@ -318,6 +318,10 @@ const sentence = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) + (/
 function describeShown(s: Shown): string | null {
   const parts: string[] = [];
   if (s.hcp[0] > 0 || s.hcp[1] < 37) parts.push(rangeWords(s.hcp, "HCP"));
+  for (const strength of s.strength ?? []) {
+    const unit = strength.kind === "length" ? "points with length" : `points with a ${SUIT_SYMBOLS[strength.suit]} fit`;
+    parts.push(rangeWords(strength.range, unit));
+  }
   for (const suit of SUITS) {
     const [lo, hi] = s.len[suit];
     if (lo > 0 && hi < 13) parts.push(lo === hi ? `${lo} ${SUIT_SYMBOLS[suit]}` : `${lo}–${hi} ${SUIT_SYMBOLS[suit]}`);

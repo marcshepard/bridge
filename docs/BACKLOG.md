@@ -94,8 +94,8 @@ that deal; `npm run bidding-report` to check nothing else got worse.
   - with 3NT as 25–27, a gambling-type hand opens a preempt or one of a suit (check it suits).
 - **Simulation of hard calls:**
   - use what passes rule out (didn't open, so under 12; didn't bid a major, so no five-card major);
-  - each candidate is treated as the last call of the auction; fine for late competitive calls,
-    not for constructive ones;
+  - compare `bidding-report -- --continue-auction` with the current end-of-auction assumption on
+    fresh competitive deals before enabling auction continuations during play;
   - a redouble as a candidate.
 
 ## To undo

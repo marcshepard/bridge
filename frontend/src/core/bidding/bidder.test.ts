@@ -267,7 +267,7 @@ describe("slam", () => {
   });
 
   it("a strong opener explores slam after a limit raise instead of just accepting", () => {
-    expect(call("AK2.AKJ85.K32.K2", "1H PASS 3H PASS")).toBe("5H");
+    expect(call("AK2.AKJ85.K32.K2", "1H PASS 3H PASS")).toBe("4NT");
   });
 
   it("reads a new suit at the four level, with a major agreed, as a control bid", () => {
@@ -338,8 +338,54 @@ describe("responder's second bid", () => {
   it("reads the delayed invitation as 10–12 with 3+ trumps", () => {
     const steps = readAuction({ dealer: "N", vul: "None" }, calls("1S PASS 2D PASS 2S PASS 3S PASS"));
     const shown = steps.at(-1)!.position.shown.S;
-    expect(shown.hcp).toEqual([10, 12]);
+    expect(shown.hcp).toEqual([10, 37]);
+    expect(shown.strength).toContainEqual({ kind: "support", suit: "S", range: [10, 12] });
     expect(shown.len.S[0]).toBe(3);
+  });
+});
+
+describe("auction audit regressions", () => {
+  const deal = { dealer: "N", vul: "None" } as const;
+  it.each([
+    ["game values and two suits", "K.AQJT5.J9.AQ542", "PASS 1S PASS 2H PASS 2S PASS", "3C"],
+    ["game values after a one-level response", "AKJ87.64.KQ3.AJ9", "1D PASS 1S PASS 2C PASS", "3NT"],
+    ["a minimum two-over-one gives preference", "82.KJ6.T92.AQ764", "1S PASS 2C PASS 2D PASS", "2S"],
+    ["the obligation survives opener repeating the suit", "82.KJ6.T92.AQ764", "1S PASS 2C PASS 2S PASS", "2NT"],
+    ["the passed-hand exception", "82.KJ6.T92.AQ764", "PASS PASS 1S PASS 2C PASS 2S PASS", "PASS"],
+    ["opener can sign off after the preference", "AQJ74.A3.J864.53", "1S PASS 2C PASS 2D PASS 2S PASS", "PASS"],
+    ["strong opener shows diamonds with a jump shift", "AKJ84.76.AKQ7.Q4", "1S PASS 1NT PASS", "3D"],
+    ["ordinary opener shows diamonds economically", "AQJ74.76.KJ87.Q4", "1S PASS 1NT PASS", "2D"],
+    ["six-card major before 3NT", "KJT963.K4.AJ.K75", "1C PASS 1S PASS 1NT PASS", "4S"],
+    ["opener's second major makes a known fit", "QJ74.QT8.AJ72.QJ", "PASS 1C PASS 1D PASS 1S PASS", "4S"],
+    ["nine-card fit after a 2NT transfer", "QJ5.AKQJ.K76.A85", "2NT PASS 3D PASS 3H PASS 3NT PASS", "4H"],
+    ["two trumps after a 2NT transfer", "KQ54.AQ.K76.AQ83", "2NT PASS 3D PASS 3H PASS 3NT PASS", "PASS"],
+    ["second suit after a transfer", "KJ984.7.AQJ98.Q4", "1NT PASS 2H PASS 2S PASS", "3D"],
+    ["super-accept with slam values", "KJT98.AQJ.AJ4.A2", "1NT PASS 2H PASS 3S PASS", "4NT"],
+    ["leave partner's penalty double in", "AK73.A76.QT83.84", "PASS 1D 1NT X PASS", "PASS"],
+  ])("%s", (_, hand, auction, expected) => expect(bot(hand, auction)).toBe(expected));
+
+  it("reads the strong jump and the new suit after a transfer as game forcing", () => {
+    for (const auction of ["1S PASS 1NT PASS 3D", "1NT PASS 2H PASS 2S PASS 3D"]) {
+      const read = readAuction(deal, calls(auction)).at(-2)!.read!;
+      expect(read.forcing).toBe("game");
+    }
+  });
+
+  it("reads 4NT as Blackwood after a super-accept", () => {
+    const auction = "1NT PASS 2H PASS 3S PASS 4NT";
+    const read = readAuction(deal, calls(auction)).at(-2)!.read!;
+    expect(read.rule?.name).toBe("Blackwood");
+    expect(bot("AQ74.K84.KQ6.K93", `${auction} PASS`)).toBe("5D");
+  });
+
+  it.each([
+    ["Jordan 2NT", "5.7632.3.KQJ9543", "1H X", "2NT", "S", "H", 10],
+    ["opener's jump to game", "KJ84..AQ874.KJ83", "1D PASS 1S PASS", "4S", "N", "S", 19],
+  ] as const)("reads %s in support points", (_, hand, auction, expected, seat, suit, minimum) => {
+    expect(bot(hand, auction)).toBe(expected);
+    const shown = readAuction(deal, calls(`${auction} ${expected}`)).at(-1)!.position.shown[seat];
+    expect(shown.hcp[0]).toBeLessThanOrEqual(evaluate(parseHand(hand)).hcp);
+    expect(shown.strength).toContainEqual({ kind: "support", suit, range: [minimum, 50] });
   });
 });
 
