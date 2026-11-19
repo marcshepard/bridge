@@ -179,6 +179,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         <li>
           <strong>What the bidding had shown before this</strong>, for example{" "}
           <strong>North (your partner): 15–17 HCP · balanced</strong>: what you could have known at that point.
+          A raise may show points with a trump fit. Those include extra value for short suits. For example,
+          with four trumps, 9 HCP and a singleton can count as 12 points for the raise.
         </li>
       </Box>
       <Typography sx={{ mt: 1 }}>

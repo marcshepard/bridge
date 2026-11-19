@@ -3,7 +3,7 @@
 
 import { hcp as hcpOf } from "../deal";
 import { type Hand, type Suit, SUITS } from "../types";
-import { meetsQuality } from "./model";
+import { type AdjustedStrength, meetsQuality } from "./model";
 
 export interface HandFacts {
   hand: Hand;
@@ -127,6 +127,12 @@ export function supportPoints(h: HandFacts, trump: Suit): number {
 export function fitPoints(h: HandFacts, trump: Suit, shown: number): number {
   const shortness = SUITS.filter((s) => s !== trump).reduce((n, s) => n + (h.len[s] <= 2 ? [3, 2, 1][h.len[s]]! : 0), 0);
   return h.hcp + shortness + Math.max(0, h.len[trump] - shown);
+}
+
+export function adjustedPoints(h: HandFacts, strength: AdjustedStrength): number {
+  if (strength.kind === "length") return h.points;
+  if (strength.kind === "support") return supportPoints(h, strength.suit);
+  return fitPoints(h, strength.suit, strength.shownTrumps);
 }
 
 /** Rule of 20: HCP plus the two longest suits' lengths make 20 or more. */

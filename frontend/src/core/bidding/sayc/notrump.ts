@@ -4,7 +4,7 @@
 // general rules, except as the settings say over our 1NT: a double ignored ("systems on"), and a
 // 2♣ overcall answered by a double for Stayman ("stolen bid").
 
-import { type Suit } from "../../types";
+import { type Suit, SUITS } from "../../types";
 import { type HandFacts, goodSuit, holding, stopper, SUIT_WORDS } from "../evaluate";
 import type { CallRule } from "../model";
 import {
@@ -251,6 +251,10 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
       const superAccepted = answer === `3${m}` && L === 2;
       if (superAccepted) {
         return [
+          rule(bid(4, "NT"), "Blackwood with the transferred major agreed.",
+            (h) => h.hcp + nt.max >= 33 && SUITS.every((x) => x === m || (h.len[x] > 0 && (h.len[x] === 1 || /[AK]/.test(h.hand[x])))), {
+              name: "Blackwood", forcing: "one round", why: () => "a known fit and controls in the side suits: check for slam",
+            }),
           rule(bid(4, m), "Game: partner showed four trumps and a maximum.", (h) => h.hcp >= 4 || h.len[m] >= 6, { why: () => "partner's super-accept makes game worth bidding" }),
           rule(PASS, "Stops in three.", () => true, { why: (h) => `${hcpText(h)}: very weak` }),
         ];
@@ -258,6 +262,11 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
       const five = (h: HandFacts) => h.len[m] === 5;
       if (L === 2) {
         return [
+          ...SUITS.filter((x) => x !== m).map((x) => rule(bid(3, x), `Natural: 5+ ${SYMBOL[x]} and game values.`,
+            (h) => h.hcp >= gameMin && h.len[x] >= 5 && h.len[x] >= Math.max(...SUITS.filter((y) => y !== m).map((y) => h.len[y])), {
+              name: "New suit after transfer", forcing: "game", shows: { len: len(x, 5), hcp: [gameMin, 37] },
+              why: () => `five or more ${SUIT_WORDS[x]} alongside the ${SUIT_WORDS[m]}: show both suits`,
+            })),
           rule(bid(4, m), `Game: 6+ ${SYMBOL[m]} and ${gameMin}+ HCP.`, (h) => !five(h) && h.hcp >= gameMin && h.hcp < slamMin, { shows: { hcp: [gameMin, slamMin - 1], len: len(m, 6) }, why: (h) => `${h.len[m]} ${SUIT_WORDS[m]} and ${hcpText(h)}: game in the 8+ card fit` }),
           rule(bid(3, "NT"), `Choice of games: exactly 5 ${SYMBOL[m]}, ${gameMin}+ HCP. Opener picks 3NT or 4${SYMBOL[m]}.`, (h) => five(h) && h.hcp >= gameMin && h.hcp < slamMin, { shows: { hcp: [gameMin, slamMin - 1], len: len(m, 5, 5) }, why: (h) => `five ${SUIT_WORDS[m]} and ${hcpText(h)}: let opener choose between the games` }),
           rule(bid(3, m), `Invites game: 6+ ${SYMBOL[m]}, ${inviteAt}–${gameMin - 1} HCP.`, (h) => !five(h) && h.hcp >= inviteAt && h.hcp < gameMin, { shows: { hcp: [inviteAt, gameMin - 1], len: len(m, 6) }, why: (h) => `${h.len[m]} ${SUIT_WORDS[m]} and ${hcpText(h)}: invite` }),
@@ -267,7 +276,7 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
       }
       return [
         rule(bid(4, m), `Game: 6+ ${SYMBOL[m]}.`, (h) => !five(h) && h.hcp >= gameMin, { why: () => "game in the 8+ card fit" }),
-        rule(bid(3, "NT"), `Choice of games: exactly 5 ${SYMBOL[m]}.`, (h) => h.hcp >= gameMin, { why: () => "let opener choose between the games" }),
+        rule(bid(3, "NT"), `Choice of games: exactly 5 ${SYMBOL[m]}.`, (h) => h.hcp >= gameMin, { shows: { len: len(m, 5, 5), hcp: [gameMin, 37] }, why: () => "let opener choose between the games" }),
         rule(PASS, `Weak: stops in 3${SYMBOL[m]}.`, () => true, { why: (h) => `${hcpText(h)}: no game` }),
       ];
     }
@@ -280,9 +289,9 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
     const [first, , third] = after as [string, string, string];
     const top = (h: HandFacts) => h.hcp >= nt.max - (nt.max - nt.min >= 2 ? 1 : 0);
     const transferred: Suit | null = first === `${L}D` ? "H" : first === `${L}H` ? "S" : null;
-    if (transferred && L === 2) {
+    if (transferred) {
       const m = transferred;
-      if (third === "2NT") {
+      if (third === "2NT" && L === 2) {
         return [
           rule(bid(4, m), "Accepts, with 3+ trumps.", (h) => top(h) && h.len[m] >= 3, { why: (h) => `top of the range and ${h.len[m]} ${SUIT_WORDS[m]}` }),
           rule(bid(3, "NT"), "Accepts, with only two trumps.", (h) => top(h), { why: () => "top of the range, only two trumps" }),
@@ -290,16 +299,26 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
           rule(PASS, "Declines, with two trumps.", () => true, { why: () => "bottom of the range, no fit" }),
         ];
       }
-      if (third === `3${m}`) {
+      if (third === `3${m}` && L === 2) {
         return [
           rule(bid(4, m), "Accepts the invitation.", (h) => top(h) || h.len[m] >= 4, { why: () => "top of the range, or a good fit" }),
           rule(PASS, "Declines the invitation.", () => true, { why: () => "bottom of the range" }),
         ];
       }
       if (third === "3NT") {
+        const support = L === 2 ? 3 : 4;
         return [
-          rule(bid(4, m), `Chooses 4${SYMBOL[m]}: 3+ trumps.`, (h) => h.len[m] >= 3, { why: (h) => `${h.len[m]} ${SUIT_WORDS[m]}: the 5-3 fit` }),
-          rule(PASS, "Chooses 3NT: only two trumps.", () => true, { why: () => "only two trumps: notrump" }),
+          rule(bid(4, m), `Chooses 4${SYMBOL[m]} with ${support}+ trumps.`, (h) => h.len[m] >= support, { why: (h) => `${h.len[m]} ${SUIT_WORDS[m]} opposite partner's five` }),
+          rule(PASS, "Chooses 3NT.", () => true, { why: (h) => `${h.len[m]} ${SUIT_WORDS[m]}: stay in notrump` }),
+        ];
+      }
+      const newSuit = p.read.filter((r) => r.call.kind !== "pass").at(-1);
+      if (newSuit?.rule?.name === "New suit after transfer" && isBid(newSuit.call) && newSuit.call.strain !== "NT") {
+        const x = newSuit.call.strain;
+        return [
+          rule(bid(4, m), "Game in the transferred major with three-card support.", (h) => h.len[m] >= 3),
+          rule(bid(3, "NT"), "Game in notrump with the unbid suits stopped.", (h) => SUITS.every((s) => s === x || s === m || stopper(h, s))),
+          rule(bid(4, x), "Shows a fit in responder's second suit.", (h) => h.len[x] >= 3, { shows: { len: len(x, 3) } }),
         ];
       }
     }

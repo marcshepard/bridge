@@ -210,9 +210,10 @@ core/bidding/      pure, no I/O, used by the devices (to bid for bots, and for r
    - **Scoring without double dummy in the file** (Common Game pages): in bidding practice the owner's
      device solves the contract and saves the result, as an owner enters one with real cards.
    - **Simulation for hard calls** (`core/bidding/simulate.ts`): deal hands that fit what the auction
-     has shown for the other three seats (HCP, suit lengths, balanced), solve each candidate's
+     has shown for the other three seats (HCP, points with a fit or length, suit lengths and shape), solve each candidate's
      contract on each deal, and score the candidates against each other at matchpoints; the best
-     wins (the rule of thumb's choice on a tie, or when fewer than 16 deals fit). 60 deals take about
+     wins. If too few deals fit, the sampler gives the auction evidence some leeway. The rule of
+     thumb stands on a tie or when fewer than 16 deals still fit. 60 deals take about
      0.6 s on one thread in Node, less with the workers. Seeded from the hand and the auction, so the
      review runs it again and gets the bot's answer; the review shows each candidate's share.
    - **The simplification:** each candidate is treated as the last call of the auction (everyone
@@ -220,6 +221,8 @@ core/bidding/      pure, no I/O, used by the devices (to bid for bots, and for r
      contested auction), not early constructive ones.
    - `npm run bidding-report -- --simulate` runs the bots with simulation, and scores boards whose
      file has no double dummy.
+   - `npm run bidding-report -- --continue-auction` tries following each candidate with ordinary
+     bot calls before scoring the contract for that sampled deal. Use it to compare the two methods.
    Gaps in the bidding (conventions not used yet, judgment calls, sharper simulation) are listed in
    the backlog, to take on as feedback comes in.
 4. **Card play by sampling** (done; details below), replacing the simple rules

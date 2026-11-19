@@ -6,6 +6,7 @@
 // counts in full, one a little off counts a third, and one further off is left out. The bot never looks at the real hidden hands.
 
 import { type Shown, meetsQuality } from "../bidding/model";
+import { adjustedPoints, evaluate } from "../bidding/evaluate";
 import type { SystemSettings } from "../bidding/system";
 import { cardingWeight } from "./inference";
 import { type Card, type PlayState, currentTrick, dummyOf } from "../play";
@@ -77,8 +78,13 @@ export function fitWeight(original: Card[], shown: Shown): number {
   const hcpOff = off(hcp, shown.hcp);
   const lenOff = SUITS.map((s, i) => off(len[i]!, shown.len[s]));
   const qualityOk = SUITS.every((s) => !shown.quality?.[s] || meetsQuality(ranks[s], shown.quality[s]!));
-  if (hcpOff === 0 && lenOff.every((d) => d === 0) && qualityOk) return 1;
-  if (hcpOff <= 2 && lenOff.every((d) => d <= 1)) return 1 / 3;
+  let strengthOff = 0;
+  if (shown.strength?.length) {
+    const facts = evaluate(ranks);
+    strengthOff = Math.max(...shown.strength.map((strength) => off(adjustedPoints(facts, strength), strength.range)));
+  }
+  if (hcpOff === 0 && strengthOff === 0 && lenOff.every((d) => d === 0) && qualityOk) return 1;
+  if (hcpOff <= 2 && strengthOff <= 2 && lenOff.every((d) => d <= 1)) return 1 / 3;
   return 0;
 }
 
