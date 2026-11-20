@@ -383,6 +383,41 @@ describe("playing the cards on devices", () => {
     expect(made.json).toMatchObject({ seat: bot.seat, tricks: 9, acceptedBy: [] });
   });
 
+  it("lets dummy play the contract, and claim, for a bot declarer", async () => {
+    // Marc (creator) and Ann, each partnered with a bot. Ann's bot partner declares.
+    const marc = (await api<JoinedResponse>("POST", "/events", { name: "Marc", game, startBoard: 1, mode: "cards" })).json;
+    const { code } = marc;
+    const ann = (await api<JoinedResponse>("POST", `/events/${code}/players`, { name: "Ann" })).json;
+    await api("POST", `/events/${code}/test-players`);
+    await api("POST", `/events/${code}/partnerships`, { partnerSlot: 3 }, marc.playerId);
+    const players = (await api<EventSnapshot>("GET", `/events/${code}`)).json.players;
+    const annSeat = players.find((p) => p.name === "Ann")!.seat!;
+    const declarer = dummyOf(annSeat);
+    expect(players.find((p) => p.seat === declarer)!.isBot).toBe(true);
+    await api("PUT", `/events/${code}/boards/1`, { contract: "3NT", declarer, tricks: null }, marc.playerId);
+    await start(code, marc.playerId);
+
+    // The first trick: Ann plays both declarer's and dummy's cards; Marc (the owner) plays only the
+    // bots' and his own, not the bot declarer's.
+    let state = replay(hands, "NT", declarer, []);
+    for (let seq = 1; seq <= 4; seq++) {
+      const seat = toPlay(state);
+      const card = cardCode(chooseCard(state, () => 0.5));
+      const declaring = seat === declarer || seat === annSeat;
+      if (declaring) expect((await play(code, seq, card, marc.playerId)).status).toBe(409);
+      const res = await play(code, seq, card, declaring ? ann.playerId : marc.playerId);
+      expect(res.status).toBe(200);
+      state = playCard(state, parseCard(res.json.card)!);
+    }
+
+    // Ann claims as declarer (not as dummy), and can take it back.
+    expect((await api("POST", `/events/${code}/boards/1/claim`, { tricks: 9 }, ann.playerId)).status).toBe(403);
+    expect((await api("POST", `/events/${code}/boards/1/claim`, { tricks: 9, seat: declarer }, marc.playerId)).status).toBe(403);
+    const made = await api<ClaimDto>("POST", `/events/${code}/boards/1/claim`, { tricks: 9, seat: declarer }, ann.playerId);
+    expect(made.json).toMatchObject({ seat: declarer, tricks: 9 });
+    expect((await api("DELETE", `/events/${code}/boards/1/claim`, undefined, ann.playerId)).status).toBe(204);
+  });
+
   describe("claims", () => {
     const claim = (code: string, tricks: number, id: string) => api<ClaimDto>("POST", `/events/${code}/boards/1/claim`, { tricks }, id);
     const answer = (code: string, accept: boolean, id: string) =>

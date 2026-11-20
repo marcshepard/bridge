@@ -209,13 +209,17 @@ export interface PlayCardRequest {
 
 /**
  * Claim this many of the tricks still to play, for your side. `seat`: the owner claiming for a bot
- * (its seat); left out, for yourself.
+ * (its seat), or dummy claiming as declarer when playing the contract for a bot declarer; left out,
+ * for yourself.
  */
 export interface ClaimRequest {
   tricks: number;
   seat?: Seat;
 }
-/** Accept or refuse a claim. `seat`: the owner answering for a bot (its seat); left out, for yourself. */
+/**
+ * Accept or refuse a claim. `seat`: the owner answering for a bot (its seat), or dummy answering as
+ * declarer when playing the contract for a bot declarer; left out, for yourself.
+ */
 export interface AnswerClaimRequest {
   accept: boolean;
   seat?: Seat;

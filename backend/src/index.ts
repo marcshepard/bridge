@@ -12,6 +12,7 @@ import {
   cardCode,
   claimAccepted,
   claimAnswerers,
+  declaringPlayer,
   dummyOf,
   finalTricks,
   isComplete,
@@ -667,9 +668,10 @@ app.post("/events/:code/boards/:board/cards", async (c) => {
   if (req.seq !== plays.length + 1) throw new HttpError(409, "That card has already been played, or play has moved on");
   if (isComplete(state)) throw new HttpError(409, "All the cards have been played");
 
-  // Whose turn it is, and who plays it: declarer plays dummy's cards, and the creator plays a bot's.
+  // Whose turn it is, and who plays it: declarer plays dummy's cards (or dummy plays both, for a bot
+  // declarer), and the creator plays a bot's.
   const seat = toPlay(state);
-  const player = seat === dummyOf(declarer) ? declarer : seat;
+  const player = seat === dummyOf(declarer) || seat === declarer ? declaringPlayer(declarer, botSeat(players)) : seat;
   const forBot = me.is_creator === 1 && players.some((p) => p.seat === player && p.is_bot === 1);
   if (me.seat !== player && !forBot) throw new HttpError(409, "It isn't your turn");
   let after;
@@ -688,24 +690,35 @@ app.post("/events/:code/boards/:board/cards", async (c) => {
   return c.json(play);
 });
 
+/** Whether a seat is held by a bot. */
+function botSeat(players: db.PlayerRow[]) {
+  return (s: Seat) => players.some((p) => p.seat === s && p.is_bot === 1);
+}
+
 /**
- * The seat a claim or an answer is for: the caller's own, or (the owner only) a bot's, named in the
- * request. Throws unless it's allowed.
+ * The seat a claim or an answer is for: the caller's own; declarer's, named in the request, when the
+ * caller is dummy playing the contract for a bot declarer; or (the owner only) a bot's. Throws unless
+ * it's allowed.
  */
-function actingSeat(me: db.PlayerRow, players: db.PlayerRow[], requested: unknown): Seat {
+function actingSeat(me: db.PlayerRow, players: db.PlayerRow[], requested: unknown, declarer: Seat): Seat {
   if (requested === undefined || requested === null || requested === me.seat) {
     if (!me.seat) throw new HttpError(403, "You're not at the table");
     return me.seat;
   }
+  if (requested === declarer && me.seat && me.seat !== declarer && declaringPlayer(declarer, botSeat(players)) === me.seat) return declarer;
   const bot = players.find((p) => p.seat === requested && p.is_bot === 1);
   if (!bot || me.is_creator !== 1) throw new HttpError(403, "Only the game's owner acts for a bot");
+  if (bot.seat === declarer && declaringPlayer(declarer, botSeat(players)) !== declarer) {
+    throw new HttpError(403, "Dummy is playing this contract for the bot");
+  }
   return bot.seat!;
 }
 
 /**
  * Claim: say how many of the tricks still to play your side will take. Your cards are shown to
- * everyone, and play stops until it's answered. Declarer or a defender can claim (not dummy). The
- * owner's device claims for a bot, and answers for bots: they check a claim before accepting it.
+ * everyone, and play stops until it's answered. Declarer or a defender can claim (not dummy, except
+ * as declarer when playing the contract for a bot declarer). The owner's device claims for a bot,
+ * and answers for bots: they check a claim before accepting it.
  */
 app.post("/events/:code/boards/:board/claim", async (c) => {
   const event = await loadEvent(c);
@@ -713,7 +726,7 @@ app.post("/events/:code/boards/:board/claim", async (c) => {
   const me = caller(c, players);
   const { board, declarer, claim, state } = await liveBoard(c, event);
   const req = await body<ClaimRequest>(c);
-  const seat = actingSeat(me, players, req.seat);
+  const seat = actingSeat(me, players, req.seat, declarer);
   if (seat === dummyOf(declarer)) throw new HttpError(403, "Dummy can't claim");
   if (claim) throw new HttpError(409, "There's already a claim");
   if (isComplete(state)) throw new HttpError(409, "All the cards have been played");
@@ -740,7 +753,7 @@ app.post("/events/:code/boards/:board/claim/answer", async (c) => {
   if (!claim) throw new HttpError(409, "There's no claim to answer");
   if (claimAccepted(claim, declarer)) throw new HttpError(409, "The claim has already been accepted");
   const req = await body<AnswerClaimRequest>(c);
-  const seat = actingSeat(me, players, req.seat);
+  const seat = actingSeat(me, players, req.seat, declarer);
   if (!claimAnswerers(claim.seat, declarer).includes(seat)) {
     throw new HttpError(403, "Only the claimer's opponents answer a claim");
   }
@@ -759,10 +772,13 @@ app.post("/events/:code/boards/:board/claim/answer", async (c) => {
 /** The claimer takes back a claim nobody has finished accepting. */
 app.delete("/events/:code/boards/:board/claim", async (c) => {
   const event = await loadEvent(c);
-  const me = caller(c, await db.getPlayers(c.env.DB, event.code));
+  const players = await db.getPlayers(c.env.DB, event.code);
+  const me = caller(c, players);
   const { board, declarer, claim } = await liveBoard(c, event);
   if (!claim) return c.body(null, 204);
-  if (me.seat !== claim.seat) throw new HttpError(403, "Only the player who claimed can take it back");
+  // The claimer, or dummy when they claimed for a bot declarer.
+  const claimer = claim.seat === declarer ? declaringPlayer(declarer, botSeat(players)) : claim.seat;
+  if (me.seat !== claim.seat && me.seat !== claimer) throw new HttpError(403, "Only the player who claimed can take it back");
   if (claimAccepted(claim, declarer)) throw new HttpError(409, "The claim has been accepted");
   await db.deleteClaim(c.env.DB, event.code, board.number);
   await push(c, event.code, { type: "claim", board: board.number, claim: null });

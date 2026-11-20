@@ -1,5 +1,6 @@
 // The field as a traveller: every score the original field got, with its matchpoints and table count.
-// The reader can sort by score or frequency, and their result is highlighted.
+// The most common scores first, as The Common Game lists them; the reader can sort by score instead.
+// Their result is highlighted.
 
 import {
   LinearProgress, Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel, Typography, type SxProps, type Theme,
@@ -23,7 +24,7 @@ const sortLabelSx: SxProps<Theme> = {
 };
 
 export function Traveller({ c }: { c: BoardComparison }) {
-  const [sortBy, setSortBy] = useState<"score" | "tables">("score");
+  const [sortBy, setSortBy] = useState<"score" | "tables">("tables");
   const max = Math.max(1, ...c.groups.map((g) => g.count));
 
   const rows: Row[] = c.groups.map((g) => ({ group: g, score: g.score }));

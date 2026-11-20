@@ -18,6 +18,7 @@ import { hcp } from "../../core/deal";
 import { type Seat, type Strain, STRAINS, SEAT_NAMES } from "../../core/types";
 import type { Board } from "../../providers/types";
 import { AuctionTable } from "../components/Auction";
+import { CallDialog, useReviewedAuction } from "../components/BiddingReview";
 import { HandTiles } from "../components/Hand";
 import { CallText, ContractText, StrainSymbol, SuitString, callWords } from "../controls/BridgeText";
 import { ChoiceGroup } from "../controls/ChoiceGroup";
@@ -124,6 +125,11 @@ export function BidHand(p: Props) {
     return read ? { call: picked, read } : null;
   }, [picked, calls, dealer, board.vul, p.systems]);
 
+  // Any call so far, tapped in the auction: what it means by its side's card, as in the review
+  // during play. Meanings only, never a bot's reason, which would give its hand away.
+  const { review } = useReviewedAuction(board, calls, p.systems, false);
+  const [explained, setExplained] = useState<number | null>(null);
+
   const allowed = (call: Call) => mine && canCall(dealer, calls, call);
   const bidAllowed = (lv: number, strain: Strain) => allowed({ kind: "bid", level: lv, strain });
 
@@ -186,7 +192,24 @@ export function BidHand(p: Props) {
           ))}
       </Typography>
 
-      <AuctionTable dealer={dealer} vul={board.vul} names={names} calls={calls} seat={seat} />
+      <AuctionTable dealer={dealer} vul={board.vul} names={names} calls={calls} seat={seat} onOpenCall={setExplained} />
+      {calls.length > 0 && (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          Tap a bid to see what it means.
+        </Typography>
+      )}
+      {explained !== null && review[explained] && (
+        <CallDialog
+          r={review[explained]}
+          me={seat}
+          names={names}
+          isBot={false}
+          isMine={false}
+          onPrev={explained > 0 ? () => setExplained(explained - 1) : undefined}
+          onNext={explained < review.length - 1 ? () => setExplained(explained + 1) : undefined}
+          onClose={() => setExplained(null)}
+        />
+      )}
 
       {/* Your hand sits above the bidding box, so it stays put while the box comes and goes below it. */}
       <Section title={`Your hand (${hcp(board.hands[seat])} HCP)`} id="your-hand" tight>

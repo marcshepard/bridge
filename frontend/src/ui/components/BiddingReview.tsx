@@ -153,7 +153,7 @@ export function BiddingReview({ board, calls, seat, names, bots, systems, onSyst
   );
 }
 
-function CallDialog({
+export function CallDialog({
   r,
   me,
   names,

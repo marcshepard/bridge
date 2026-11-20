@@ -108,9 +108,9 @@ describe("the board's setup, from your seat", () => {
   it("says who's vulnerable, and whether that's you", () => {
     expect(vulnerableShort("S", "None")).toBe("None");
     expect(vulnerableShort("S", "Both")).toBe("Both");
-    expect(vulnerableShort("S", "NS")).toBe("N/S (you)");
-    expect(vulnerableShort("S", "EW")).toBe("E/W (them)");
-    expect(vulnerableShort("E", "NS")).toBe("N/S (them)");
+    expect(vulnerableShort("S", "NS")).toBe("We (N/S)");
+    expect(vulnerableShort("S", "EW")).toBe("They (E/W)");
+    expect(vulnerableShort("E", "NS")).toBe("They (N/S)");
   });
 
   it("gives our board number only when it differs", () => {

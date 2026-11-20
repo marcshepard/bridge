@@ -304,8 +304,8 @@ tallies don't open boards (the API doesn't stop it, the screens do).
   bigger type, labels lined up in a column beside a primary-colour rule. The two-line form: "**Board 7** · The Common Game 10/16/26" with an ⓘ for the board details
   (where it comes in our game, the board "of" the game's boards, and how many field results it's
   scored against); then the setup in small type, values in full-strength text: "You **South** ·
-  Dealer **East (Joe, on your right)** · Vulnerable **N/S (you)**" (You before the result only;
-  Vulnerable is Both, None, N/S (you) or E/W (them)). No compass before the result: your cards are
+  Dealer **East (Joe, on your right)** · Vulnerable **We (N/S)**" (You before the result only;
+  Vulnerable is Both, None, We (N/S) or They (E/W), as on a score pad). No compass before the result: your cards are
   what matters.
 - **Your hand (11 HCP)**: always in big suit rows for reading at arm's length while sorting real
   cards, ♠ ♥ ♣ ♦ so the colours alternate.
@@ -405,6 +405,13 @@ played. If a board somehow hasn't started, the owner has **Play online**.
   defending) it's a read-only suit-per-row list, never rotated. Declarer plays dummy's cards;
   dummy's player only watches, with their own cards at the bottom. Dummy's player can tap **Show
   hand** in declarer's box to see declarer's cards (not strict bridge; hidden again each board).
+- **A bot declarer with a person as dummy:** that person plays the contract for it (always, no
+  option: nobody wants to watch a bot play their contract). `declaringPlayer` in `core/play.ts`
+  decides who plays the declaring side's cards, for the devices and the backend alike. Their hand
+  stays at the bottom (it's dummy), the bot's hand is face up at the top from the start ("North
+  (bot), declarer: you're playing these cards"), the turn box says "Your turn (North)" or "Your
+  turn (dummy)", and they claim and answer claims as declarer. Other devices show "North's turn
+  (Ann)". The contract stays the bot's for the score.
 - **Other seats** you can't see into show the player's name, the card count and that many
   cards face down (`CardBacksFan` in `components/Hand.tsx`: the same card shape and proportions as
   dummy's fan, sized for 13 across the box, so a card keeps its size as the hand shrinks).

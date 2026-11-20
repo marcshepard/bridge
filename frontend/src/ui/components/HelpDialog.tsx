@@ -76,7 +76,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         <li>
           Under it: your seat, the <strong>dealer</strong> (and who that is, for example{" "}
           <strong>East (Joe, on your right)</strong>), and who's <strong>vulnerable</strong>, for example{" "}
-          <strong>N/S (you)</strong>, <strong>Both</strong> or <strong>None</strong>.
+          <strong>We (N/S)</strong> (your side), <strong>They (E/W)</strong>, <strong>Both</strong> or <strong>None</strong>.
         </li>
         <li>
           Then your 13 cards, in big type, a suit per row (spades, hearts, clubs, diamonds, so the colours
@@ -85,7 +85,9 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
         <li>
           When the bidding is over, the owner taps <strong>Enter the contract</strong> (at the bottom of the
-          screen): the contract and who's declaring (or <strong>Passed out</strong>, which ends the board). It shows
+          screen): the contract and who's declaring: each direction shows who's sitting there, for example North with{" "}
+          <strong>Partner · Joe</strong> under it (or <strong>Bot</strong> for a bot). Or tap{" "}
+          <strong>Passed out</strong>, which ends the board. It shows
           on everyone's screen, for example <strong>Contract 4♠ by West (Ann, on your left)</strong>, so you can
           all keep it in mind during the play, and your cards re-sort with trumps first. The owner can tap{" "}
           <strong>Edit the contract</strong> if it's wrong.
@@ -127,7 +129,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
       <Typography sx={{ mb: 1 }}>
         Practise on your own. You sit South, a bot is your partner, and bots are your opponents. Choose{" "}
         <strong>Bidding and play</strong> (you bid, then play the hand or defend; when your bot partner declares,
-        you watch as dummy) or <strong>Bidding only</strong> (each board goes from the auction straight to its
+        you play its contract for it) or <strong>Bidding only</strong> (each board goes from the auction straight to its
         review).
       </Typography>
       <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
@@ -254,7 +256,9 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           example, after 2♥ the levels start at 2, and at the 2 level only ♠ and NT are left. The button at the bottom then says
           what you picked: tap <strong>Submit 3♥</strong> (or <strong>Submit Pass</strong>, and so on) to make it. A bid
           can't be taken back. Under the button is what your bid would tell partner, by your side's bidding
-          system, for example <strong>3♥: invitational raise</strong>. Pick another bid to see what that one means.
+          system, for example <strong>3♥: invitational raise</strong>. Pick another bid to see what that one means. To see what
+          anyone's bid means (partner's or an opponent's), tap it in the auction: it opens with what the bid shows by
+          that side's bidding system, and what the bidding had shown before it.
           With <strong>Bot hints</strong> on (see below), it also says <strong>✓ The bot would bid this too</strong>{" "}
           when the bot would make the same bid with your hand.
         </li>
@@ -295,6 +299,13 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           each side has won. When it's your turn, it says{" "}
           <strong>Your turn</strong> in a green box that pulses. When you're declarer and it's dummy's turn, it says{" "}
           <strong>Dummy's turn</strong> in the same green box: play a card from dummy.
+        </li>
+        <li>
+          When your partner is a bot and it declares, you play the contract for it: its cards are at the top, marked{" "}
+          <strong>North (bot), declarer: you're playing these cards</strong>, and your own cards at the bottom are
+          dummy. The green box says which hand is to play, for example <strong>Your turn (North)</strong> or{" "}
+          <strong>Your turn (dummy)</strong>. You can claim, and answer a claim, for it too. The other players see{" "}
+          <strong>North's turn</strong> with your name, so they know who they're waiting for.
         </li>
         <li>
           To play a card, tap it to pick it (it lifts up), then tap <strong>Play</strong> under your cards. The
@@ -411,12 +422,12 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
       <Typography sx={{ mb: 1 }}>
         Tap the matchpoints on a board to see the field. At the top it works out your score: in the example,{" "}
         <strong>Matchpoints: 70% = (60 + 10) ÷ 100</strong>, then{" "}
-        <strong>Net: +40 = 70 − 30</strong>. Below that is every score the field got, best for
-        your side first, with your result highlighted. Under each score is the contract behind it, when the game
+        <strong>Net: +40 = 70 − 30</strong>. Below that is every score the field got, the
+        most common first (the way The Common Game lists them), with your result highlighted. Under each score is the contract behind it, when the game
         file gives it. The <strong>Matchpoints</strong> column is the % you'd have got with that score, and{" "}
         <strong>Tables</strong> is how many tables got it, with their share of the field: 20 of 100 shows as 20
-        (20%). A very small share shows as &lt;1%. Tap <strong>Tables</strong> to see the most common scores first,
-        or <strong>Score</strong> to go back to the best scores first. Tap the ? beside a heading for a reminder.
+        (20%). A very small share shows as &lt;1%. Tap <strong>Score</strong> to see the best scores for your side
+        first, or <strong>Tables</strong> to go back to the most common first. Tap the ? beside a heading for a reminder.
       </Typography>
       <Typography sx={{ mb: 1 }}>
         The field also shows <strong>IMPs</strong> (International Match Points), the scoring used in team games.

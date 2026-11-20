@@ -5,6 +5,7 @@ import {
   type Card,
   claimAccepted,
   claimAnswerers,
+  declaringPlayer,
   finalTricks,
   type PlayState,
   type Trick,
@@ -188,5 +189,15 @@ describe("claims", () => {
     let s = startPlay(DEAL, "NT", "S");
     while (!isComplete(s)) s = playCard(s, chooseCard(s, () => 0.5));
     expect(finalTricks(s, null)).toBe(tricksWon(s).declarer);
+  });
+});
+
+describe("who plays the declaring side's cards", () => {
+  const bots = (...seats: Seat[]) => (s: Seat) => seats.includes(s);
+  it("is declarer, unless declarer is a bot and dummy is a person", () => {
+    expect(declaringPlayer("N", bots())).toBe("N");
+    expect(declaringPlayer("N", bots("N"))).toBe("S"); // your bot partner declares: you play it
+    expect(declaringPlayer("N", bots("N", "S"))).toBe("N"); // both bots: the bots play
+    expect(declaringPlayer("N", bots("S"))).toBe("N"); // a person declares with a bot dummy
   });
 });

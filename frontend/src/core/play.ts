@@ -36,6 +36,16 @@ export function dummyOf(declarer: Seat): Seat {
   return partnerOf(declarer);
 }
 
+/**
+ * Whose player plays the declaring side's cards (declarer's and dummy's): declarer's, except when
+ * declarer is a bot and dummy is a person. Then that person plays the contract for the bot (nobody
+ * wants to watch a bot play their contract), while it stays the bot's contract for the score.
+ */
+export function declaringPlayer(declarer: Seat, isBot: (s: Seat) => boolean): Seat {
+  const dummy = dummyOf(declarer);
+  return isBot(declarer) && !isBot(dummy) ? dummy : declarer;
+}
+
 /** The opening leader is declarer's left-hand opponent. */
 export function startPlay(hands: Record<Seat, Hand>, trump: Strain, declarer: Seat): PlayState {
   return { hands, trump, declarer, tricks: [{ leader: nextSeat(declarer), cards: [] }] };

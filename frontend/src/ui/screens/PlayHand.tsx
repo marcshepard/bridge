@@ -21,6 +21,7 @@ import {
   type Trick,
   claimAnswerers,
   currentTrick,
+  declaringPlayer,
   dummyOf,
   isComplete,
   finalTricks,
@@ -101,8 +102,15 @@ export function PlayHand(p: Props) {
   const over = tricks !== null;
   const claimPending = !!claim && !over;
   const turn = toPlay(state);
-  // Declarer plays dummy's cards too; when you're dummy, you only watch.
-  const yours = (s: Seat) => (s === seat && seat !== dummy) || (s === dummy && seat === declarer);
+  // Who plays the declaring side's cards: declarer, or dummy when declarer is a bot and dummy a
+  // person (they play the contract for the bot). `forBot`: that's happening on this board.
+  const actor = declaringPlayer(declarer, (s) => p.bots.includes(s));
+  const forBot = actor !== declarer;
+  // The declaring side's cards are the actor's to play; a defender plays their own; when you're
+  // dummy for a person, you only watch.
+  const yours = (s: Seat) => (seat === actor ? s === declarer || s === dummy : s === seat && seat !== dummy);
+  // The claim seats you speak for: your own, and declarer's when you're playing it for the bot.
+  const speaksFor = (s: Seat) => s === seat || (forBot && seat === actor && s === declarer);
   const dummyShown = state.tricks[0]!.cards.length > 0;
 
   // A friendly game, not strict duplicate: each trick shows face up as it's won, then turns over
@@ -196,12 +204,15 @@ export function PlayHand(p: Props) {
 
   // Who still has to answer the claim.
   const waitingOn = claim ? claimAnswerers(claim.seat, declarer).filter((s) => !claim.acceptedBy.includes(s)) : [];
+  // The seat you answer for (your own, or declarer's when you're playing it for the bot), if any.
+  const answerAs = waitingOn.find(speaksFor);
+  const answerSeat = answerAs !== undefined && answerAs !== seat ? answerAs : undefined;
   const claimText = claim
     ? `${SEAT_NAMES[claim.seat]} claims ${claim.tricks} of the ${left} ${left === 1 ? "trick" : "tricks"} left`
     : "";
 
-  // Whoever has to play next: dummy's turn waits for declarer.
-  const waitingFor = turn === dummy ? declarer : turn;
+  // Whoever has to play next: the declaring side's turns wait for whoever plays its cards.
+  const waitingFor = turn === dummy || turn === declarer ? actor : turn;
 
   // The bots: on the creator's device, a bot's card (or a bot declarer's dummy card) goes after a
   // pause. It's chosen by sampling with double dummy (core/cardplay), worked out during the pause; the
@@ -254,7 +265,11 @@ export function PlayHand(p: Props) {
   const botAgrees = hints && !!picked && botCard?.at === cards.length && sameCard(botCard.card, picked);
 
   // A claim the bots have to answer: the owner's device checks it for each of them in turn.
-  const botAnswerer = claim && p.playsForBots ? claimAnswerers(claim.seat, declarer).find((s) => p.bots.includes(s) && !claim.acceptedBy.includes(s)) : undefined;
+  // (Not a bot declarer whose contract a person is playing: they answer for it.)
+  const botAnswerer =
+    claim && p.playsForBots
+      ? claimAnswerers(claim.seat, declarer).find((s) => p.bots.includes(s) && !(forBot && s === declarer) && !claim.acceptedBy.includes(s))
+      : undefined;
   useEffect(() => {
     if (!claim || !botAnswerer) return;
     let cancelled = false;
@@ -276,14 +291,20 @@ export function PlayHand(p: Props) {
   // turn". When it's yours (your hand, or dummy's when you're declarer) it's in the primary colour,
   // pulsing. Nothing once play stops.
   const awayNote = away[waitingFor] && !p.bots.includes(waitingFor) ? " (away)" : "";
+  // Playing for a bot declarer: "Your turn (North)" or "Your turn (dummy)" says which hand; elsewhere,
+  // "North's turn (Ann)" says who's playing for the bot.
   const turnLabel =
     over || claim
       ? ""
-      : turn === dummy
-        ? `Dummy's turn${myTurn ? "" : awayNote}`
-        : myTurn
-          ? "Your turn"
-          : `${SEAT_NAMES[turn]}'s turn${awayNote}`;
+      : forBot && myTurn
+        ? `Your turn (${turn === dummy ? "dummy" : SEAT_NAMES[turn]})`
+        : turn === dummy
+          ? `Dummy's turn${myTurn ? "" : awayNote}`
+          : myTurn
+            ? "Your turn"
+            : forBot && turn === declarer
+              ? `${SEAT_NAMES[turn]}'s turn (${names[actor]})${awayNote}`
+              : `${SEAT_NAMES[turn]}'s turn${awayNote}`;
   // The line below: why a card can't go, what's happening, or how the play went.
   const statusText = over
     ? resultText
@@ -293,11 +314,13 @@ export function PlayHand(p: Props) {
         ? `${claimText}: waiting for ${waitingOn.map((s) => SEAT_NAMES[s]).join(" and ")}`
         : preselect
           ? "Only one card can go: it's picked for you"
-          : "";
+          : forBot && seat === actor && finished === 0
+            ? "Your bot partner is declarer: you play both hands"
+            : "";
 
   // Dummy can peek at partner's (declarer's) hand: not strict bridge, but a friendly game, and
   // dummy has no cards to play. Hidden again on each new board.
-  const canPeek = seat === dummy && dummyShown && !over;
+  const canPeek = seat === dummy && !forBot && dummyShown && !over;
   const [peek, setPeek] = useState(false);
   useEffect(() => setPeek(false), [board.number]);
 
@@ -319,7 +342,11 @@ export function PlayHand(p: Props) {
         }
       >
         <Typography variant="body2" color="text.secondary" component="div">
-          <PlayerName name={names[s]} away={away[s]} /> · {count} {count === 1 ? "card" : "cards"}
+          <PlayerName
+            name={forBot && s === declarer ? `${names[s]}, played by ${names[actor]}` : names[s]}
+            away={away[forBot && s === declarer ? actor : s]}
+          />{" "}
+          · {count} {count === 1 ? "card" : "cards"}
         </Typography>
         {peekable && peek ? (
           <Hand hand={state.hands[s]} trump={trump} />
@@ -335,6 +362,14 @@ export function PlayHand(p: Props) {
   /** What sits at each edge: dummy's cards once it's down, a claimer's cards, else just who's there. */
   const edge = (s: Seat): ReactNode => {
     if (s === seat) return null;
+    // Playing for your bot partner: its hand is yours to play from the start, as declarer.
+    if (forBot && seat === actor && s === declarer) {
+      return (
+        <SeatBox key={s} active={!over && !claim && turn === s} title={`${SEAT_NAMES[s]} (bot), declarer: you're playing these cards`}>
+          <HandTiles hand={state.hands[s]} trump={trump} short inPlay label={`${SEAT_NAMES[s]}'s cards`} play={playFor(s)} />
+        </SeatBox>
+      );
+    }
     if (claim?.seat === s && s !== dummy) {
       return (
         <SeatBox key={s} active={false} title={`${SEAT_NAMES[s]}: claiming`}>
@@ -395,12 +430,12 @@ export function PlayHand(p: Props) {
             variant="caption"
             color="text.secondary"
             className="num"
-            aria-label={`Tricks: you ${ourSide}, them ${theirSide}`}
+            aria-label={`Tricks: we ${ourSide}, they ${theirSide}`}
             sx={{ lineHeight: 1.3 }}
           >
-            You {ourSide}
+            We {ourSide}
             <br />
-            Them {theirSide}
+            They {theirSide}
           </Typography>
         }
       />
@@ -414,20 +449,20 @@ export function PlayHand(p: Props) {
           severity="info"
           sx={{ mb: 1 }}
           action={
-            waitingOn.includes(seat) ? (
+            answerAs !== undefined ? (
               <Stack direction="row" spacing={1}>
-                <Button color="inherit" disabled={busy !== null} onClick={() => void act("Refusing…", () => p.onAnswerClaim(false))}>
+                <Button color="inherit" disabled={busy !== null} onClick={() => void act("Refusing…", () => p.onAnswerClaim(false, answerSeat))}>
                   Refuse
                 </Button>
                 <Button
                   variant="contained"
                   disabled={busy !== null}
-                  onClick={() => void act("Accepting…", () => p.onAnswerClaim(true))}
+                  onClick={() => void act("Accepting…", () => p.onAnswerClaim(true, answerSeat))}
                 >
                   Accept
                 </Button>
               </Stack>
-            ) : claim.seat === seat ? (
+            ) : speaksFor(claim.seat) ? (
               <Button color="inherit" disabled={busy !== null} onClick={() => void act("Taking it back…", p.onWithdrawClaim)}>
                 Take it back
               </Button>
@@ -435,7 +470,7 @@ export function PlayHand(p: Props) {
           }
         >
           {claimText}.{" "}
-          {waitingOn.includes(seat)
+          {answerAs !== undefined
             ? "Accept if you can't do better, or refuse to play on."
             : `Waiting for ${waitingOn.map((s) => SEAT_NAMES[s]).join(" and ")}.`}
         </Alert>
@@ -457,12 +492,18 @@ export function PlayHand(p: Props) {
         />
         <SeatBox
           active={!over && !claim && turn === seat && yours(seat)}
-          title={seat === dummy && dummyShown ? "You're dummy: partner is playing your cards" : `You: ${SEAT_NAMES[seat]}`}
+          title={
+            seat === dummy && forBot
+              ? `You: ${SEAT_NAMES[seat]}, dummy`
+              : seat === dummy && dummyShown
+                ? "You're dummy: partner is playing your cards"
+                : `You: ${SEAT_NAMES[seat]}`
+          }
         >
           <HandTiles hand={state.hands[seat]} trump={trump} inPlay play={playFor(seat)} />
         </SeatBox>
         {/* Play the picked card (it says which, and "from dummy" when it's dummy's), and Claim beside it. */}
-        {!over && !claim && seat !== dummy && (
+        {!over && !claim && (seat !== dummy || seat === actor) && (
           <Stack direction="row" spacing={1} sx={{ justifyContent: "center", pt: 1 }}>
             <Button variant="outlined" disabled={lookingBack} onClick={() => setClaiming(true)}>
               Claim
@@ -512,7 +553,8 @@ export function PlayHand(p: Props) {
           onClose={() => setClaiming(false)}
           onClaim={(n) => {
             setClaiming(false);
-            void act("Claiming…", () => p.onClaim(n));
+            // Playing for a bot declarer, you claim as declarer.
+            void act("Claiming…", () => p.onClaim(n, forBot && seat === actor ? declarer : undefined));
           }}
         />
       )}

@@ -183,11 +183,26 @@ export function JoinGame({ open, name, initialCode = "", onClose, onJoined }: Pr
             Cancel
           </Button>
         ) : step.kind === "owner" ? (
-          <Stack spacing={1} sx={{ width: 1 }}>
-            <Button variant="contained" size="large" fullWidth disabled={busy} onClick={() => void ask(step.owner.slot)}>
+          // The main action is the likelier one: joining as the owner only when you have the owner's
+          // name; otherwise (the owner's just away) joining as a new player, so a quick tap doesn't
+          // move someone else's game to this device.
+          <Stack spacing={1} sx={{ width: 1 }} direction={sameName(step.owner.name, name) ? "column" : "column-reverse"}>
+            <Button
+              variant={sameName(step.owner.name, name) ? "contained" : "outlined"}
+              size="large"
+              fullWidth
+              disabled={busy}
+              onClick={() => void ask(step.owner.slot)}
+            >
               Join as {step.owner.name} (owner)
             </Button>
-            <Button variant="outlined" size="large" fullWidth disabled={busy} onClick={() => void joinAsNew()}>
+            <Button
+              variant={sameName(step.owner.name, name) ? "outlined" : "contained"}
+              size="large"
+              fullWidth
+              disabled={busy}
+              onClick={() => void joinAsNew()}
+            >
               Join as a new player
             </Button>
           </Stack>

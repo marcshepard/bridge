@@ -4,7 +4,7 @@
 // Before the result the setup is what you need to deal and bid, so it stands out: a line each, in
 // bigger type, labels lined up in a column beside a primary-colour rule (`stacked`). On the result
 // screen the hands need the room, so it's one small line ("Dealer East (Joe, on your right) ·
-// Vulnerable N/S (you)").
+// Vulnerable We (N/S)").
 
 import InfoIcon from "@mui/icons-material/InfoOutlined";
 import { Box, IconButton, Typography } from "@mui/material";

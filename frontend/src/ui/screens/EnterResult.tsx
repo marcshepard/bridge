@@ -19,7 +19,7 @@ import { ChoiceGroup } from "../controls/ChoiceGroup";
 import { Panel } from "../controls/Layout";
 import { NumberStepper } from "../controls/NumberStepper";
 import { SheetDialog } from "../controls/SheetDialog";
-import { relationShort, seatWithRelation } from "../labels";
+import { relationShort, seatAndPlayer, seatWithRelation } from "../labels";
 import { formatTrickResult } from "../../core/contract";
 
 /**
@@ -37,6 +37,8 @@ interface Props {
   step: EntryStep;
   board: Board;
   seat: Seat;
+  /** Who sits in each seat ("Bot" for a bot), shown under each direction when picking declarer. */
+  names?: Record<Seat, string>;
   /** What's entered so far (`tricks: null` when only the contract is in). */
   initial: { contract: Contract | null; declarer: Seat | null; tricks: number | null } | null;
   /** `contractOnly` is true when saving a contract without the tricks. */
@@ -62,7 +64,7 @@ const STRAINS: Array<{ value: Strain; aria: string }> = [
 ];
 
 /** Contract, declarer and tricks (or some of them, see EntryStep), with the score worked out live. */
-export function EnterResultDialog({ open, step, board, seat, initial, onSave, onClose, lastSavedBy }: Props) {
+export function EnterResultDialog({ open, step, board, seat, names, initial, onSave, onClose, lastSavedBy }: Props) {
   const [passedOut, setPassedOut] = useState(initial ? initial.contract === null : false);
   const [level, setLevel] = useState<number | null>(initial?.contract?.level ?? null);
   const [strain, setStrain] = useState<Strain | null>(initial?.contract?.strain ?? null);
@@ -111,7 +113,8 @@ export function EnterResultDialog({ open, step, board, seat, initial, onSave, on
     >
       {!askContract && contract && declarer && (
         <Typography variant="h6" component="p">
-          <ContractText contract={contract} /> by {seatWithRelation(seat, declarer)}
+          <ContractText contract={contract} /> by{" "}
+          {names && declarer !== seat ? seatAndPlayer(seat, declarer, names[declarer]) : seatWithRelation(seat, declarer)}
         </Typography>
       )}
 
@@ -157,7 +160,22 @@ export function EnterResultDialog({ open, step, board, seat, initial, onSave, on
             label="Declarer"
             value={declarer}
             onChange={setDeclarer}
-            choices={SEATS.map((s) => ({ value: s, label: SEAT_NAMES[s], sub: relationShort(seat, s) }))}
+            choices={SEATS.map((s) => ({
+              value: s,
+              label: SEAT_NAMES[s],
+              // Who they are to you, then (for the others) who's sitting there: "Partner", "Joe".
+              sub:
+                names && s !== seat ? (
+                  <>
+                    {relationShort(seat, s)}
+                    <Box component="span" sx={{ display: "block", maxWidth: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {names[s]}
+                    </Box>
+                  </>
+                ) : (
+                  relationShort(seat, s)
+                ),
+            }))}
           />
         </>
       )}

@@ -363,6 +363,14 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onSkipped, onCall
           step={dialog === "result" ? (contract ? "result" : "full") : dialog}
           board={board}
           seat={seat}
+          names={
+            Object.fromEntries(
+              SEATS.map((s) => {
+                const p = snapshot.players.find((x) => x.seat === s);
+                return [s, p?.isBot ? "Bot" : (p?.name ?? "?")];
+              }),
+            ) as Record<Seat, string>
+          }
           initial={comparison ? comparison.ours.result : contract ? { ...contract, tricks: null } : null}
           onSave={(r, contractOnly) => void save(r, contractOnly)}
           lastSavedBy={enteredBy}

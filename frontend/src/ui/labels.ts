@@ -61,11 +61,11 @@ export function seatAndPlayer(me: Seat, seat: Seat, name: string): string {
   return r === "you" ? `${SEAT_NAMES[seat]} (you)` : `${SEAT_NAMES[seat]} (${name}, ${RELATION_PLACE[r]})`;
 }
 
-/** Who's vulnerable, short, from your side: "Both", "None", "N/S (you)", "E/W (them)". */
+/** Who's vulnerable, short, from your side, as on a score pad: "Both", "None", "We (N/S)", "They (E/W)". */
 export function vulnerableShort(me: Seat, vul: Vulnerability): string {
   if (vul === "None" || vul === "Both") return vul;
   const side = vul === "NS" ? "N/S" : "E/W";
-  return `${side} (${isVulnerable(vul, directionOf(me)) ? "you" : "them"})`;
+  return `${isVulnerable(vul, directionOf(me)) ? "We" : "They"} (${side})`;
 }
 
 /**
@@ -74,12 +74,6 @@ export function vulnerableShort(me: Seat, vul: Vulnerability): string {
  */
 export function boardLabel(original: number, position: number): string {
   return original === position ? `Board ${original}` : `Board ${original} (our board ${position})`;
-}
-
-export function vulnerabilityPhrase(me: Seat, vul: Vulnerability): string {
-  if (vul === "None") return "Nobody is vulnerable";
-  if (vul === "Both") return "Everybody is vulnerable";
-  return isVulnerable(vul, directionOf(me)) ? "You are vulnerable, they are not" : "They are vulnerable, you are not";
 }
 
 /**
