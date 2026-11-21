@@ -265,7 +265,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           <strong>Confirm bids</strong>. Then a bid goes as soon as you tap it: a level and then a suit or NT, or{" "}
           <strong>Pass</strong>, <strong>X</strong> or <strong>XX</strong>, with no Submit. It's faster, but you don't
           see what the bid means first, and a slip of the finger can't be undone. With Bot hints on, you're told
-          afterwards what the bot would have bid. The <strong>?</strong> beside <strong>Your bid</strong> explains both ways.
+          afterwards what the bot would have bid. The <strong>?</strong> beside <strong>Your bid</strong> explains the bidding settings.
         </li>
         <li>
           <strong>What a bid means:</strong> tap any bid in the auction, partner's, an opponent's or your own. What it

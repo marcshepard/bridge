@@ -372,24 +372,34 @@ export function BidHand(p: Props) {
   );
 }
 
-/** The "?" by the bidding box's heading: seeing what bids mean, and the two ways to bid. */
+/** The "?" by the bidding box's heading: the bidding settings in the avatar menu, marking which way you bid now. */
 function BiddingHelp() {
+  const confirm = useConfirmBids();
+  const yours = (on: boolean) => (on === confirm ? " (yours now)" : "");
   return (
     <HelpTip label="About bidding">
-      <span>Tap any bid in the auction to see what it means. Tap it again, or the ×, to close it.</span>
+      <span>The menu under your initial (top right) has three settings for bidding:</span>
       <span>
-        <strong>Confirm bids on</strong> (the usual): tap a bid, then Submit. Before you submit you see what your bid
-        tells partner and, with Bot hints on, whether the bot would bid it too. Safer, since there are no takebacks.
+        <strong>Bidding system:</strong> the SAYC choices you play. The bots bid by it, and the app uses it to explain
+        bids and to judge yours. A change applies to games you start or join after it.
       </span>
       <span>
-        <strong>Confirm bids off:</strong> a bid goes as soon as you tap it (a level then a suit, or Pass, X or XX).
-        Faster, but a slip of the finger can't be undone. With Bot hints on, you're told afterwards what the bot would
-        have bid.
+        <strong>Bot hints:</strong> before you make a bid or play a card, it tells you whether the bot would choose it
+        too. (The review after each board always shows this.)
       </span>
       <span>
-        Both switches are in the menu under your initial, top right. What bids mean, and how the bots bid, follow each
-        side's bidding system: SAYC, with the choices on its card (Bidding system, in the same menu).
+        <strong>Confirm bids:</strong>
       </span>
+      <Box component="ul" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
+        <li>
+          <strong>On</strong> (the default){yours(true)}: tap a bid, then tap Submit. Before you submit, you see what your
+          bid means and, with Bot hints on, whether the bot would bid it too. Fewer misbids.
+        </li>
+        <li>
+          <strong>Off</strong>{yours(false)}: a bid goes as soon as you tap it. Faster, but you don't see what it means
+          first, and a misbid can't be undone. With Bot hints on, you're told afterwards what the bot would have bid.
+        </li>
+      </Box>
     </HelpTip>
   );
 }
