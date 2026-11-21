@@ -155,46 +155,43 @@ export function PlayBoard(p: Props) {
   // While the board is bid or its cards are played on screen (and for a moment after, showing how
   // it went), the auction or the play table takes the place of everything below the top row: the
   // table plays this board together.
+  // BidHand and PlayHand lay out the whole screen themselves: their main button goes in its footer.
   if (p.bidding) {
     return (
-      <Screen>
-        {top}
-        <BidHand
-          board={board}
-          seat={seat}
-          names={p.names}
-          away={p.away}
-          bots={p.bidding.bots}
-          autoSeats={p.bidding.autoSeats}
-          systems={p.bidding.systems}
-          calls={p.bidding.calls}
-          onCall={p.bidding.onCall}
-        />
-      </Screen>
+      <BidHand
+        top={top}
+        board={board}
+        seat={seat}
+        names={p.names}
+        away={p.away}
+        bots={p.bidding.bots}
+        autoSeats={p.bidding.autoSeats}
+        systems={p.bidding.systems}
+        calls={p.bidding.calls}
+        onCall={p.bidding.onCall}
+      />
     );
   }
   if (p.play && p.contract) {
     return (
-      <Screen>
-        {top}
-        <PlayHand
-          board={board}
-          seat={seat}
-          contract={p.contract}
-          names={p.names}
-          away={p.away}
-          bots={p.play.bots}
-          playsForBots={p.play.playsForBots}
-          calls={p.play.calls}
-          systems={p.play.systems}
-          cards={p.play.cards}
-          claim={p.play.claim}
-          onPlay={p.play.onPlay}
-          onClaim={p.play.onClaim}
-          onAnswerClaim={p.play.onAnswerClaim}
-          onWithdrawClaim={p.play.onWithdrawClaim}
-        />
-      </Screen>
+      <PlayHand
+        top={top}
+        board={board}
+        seat={seat}
+        contract={p.contract}
+        names={p.names}
+        away={p.away}
+        bots={p.play.bots}
+        playsForBots={p.play.playsForBots}
+        calls={p.play.calls}
+        systems={p.play.systems}
+        cards={p.play.cards}
+        claim={p.play.claim}
+        onPlay={p.play.onPlay}
+        onClaim={p.play.onClaim}
+        onAnswerClaim={p.play.onAnswerClaim}
+        onWithdrawClaim={p.play.onWithdrawClaim}
+      />
     );
   }
 

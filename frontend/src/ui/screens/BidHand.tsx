@@ -8,7 +8,7 @@
 // (Players see "bid" for every call, Pass and doubles included; "call" is only the code's word.)
 
 import { Box, Button, Typography } from "@mui/material";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { type Call, auctionResult, canCall, isAuctionOver, toCall } from "../../core/auction";
 import { chooseCall, chooseCallWithSimulation, readAuction } from "../../core/bidding/bidder";
 import { sameCall } from "../../core/bidding/position";
@@ -23,7 +23,7 @@ import { HandTiles } from "../components/Hand";
 import { CallText, ContractText, StrainSymbol, SuitString, callWords } from "../controls/BridgeText";
 import { ChoiceGroup } from "../controls/ChoiceGroup";
 import { HelpTip } from "../controls/HelpTip";
-import { Section } from "../controls/Layout";
+import { Screen, Section } from "../controls/Layout";
 import { TurnStrip } from "../controls/TurnStrip";
 import { playerPlace, vulnerableShort } from "../labels";
 import { useBotHints } from "../botHints";
@@ -36,6 +36,8 @@ const STRAIN_WORDS: Record<Strain, string> = { C: "Clubs", D: "Diamonds", H: "He
 const BOT_DELAY_MS = 1200;
 
 interface Props {
+  /** The board screen's top row, above the auction. */
+  top: ReactNode;
   board: Board;
   seat: Seat;
   names: Record<Seat, string>;
@@ -126,11 +128,10 @@ export function BidHand(p: Props) {
     };
   }, [mine, calls.length, hints]);
   // With Confirm bids off there's no pick to show the hint on, so it comes after the bid: whether
-  // the bot would have bid the same, and if not, what. Until your next turn.
-  const [after, setAfter] = useState<{ call: Call; bot: Call } | null>(null);
-  useEffect(() => {
-    if (mine) setAfter(null);
-  }, [mine]);
+  // the bot would have bid the same, and if not, what. Only until the next bid (`at`: the number of
+  // calls once yours is in), or it would read as a comment on that one.
+  const [after, setAfter] = useState<{ call: Call; bot: Call; at: number } | null>(null);
+  const showAfter = after !== null && after.at === calls.length;
 
   // The picked bid read as partner would read it: the auction with it added, by your side's card.
   const meaning = useMemo(() => {
@@ -154,7 +155,8 @@ export function BidHand(p: Props) {
     const later = confirm ? null : botCallLater.current;
     try {
       await p.onCall(calls.length + 1, call);
-      void later?.then((bot) => setAfter({ call, bot }));
+      const at = calls.length + 1;
+      void later?.then((bot) => setAfter({ call, bot, at }));
     } catch (e) {
       setHint((e as Error).message);
     } finally {
@@ -171,204 +173,211 @@ export function BidHand(p: Props) {
       :`${SEAT_NAMES[caller]}'s turn${p.bots.includes(caller) ? " (bot)" : awayNote}`;
   const vulText = `Vul: ${vulnerableShort(seat, board.vul)}`;
 
-  return (
-    <Box component="section" aria-label="Bidding" className="no-select">
-      <TurnStrip
-        left={
-          <Typography variant="h6" component="h1" sx={{ lineHeight: 1.2 }} noWrap>
-            Bidding
-            <Typography variant="caption" component="span" color="text.secondary" sx={{ display: "block" }} noWrap>
-              {SEAT_NAMES[dealer]} dealt
+  // With Confirm bids on, the bid you've put together and its Submit button are pinned to the
+  // bottom of the screen, so Submit is never scrolled out of sight: first what the bid would tell
+  // partner (and the bot hint), then the button.
+  const footer = !over && mine && confirm && (
+    <Box className="no-select">
+      {/* What the picked bid would tell partner, by your side's card: the same reading as the bidding review. */}
+      {meaning && (
+        <Typography variant="body2" sx={{ textAlign: "left", mb: 0.5 }} aria-live="polite">
+          <strong>{meaning.call.kind === "bid" ? <CallText call={meaning.call} /> : callWords(meaning.call)}:</strong>{" "}
+          <SuitString text={meaning.read.meaning} />
+          {meaning.read.guessed && (
+            <Typography component="span" variant="body2" color="text.secondary">
+              {" "}
+              (no rule covers this yet, so it's read as natural)
             </Typography>
-          </Typography>
-        }
-        turn={turn}
-        mine={mine}
-        right={
-          // One line where there's room; on the narrowest phones it wraps rather than being cut off.
-          <Typography variant="caption" color="text.secondary" component="p" sx={{ lineHeight: 1.3 }}>
-            {vulText}
-          </Typography>
-        }
-      />
-      {/* Why a bid didn't go, what's happening, or how the auction ended. Always its height. */}
-      <Typography variant="subtitle1" noWrap sx={{ mb: 1 }} aria-live="polite" color={hint ? "error" : undefined}>
-        {hint ??
-          (busy ? (
-            "Sending your bid…"
-          ) : end ? (
-            end.contract && end.declarer ? (
-              <>
-                The contract is <ContractText contract={end.contract} /> by {SEAT_NAMES[end.declarer]}
-              </>
-            ) : (
-              "Passed out"
-            )
-          ) : (
-            " "
-          ))}
-      </Typography>
-
-      <AuctionTable
-        dealer={dealer}
-        vul={board.vul}
-        names={names}
-        calls={calls}
-        seat={seat}
-        onOpenCall={(i) => setExplained(explained === i ? null : i)}
-        shaded={explained ?? undefined}
-      />
-      {explained !== null && review[explained] && <CallMeaning r={review[explained]} me={seat} onClose={() => setExplained(null)} />}
-
-      {/* Your hand sits above the bidding box, so it stays put while the box comes and goes below it. */}
-      <Section title={`Your hand (${hcp(board.hands[seat])} HCP)`} id="your-hand" tight>
-        <HandTiles hand={board.hands[seat]} trump={null} />
-      </Section>
-
-      {/*
-        The bidding box, under its own heading so it reads as the place you act rather than part of
-        the auction above (no panel around it: it took room and the heading does the job). Only on your turn, and with only the bids you can
-        make: the rest leave empty places, so every button keeps its place from one turn to the next.
-        On someone else's turn, just whose bid it is.
-      */}
-      {!over && (
-        <Box ref={boxRef}>
-          {mine ? (
-            <Section
-              title={
-                <>
-                  Your bid <BiddingHelp />
-                </>
-              }
-              id="your-bid"
-            >
-              <Box>
-                <ChoiceGroup
-                  value={level}
-                  disabled={busy}
-                  onChange={(lv) => {
-                    setLevel(lv);
-                    setPicked(picked?.kind === "bid" && bidAllowed(lv, picked.strain) ? { ...picked, level: lv } : null);
-                  }}
-                  choices={[1, 2, 3, 4, 5, 6, 7].map((lv) => ({
-                    value: lv,
-                    label: lv,
-                    ariaLabel: `Level ${lv}`,
-                    hidden: !STRAINS.some((s) => bidAllowed(lv, s)),
-                  }))}
-                />
-                {/* The level and the suit make one bid, so they sit together; Pass, X and XX are a choice of their own. */}
-                <ChoiceGroup
-                  space="tight"
-                  value={picked?.kind === "bid" ? picked.strain : null}
-                  disabled={busy || level === null}
-                  onChange={(strain) => {
-                    if (level === null) return;
-                    const call: Call = { kind: "bid", level, strain };
-                    setPicked(call);
-                    if (!confirm) void send(call);
-                  }}
-                  choices={STRAINS.map((s) => ({
-                    value: s,
-                    label: <StrainSymbol strain={s} />,
-                    ariaLabel: STRAIN_WORDS[s],
-                    hidden: level !== null && !bidAllowed(level, s),
-                  }))}
-                />
-                {/* Pass on the left; on the right X or XX, whichever you can make (never both), or nothing. */}
-                <ChoiceGroup<"pass" | "gap" | "double" | "redouble">
-                  space="loose"
-                  value={picked && picked.kind !== "bid" ? picked.kind : null}
-                  disabled={busy}
-                  onChange={(kind) => {
-                    if (kind === "gap") return;
-                    setLevel(null);
-                    setPicked({ kind });
-                    if (!confirm) void send({ kind });
-                  }}
-                  choices={[
-                    { value: "pass", label: "Pass", color: BID_COLOURS.pass },
-                    { value: "gap", label: "", hidden: true },
-                    allowed({ kind: "redouble" })
-                      ? { value: "redouble", label: "XX", ariaLabel: "Redouble", color: BID_COLOURS.redouble }
-                      : { value: "double", label: "X", ariaLabel: "Double", color: BID_COLOURS.double, hidden: !allowed({ kind: "double" }) },
-                  ]}
-                />
-                {/*
-                  One tap makes the bid you've put together. It says which ("Submit 3♥", "Submit Pass"),
-                  worded unlike the box's own buttons, so it never looks like a second "Pass".
-                */}
-                {confirm && (
-                <Box sx={{ textAlign: "center", mt: 2 }}>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    disabled={busy || !picked}
-                    aria-label={picked ? `Submit ${callWords(picked)}` : undefined}
-                    onClick={() => void send()}
-                    sx={{ minWidth: (t) => t.spacing(20) }}
-                  >
-                    Submit
-                    {picked && (
-                      <>
-                        &nbsp;
-                        {picked.kind === "bid" ? <CallText call={picked} /> : callWords(picked)}
-                      </>
-                    )}
-                  </Button>
-                </Box>
-                )}
-                {/* What the picked bid would tell partner, by your side's card: the same reading as the bidding review. */}
-                {confirm && meaning && (
-                  <Typography variant="body2" sx={{ mt: 1.5 }} aria-live="polite">
-                    <strong>{meaning.call.kind === "bid" ? <CallText call={meaning.call} /> : callWords(meaning.call)}:</strong>{" "}
-                    <SuitString text={meaning.read.meaning} />
-                    {meaning.read.guessed && (
-                      <Typography component="span" variant="body2" color="text.secondary">
-                        {" "}
-                        (no rule covers this yet, so it's read as natural)
-                      </Typography>
-                    )}
-                  </Typography>
-                )}
-                {confirm && hints && picked && botCall && sameCall(picked, botCall) && (
-                  <Typography variant="body2" color="success.main" sx={{ mt: 0.5, fontWeight: "fontWeightMedium" }} aria-live="polite">
-                    ✓ The bot would bid this too
-                  </Typography>
-                )}
-              </Box>
-            </Section>
-          ) : (
-            <Section
-              id="their-bid"
-              title={
-                <>
-                  {SEAT_NAMES[caller]}'s bid{" "}
-                  <Typography component="span" variant="body1" color="text.secondary">
-                    — {playerPlace(seat, caller, names[caller])}
-                  </Typography>{" "}
-                  <BiddingHelp />
-                </>
-              }
-            >
-              {null}
-            </Section>
           )}
-        </Box>
-      )}
-      {/* After a bid made with one tap (Confirm bids off), the bot hint it had no time to show. */}
-      {hints && after && !mine && (
-        <Typography
-          variant="body2"
-          color={sameCall(after.call, after.bot) ? "success.main" : "text.secondary"}
-          sx={{ mt: 1, fontWeight: "fontWeightMedium" }}
-          aria-live="polite"
-        >
-          {sameCall(after.call, after.bot) ? "✓ The bot would have bid this too" : "The bot would have bid "}
-          {!sameCall(after.call, after.bot) && (after.bot.kind === "bid" ? <CallText call={after.bot} /> : callWords(after.bot))}
         </Typography>
       )}
+      {hints && picked && botCall && sameCall(picked, botCall) && (
+        <Typography variant="body2" color="success.main" sx={{ textAlign: "left", mb: 0.5, fontWeight: "fontWeightMedium" }} aria-live="polite">
+          ✓ The bot would bid this too
+        </Typography>
+      )}
+      {/*
+        One tap makes the bid you've put together. It says which ("Submit 3♥", "Submit Pass"),
+        worded unlike the box's own buttons, so it never looks like a second "Pass".
+      */}
+      <Button
+        variant="contained"
+        size="large"
+        disabled={busy || !picked}
+        aria-label={picked ? `Submit ${callWords(picked)}` : undefined}
+        onClick={() => void send()}
+        sx={{ minWidth: (t) => t.spacing(20), mt: 0.5 }}
+      >
+        Submit
+        {picked && (
+          <>
+            &nbsp;
+            {picked.kind === "bid" ? <CallText call={picked} /> : callWords(picked)}
+          </>
+        )}
+      </Button>
     </Box>
+  );
+
+  return (
+    <Screen footer={footer || undefined}>
+      {p.top}
+      <Box component="section" aria-label="Bidding" className="no-select">
+        <TurnStrip
+          left={
+            <Typography variant="h6" component="h1" sx={{ lineHeight: 1.2 }} noWrap>
+              Bidding
+              <Typography variant="caption" component="span" color="text.secondary" sx={{ display: "block" }} noWrap>
+                {SEAT_NAMES[dealer]} dealt
+              </Typography>
+            </Typography>
+          }
+          turn={turn}
+          mine={mine}
+          right={
+            // One line where there's room; on the narrowest phones it wraps rather than being cut off.
+            <Typography variant="caption" color="text.secondary" component="p" sx={{ lineHeight: 1.3 }}>
+              {vulText}
+            </Typography>
+          }
+        />
+        {/* Why a bid didn't go, what's happening, or how the auction ended. Always its height. */}
+        <Typography variant="subtitle1" noWrap sx={{ mb: 1 }} aria-live="polite" color={hint ? "error" : undefined}>
+          {hint ??
+            (busy ? (
+              "Sending your bid…"
+            ) : end ? (
+              end.contract && end.declarer ? (
+                <>
+                  The contract is <ContractText contract={end.contract} /> by {SEAT_NAMES[end.declarer]}
+                </>
+              ) : (
+                "Passed out"
+              )
+            ) : (
+              " "
+            ))}
+        </Typography>
+
+        <AuctionTable
+          dealer={dealer}
+          vul={board.vul}
+          names={names}
+          calls={calls}
+          seat={seat}
+          onOpenCall={(i) => setExplained(explained === i ? null : i)}
+          shaded={explained ?? undefined}
+        />
+        {explained !== null && review[explained] && <CallMeaning r={review[explained]} me={seat} onClose={() => setExplained(null)} />}
+
+        {/* Your hand sits above the bidding box, so it stays put while the box comes and goes below it. */}
+        <Section title={`Your hand (${hcp(board.hands[seat])} HCP)`} id="your-hand" tight>
+          <HandTiles hand={board.hands[seat]} trump={null} />
+        </Section>
+
+        {/*
+          The bidding box, under its own heading so it reads as the place you act rather than part of
+          the auction above (no panel around it: it took room and the heading does the job). Only on your turn, and with only the bids you can
+          make: the rest leave empty places, so every button keeps its place from one turn to the next.
+          On someone else's turn, just whose bid it is.
+        */}
+        {!over && (
+          <Box ref={boxRef}>
+            {mine ? (
+              <Section
+                title={
+                  <>
+                    Your bid <BiddingHelp />
+                  </>
+                }
+                id="your-bid"
+              >
+                <Box>
+                  <ChoiceGroup
+                    value={level}
+                    disabled={busy}
+                    onChange={(lv) => {
+                      setLevel(lv);
+                      setPicked(picked?.kind === "bid" && bidAllowed(lv, picked.strain) ? { ...picked, level: lv } : null);
+                    }}
+                    choices={[1, 2, 3, 4, 5, 6, 7].map((lv) => ({
+                      value: lv,
+                      label: lv,
+                      ariaLabel: `Level ${lv}`,
+                      hidden: !STRAINS.some((s) => bidAllowed(lv, s)),
+                    }))}
+                  />
+                  {/* The level and the suit make one bid, so they sit together; Pass, X and XX are a choice of their own. */}
+                  <ChoiceGroup
+                    space="tight"
+                    value={picked?.kind === "bid" ? picked.strain : null}
+                    disabled={busy || level === null}
+                    onChange={(strain) => {
+                      if (level === null) return;
+                      const call: Call = { kind: "bid", level, strain };
+                      setPicked(call);
+                      if (!confirm) void send(call);
+                    }}
+                    choices={STRAINS.map((s) => ({
+                      value: s,
+                      label: <StrainSymbol strain={s} />,
+                      ariaLabel: STRAIN_WORDS[s],
+                      hidden: level !== null && !bidAllowed(level, s),
+                    }))}
+                  />
+                  {/* Pass on the left; on the right X or XX, whichever you can make (never both), or nothing. */}
+                  <ChoiceGroup<"pass" | "gap" | "double" | "redouble">
+                    space="loose"
+                    value={picked && picked.kind !== "bid" ? picked.kind : null}
+                    disabled={busy}
+                    onChange={(kind) => {
+                      if (kind === "gap") return;
+                      setLevel(null);
+                      setPicked({ kind });
+                      if (!confirm) void send({ kind });
+                    }}
+                    choices={[
+                      { value: "pass", label: "Pass", color: BID_COLOURS.pass },
+                      { value: "gap", label: "", hidden: true },
+                      allowed({ kind: "redouble" })
+                        ? { value: "redouble", label: "XX", ariaLabel: "Redouble", color: BID_COLOURS.redouble }
+                        : { value: "double", label: "X", ariaLabel: "Double", color: BID_COLOURS.double, hidden: !allowed({ kind: "double" }) },
+                    ]}
+                  />
+                </Box>
+              </Section>
+            ) : (
+              <Section
+                id="their-bid"
+                title={
+                  <>
+                    {SEAT_NAMES[caller]}'s bid{" "}
+                    <Typography component="span" variant="body1" color="text.secondary">
+                      — {playerPlace(seat, caller, names[caller])}
+                    </Typography>{" "}
+                    <BiddingHelp />
+                  </>
+                }
+              >
+                {null}
+              </Section>
+            )}
+          </Box>
+        )}
+        {/* After a bid made with one tap (Confirm bids off), the bot hint it had no time to show. */}
+        {hints && after && showAfter && (
+          <Typography
+            variant="body2"
+            color={sameCall(after.call, after.bot) ? "success.main" : "text.secondary"}
+            sx={{ mt: 1, fontWeight: "fontWeightMedium" }}
+            aria-live="polite"
+          >
+            {sameCall(after.call, after.bot) ? "✓ The bot would have bid this too" : "The bot would have bid "}
+            {!sameCall(after.call, after.bot) && (after.bot.kind === "bid" ? <CallText call={after.bot} /> : callWords(after.bot))}
+          </Typography>
+        )}
+      </Box>
+    </Screen>
   );
 }
 

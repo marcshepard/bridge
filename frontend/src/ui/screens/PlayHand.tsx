@@ -41,6 +41,7 @@ import { BiddingReview } from "../components/BiddingReview";
 import { CardBacksFan, Hand, HandTiles, cardBackSx } from "../components/Hand";
 import { ContractText, StrainSymbol, SUIT_NAMES } from "../controls/BridgeText";
 import { HelpTip } from "../controls/HelpTip";
+import { Screen } from "../controls/Layout";
 import { NumberStepper } from "../controls/NumberStepper";
 import { PlayerName } from "../controls/PlayerName";
 import { PlayingCard } from "../controls/PlayingCard";
@@ -59,6 +60,8 @@ const FORCED_DELAY_MS = 700;
 
 
 interface Props {
+  /** The board screen's top row, above the play table. */
+  top: ReactNode;
   board: Board;
   seat: Seat;
   contract: { contract: Contract; declarer: Seat };
@@ -90,10 +93,17 @@ interface Props {
 }
 
 export function PlayHand(p: Props) {
-  const { board, seat, names, away, cards, claim } = p;
+  const { board, seat, names, away, claim } = p;
   const { declarer } = p.contract;
   const trump = p.contract.contract.strain;
   const dummy = dummyOf(declarer);
+  // A card you play goes on the table at once, while it's on its way to the backend: waiting for the
+  // answer left it back in your hand for a moment, which flickered. `sending.at`: the cards played
+  // before it. Once the backend has it, it's in `p.cards` and this no longer applies; refused, it
+  // comes back to your hand (with the reason). Everything below works from the table as you see it.
+  const [sending, setSending] = useState<{ at: number; card: Card } | null>(null);
+  const pending = sending !== null && sending.at === p.cards.length ? sending.card : null;
+  const cards = useMemo(() => (pending ? [...p.cards, pending] : p.cards), [p.cards, pending]);
   const state = useMemo(() => replay(board.hands, trump, declarer, cards), [board, trump, declarer, cards]);
   const [hint, setHint] = useState<string | null>(null);
   // Something on its way to the backend (a card, a claim, an answer): no more taps until it's done.
@@ -199,7 +209,17 @@ export function PlayHand(p: Props) {
   function playCard(card: Card) {
     // Playing a card goes back to the trick in play.
     setShowing(null);
-    void act("Playing your card…", () => p.onPlay(cards.length + 1, card));
+    const at = cards.length;
+    setSending({ at, card });
+    void act("Playing your card…", async () => {
+      try {
+        await p.onPlay(at + 1, card);
+      } catch (e) {
+        // Refused: back to your hand.
+        setSending(null);
+        throw e;
+      }
+    });
   }
 
   // Your only playable card (your last, or your only one in the suit led) plays itself after a
@@ -234,8 +254,10 @@ export function PlayHand(p: Props) {
   // pause. It's chosen by sampling with double dummy (core/cardplay), worked out during the pause; the
   // simple robot rules if double dummy isn't available. The backend takes the first card for each
   // turn, so a repeat can't play twice.
-  // A bot's lead waits until the trick just won has turned over, so it lands on a clear table.
-  const botTurn = !over && !claim && !justWon && p.playsForBots && p.bots.includes(waitingFor);
+  // A bot's lead waits until the trick just won has turned over, so it lands on a clear table. A bot
+  // also waits until the backend has your card (`pending`), so it never plays after a card that
+  // might yet be refused.
+  const botTurn = !over && !claim && !justWon && !pending && p.playsForBots && p.bots.includes(waitingFor);
   const context = useMemo(() => playContext({ dealer: board.dealer, vul: board.vul }, p.calls, p.systems), [board, p.calls, p.systems]);
   // A bot considers claiming once a board (when its side's tricks are certain, it claims instead of
   // playing on); refused, it plays on.
@@ -408,174 +430,182 @@ export function PlayHand(p: Props) {
   };
   const at = (r: "partner" | "lho" | "rho") => SEATS.find((s) => relationTo(seat, s) === r)!;
 
+  // Play the picked card (it says which, and "from dummy" when it's dummy's), and Claim beside it,
+  // pinned to the bottom of the screen so they're never scrolled out of sight. The bot hint sits
+  // just above them.
+  const footer = !over && !claim && (seat !== dummy || seat === actor) && (
+    <Box className="no-select">
+      {botAgrees && (
+        <Typography variant="body2" color="success.main" sx={{ mb: 1, fontWeight: "fontWeightMedium" }} aria-live="polite">
+          ✓ The bot would play this too
+        </Typography>
+      )}
+      <Stack direction="row" spacing={1} sx={{ justifyContent: "center" }}>
+        <Button variant="outlined" disabled={lookingBack} onClick={() => setClaiming(true)}>
+          Claim
+        </Button>
+        <Button
+          variant="contained"
+          size="large"
+          disabled={!myTurn || !picked || busy !== null || lookingBack}
+          onClick={() => picked && playCard(picked)}
+          aria-label={picked ? `Play the ${cardWords(picked)}${turn === dummy ? " from dummy" : ""}` : undefined}
+          sx={{ minWidth: (t) => t.spacing(20) }}
+        >
+          {/* One span, so the label flows as text: in the button's flex row, " from dummy" on its own
+              would lose its leading space. */}
+          <span>
+            Play
+            {picked && (
+              <>
+                &nbsp;{picked.rank === "T" ? "10" : picked.rank}
+                <StrainSymbol strain={picked.suit} />
+                {turn === dummy && " from dummy"}
+              </>
+            )}
+          </span>
+        </Button>
+        <PlayHelp />
+      </Stack>
+    </Box>
+  );
+
   return (
-    <Box component="section" aria-label="Card play" className="no-select">
-      {/* The status strip: the contract, whose turn it is and tricks for each side, then a line for
-          why a card can't go, what's happening, or how the play went. The turn sits in a fixed-size
-          box and the line below always takes its height, so nothing moves under your finger. */}
-      <TurnStrip
-        left={
-          // Bid on the devices: the contract is a button that opens the bidding review (meanings only).
-          p.calls.length > 0 ? (
-            <Button
-              variant="outlined"
-              onClick={() => setShowAuction(true)}
-              aria-label={`${formatContract(p.contract.contract)} by ${SEAT_NAMES[declarer]}. Show the auction`}
-              sx={{ display: "block", textAlign: "left", minWidth: 0, px: 1, py: 0.25, lineHeight: 1.2 }}
-            >
+    <Screen footer={footer || undefined}>
+      {p.top}
+      <Box component="section" aria-label="Card play" className="no-select">
+        {/* The status strip: the contract, whose turn it is and tricks for each side, then a line for
+            why a card can't go, what's happening, or how the play went. The turn sits in a fixed-size
+            box and the line below always takes its height, so nothing moves under your finger. */}
+        <TurnStrip
+          left={
+            // Bid on the devices: the contract is a button that opens the bidding review (meanings only).
+            p.calls.length > 0 ? (
+              <Button
+                variant="outlined"
+                onClick={() => setShowAuction(true)}
+                aria-label={`${formatContract(p.contract.contract)} by ${SEAT_NAMES[declarer]}. Show the auction`}
+                sx={{ display: "block", textAlign: "left", minWidth: 0, px: 1, py: 0.25, lineHeight: 1.2 }}
+              >
+                <Typography variant="h6" component="h1" sx={{ lineHeight: 1.2 }} noWrap>
+                  <ContractText contract={p.contract.contract} />
+                </Typography>
+                <Typography variant="caption" component="span" color="text.secondary" sx={{ display: "block" }} noWrap>
+                  by {SEAT_NAMES[declarer]}
+                </Typography>
+              </Button>
+            ) : (
               <Typography variant="h6" component="h1" sx={{ lineHeight: 1.2 }} noWrap>
                 <ContractText contract={p.contract.contract} />
+                <Typography variant="caption" component="span" color="text.secondary" sx={{ display: "block" }} noWrap>
+                  by {SEAT_NAMES[declarer]}
+                </Typography>
               </Typography>
-              <Typography variant="caption" component="span" color="text.secondary" sx={{ display: "block" }} noWrap>
-                by {SEAT_NAMES[declarer]}
-              </Typography>
-            </Button>
-          ) : (
-            <Typography variant="h6" component="h1" sx={{ lineHeight: 1.2 }} noWrap>
-              <ContractText contract={p.contract.contract} />
-              <Typography variant="caption" component="span" color="text.secondary" sx={{ display: "block" }} noWrap>
-                by {SEAT_NAMES[declarer]}
-              </Typography>
-            </Typography>
-          )
-        }
-        turn={turnLabel}
-        mine={myTurn}
-        right={
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            className="num"
-            aria-label={`Tricks: we ${ourSide}, they ${theirSide}`}
-            sx={{ lineHeight: 1.3 }}
-          >
-            We {ourSide}
-            <br />
-            They {theirSide}
-          </Typography>
-        }
-      />
-      <Typography variant="subtitle1" noWrap sx={{ mb: 1 }} aria-live="polite" color={hint ? "error" : undefined}>
-        {hint ?? (statusText || " ")}
-      </Typography>
-
-      {/* A claim waiting for answers: what it is, and what you can do about it. */}
-      {claimPending && claim && (
-        <Alert
-          severity="info"
-          sx={{ mb: 1 }}
-          action={
-            answerAs !== undefined ? (
-              <Stack direction="row" spacing={1}>
-                <Button color="inherit" disabled={busy !== null} onClick={() => void act("Refusing…", () => p.onAnswerClaim(false, answerSeat))}>
-                  Refuse
-                </Button>
-                <Button
-                  variant="contained"
-                  disabled={busy !== null}
-                  onClick={() => void act("Accepting…", () => p.onAnswerClaim(true, answerSeat))}
-                >
-                  Accept
-                </Button>
-              </Stack>
-            ) : speaksFor(claim.seat) ? (
-              <Button color="inherit" disabled={busy !== null} onClick={() => void act("Taking it back…", p.onWithdrawClaim)}>
-                Take it back
-              </Button>
-            ) : undefined
+            )
           }
-        >
-          {claimText}.{" "}
-          {answerAs !== undefined
-            ? "Accept if you can't do better, or refuse to play on."
-            : `Waiting for ${waitingOn.map((s) => SEAT_NAMES[s]).join(" and ")}.`}
-        </Alert>
-      )}
-
-      <Stack spacing={1}>
-        {edge(at("partner"))}
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 1, alignItems: "center" }}>
-          {edge(at("lho"))}
-          <TrickView state={state} seat={seat} open={isOpen} />
-          {edge(at("rho"))}
-        </Box>
-        {/* The warning only while you're looking back on purpose, not during a trick's moment face up as it's won. */}
-        <TrickRow
-          state={state}
-          open={isOpen}
-          yourTurn={myTurn && lookingBack}
-          onToggle={toggleTrick ?? (() => {})}
-        />
-        <SeatBox
-          active={!over && !claim && turn === seat && yours(seat)}
-          title={
-            seat === dummy && forBot
-              ? `You: ${SEAT_NAMES[seat]}, dummy`
-              : seat === dummy && dummyShown
-                ? "You're dummy: partner is playing your cards"
-                : `You: ${SEAT_NAMES[seat]}`
-          }
-        >
-          <HandTiles hand={state.hands[seat]} trump={trump} inPlay play={playFor(seat)} />
-        </SeatBox>
-        {/* Play the picked card (it says which, and "from dummy" when it's dummy's), and Claim beside it. */}
-        {!over && !claim && (seat !== dummy || seat === actor) && (
-          <Stack direction="row" spacing={1} sx={{ justifyContent: "center", pt: 1 }}>
-            <Button variant="outlined" disabled={lookingBack} onClick={() => setClaiming(true)}>
-              Claim
-            </Button>
-            <Button
-              variant="contained"
-              size="large"
-              disabled={!myTurn || !picked || busy !== null || lookingBack}
-              onClick={() => picked && playCard(picked)}
-              aria-label={picked ? `Play the ${cardWords(picked)}${turn === dummy ? " from dummy" : ""}` : undefined}
-              sx={{ minWidth: (t) => t.spacing(20) }}
+          turn={turnLabel}
+          mine={myTurn}
+          right={
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              className="num"
+              aria-label={`Tricks: we ${ourSide}, they ${theirSide}`}
+              sx={{ lineHeight: 1.3 }}
             >
-              {/* One span, so the label flows as text: in the button's flex row, " from dummy" on its own
-                  would lose its leading space. */}
-              <span>
-                Play
-                {picked && (
-                  <>
-                    &nbsp;{picked.rank === "T" ? "10" : picked.rank}
-                    <StrainSymbol strain={picked.suit} />
-                    {turn === dummy && " from dummy"}
-                  </>
-                )}
-              </span>
-            </Button>
-            <PlayHelp />
-          </Stack>
-        )}
-        {botAgrees && (
-          <Typography variant="body2" color="success.main" sx={{ textAlign: "center", fontWeight: "fontWeightMedium" }} aria-live="polite">
-            ✓ The bot would play this too
-          </Typography>
-        )}
-      </Stack>
-
-      <SheetDialog
-        open={showAuction}
-        onClose={() => setShowAuction(false)}
-        title="The auction"
-        actions={<Button onClick={() => setShowAuction(false)}>Close</Button>}
-      >
-        <BiddingReview board={board} calls={p.calls} seat={seat} names={names} bots={p.bots} systems={p.systems} meaningsOnly />
-      </SheetDialog>
-
-      {claiming && (
-        <ClaimDialog
-          left={left}
-          onClose={() => setClaiming(false)}
-          onClaim={(n) => {
-            setClaiming(false);
-            // Playing for a bot declarer, you claim as declarer.
-            void act("Claiming…", () => p.onClaim(n, forBot && seat === actor ? declarer : undefined));
-          }}
+              We {ourSide}
+              <br />
+              They {theirSide}
+            </Typography>
+          }
         />
-      )}
-    </Box>
+        <Typography variant="subtitle1" noWrap sx={{ mb: 1 }} aria-live="polite" color={hint ? "error" : undefined}>
+          {hint ?? (statusText || " ")}
+        </Typography>
+
+        {/* A claim waiting for answers: what it is, and what you can do about it. */}
+        {claimPending && claim && (
+          <Alert
+            severity="info"
+            sx={{ mb: 1 }}
+            action={
+              answerAs !== undefined ? (
+                <Stack direction="row" spacing={1}>
+                  <Button color="inherit" disabled={busy !== null} onClick={() => void act("Refusing…", () => p.onAnswerClaim(false, answerSeat))}>
+                    Refuse
+                  </Button>
+                  <Button
+                    variant="contained"
+                    disabled={busy !== null}
+                    onClick={() => void act("Accepting…", () => p.onAnswerClaim(true, answerSeat))}
+                  >
+                    Accept
+                  </Button>
+                </Stack>
+              ) : speaksFor(claim.seat) ? (
+                <Button color="inherit" disabled={busy !== null} onClick={() => void act("Taking it back…", p.onWithdrawClaim)}>
+                  Take it back
+                </Button>
+              ) : undefined
+            }
+          >
+            {claimText}.{" "}
+            {answerAs !== undefined
+              ? "Accept if you can't do better, or refuse to play on."
+              : `Waiting for ${waitingOn.map((s) => SEAT_NAMES[s]).join(" and ")}.`}
+          </Alert>
+        )}
+
+        <Stack spacing={1}>
+          {edge(at("partner"))}
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 1, alignItems: "center" }}>
+            {edge(at("lho"))}
+            <TrickView state={state} seat={seat} open={isOpen} />
+            {edge(at("rho"))}
+          </Box>
+          {/* The warning only while you're looking back on purpose, not during a trick's moment face up as it's won. */}
+          <TrickRow
+            state={state}
+            open={isOpen}
+            yourTurn={myTurn && lookingBack}
+            onToggle={toggleTrick ?? (() => {})}
+          />
+          <SeatBox
+            active={!over && !claim && turn === seat && yours(seat)}
+            title={
+              seat === dummy && forBot
+                ? `You: ${SEAT_NAMES[seat]}, dummy`
+                : seat === dummy && dummyShown
+                  ? "You're dummy: partner is playing your cards"
+                  : `You: ${SEAT_NAMES[seat]}`
+            }
+          >
+            <HandTiles hand={state.hands[seat]} trump={trump} inPlay play={playFor(seat)} />
+          </SeatBox>
+        </Stack>
+
+        <SheetDialog
+          open={showAuction}
+          onClose={() => setShowAuction(false)}
+          title="The auction"
+          actions={<Button onClick={() => setShowAuction(false)}>Close</Button>}
+        >
+          <BiddingReview board={board} calls={p.calls} seat={seat} names={names} bots={p.bots} systems={p.systems} meaningsOnly />
+        </SheetDialog>
+
+        {claiming && (
+          <ClaimDialog
+            left={left}
+            onClose={() => setClaiming(false)}
+            onClaim={(n) => {
+              setClaiming(false);
+              // Playing for a bot declarer, you claim as declarer.
+              void act("Claiming…", () => p.onClaim(n, forBot && seat === actor ? declarer : undefined));
+            }}
+          />
+        )}
+      </Box>
+    </Screen>
   );
 }
 
@@ -831,17 +861,21 @@ function cardWords(card: Card): string {
 function PlayHelp() {
   return (
     <HelpTip label="About playing a card">
+      <Box component="span" sx={{ textAlign: "center", fontWeight: "fontWeightBold" }}>
+        Card play options
+      </Box>
       <span>
-        <strong>Tap and Play:</strong> tap a card to pick it (it lifts), then tap Play. With Bot hints on, you see
-        whether the bot would play it too before you do.
+        <strong>Tap and Play:</strong> tap a card to pick it (it lifts), then tap Play. With Bot hints on, you'll see
+        whether the bot would play it too.
       </span>
       <span>
-        <strong>Swipe:</strong> swipe a card towards the table to play it at once: up from your hand, down from dummy
-        at the top. With a mouse, drag it. Let go
-        early and it drops back, unplayed.
+        <strong>Swipe:</strong> swipe a card towards the table to play it: up from your hand, down from dummy. With a
+        mouse, drag it and let go.
       </span>
-      <span>When only one card can go (your last, or your only one in the suit led), it plays itself.</span>
-      <span>There are no takebacks.</span>
+      <span>
+        <strong>Autoplay:</strong> when there is only one legal play (your last, or your only one in the suit led), it
+        plays itself after a moment.
+      </span>
     </HelpTip>
   );
 }

@@ -253,10 +253,11 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           level and then a suit or NT, or tap <strong>Pass</strong> (shaded green), or <strong>X</strong> (double) or{" "}
           <strong>XX</strong> (redouble), shaded red. Only the bids you can make are shown: a bid has to be higher than
           the last one, you can only double an opponent's bid, and only redouble an opponent's double. For
-          example, after 2♥ the levels start at 2, and at the 2 level only ♠ and NT are left. The button at the bottom then says
-          what you picked: tap <strong>Submit 3♥</strong> (or <strong>Submit Pass</strong>, and so on) to make it. A bid
-          can't be taken back. Under the button is what your bid would tell partner, by your side's bidding
-          system, for example <strong>3♥: invitational raise</strong>. Pick another bid to see what that one means.
+          example, after 2♥ the levels start at 2, and at the 2 level only ♠ and NT are left. The button at the bottom
+          of the screen (it's always there on your turn) then says what you picked: tap <strong>Submit 3♥</strong> (or{" "}
+          <strong>Submit Pass</strong>, and so on) to make it. A bid can't be taken back. Just above the button is what
+          your bid would tell partner, by your side's bidding system, for example{" "}
+          <strong>3♥: invitational raise</strong>. Pick another bid to see what that one means.
           With <strong>Bot hints</strong> on (see below), it also says <strong>✓ The bot would bid this too</strong>{" "}
           when the bot would make the same bid with your hand.
         </li>
@@ -265,7 +266,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           <strong>Confirm bids</strong>. Then a bid goes as soon as you tap it: a level and then a suit or NT, or{" "}
           <strong>Pass</strong>, <strong>X</strong> or <strong>XX</strong>, with no Submit. It's faster, but you don't
           see what the bid means first, and a slip of the finger can't be undone. With Bot hints on, you're told
-          afterwards what the bot would have bid. The <strong>?</strong> beside <strong>Your bid</strong> explains the bidding settings.
+          afterwards what the bot would have bid, until the next player bids. The <strong>?</strong> beside <strong>Your bid</strong> explains the bidding settings.
         </li>
         <li>
           <strong>What a bid means:</strong> tap any bid in the auction, partner's, an opponent's or your own. What it
@@ -312,13 +313,13 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           Once the card play starts, everyone's screen shows the table: your cards
           at the bottom, the trick in the middle, and at the top the contract, whose turn it is and the tricks
           each side has won. When it's your turn, it says{" "}
-          <strong>Your turn</strong> in a green box that pulses. When you're declarer and it's dummy's turn, it says{" "}
-          <strong>Dummy's turn</strong> in the same green box: play a card from dummy.
+          <strong>Your turn</strong> in bold green, with a small pulsing dot beside it. When you're declarer and it's
+          dummy's turn, it says <strong>Dummy's turn</strong> the same way: play a card from dummy.
         </li>
         <li>
           When your partner is a bot and it declares, you play the contract for it: its cards are at the top, marked{" "}
           <strong>North (bot), declarer: you're playing these cards</strong>, and your own cards at the bottom are
-          dummy. The green box says which hand is to play, for example <strong>Your turn (North)</strong> or{" "}
+          dummy. The green <strong>Your turn</strong> says which hand is to play, for example <strong>Your turn (North)</strong> or{" "}
           <strong>Your turn (dummy)</strong>. You can claim, and answer a claim, for it too. The other players see{" "}
           <strong>North's turn</strong> with your name, so they know who they're waiting for.
         </li>
@@ -331,7 +332,7 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
               before it's gone far and it drops back, unplayed.
             </li>
             <li>
-              Or <strong>tap it</strong> to pick it (it lifts up), then tap <strong>Play</strong> under your cards. The
+              Or <strong>tap it</strong> to pick it (it lifts up), then tap <strong>Play</strong> at the bottom of the screen. The
               button says which card, for example <strong>Play 7♠</strong>, or <strong>Play 7♠ from dummy</strong>.
               Changed your mind? Tap another card first. This way, Bot hints can tell you about the card before you play it.
             </li>
