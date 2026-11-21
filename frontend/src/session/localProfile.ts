@@ -17,6 +17,8 @@ interface Profile {
   installBannerClosed: boolean;
   /** Bot hints on (off unless turned on). */
   botHints: boolean;
+  /** Bids need confirming (on unless turned off). */
+  confirmBids: boolean;
   /** Your bidding system; checked on reading, so an old or damaged one falls back to SAYC. */
   biddingSystem: SystemSettings;
 }
@@ -55,13 +57,14 @@ export class LocalProfileStore implements ProfileStore {
           lastInGameAt: p.lastInGameAt ?? null,
           installBannerClosed: p.installBannerClosed ?? false,
           botHints: p.botHints === true,
+          confirmBids: p.confirmBids !== false,
           biddingSystem: parseSystemSettings(p.biddingSystem),
         };
       }
     } catch {
       // Unreadable or unavailable: start fresh.
     }
-    return { name: "", playerIds: {}, currentGame: null, currentGameInfo: null, lastInGameAt: null, installBannerClosed: false, botHints: false, biddingSystem: parseSystemSettings(null) };
+    return { name: "", playerIds: {}, currentGame: null, currentGameInfo: null, lastInGameAt: null, installBannerClosed: false, botHints: false, confirmBids: true, biddingSystem: parseSystemSettings(null) };
   }
 
   private write(): void {
@@ -141,6 +144,15 @@ export class LocalProfileStore implements ProfileStore {
 
   setBotHints(on: boolean): void {
     this.profile.botHints = on;
+    this.write();
+  }
+
+  confirmBids(): boolean {
+    return this.profile.confirmBids;
+  }
+
+  setConfirmBids(on: boolean): void {
+    this.profile.confirmBids = on;
     this.write();
   }
 

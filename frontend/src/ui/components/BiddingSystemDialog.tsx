@@ -24,14 +24,18 @@ type Props =
   | {
       open: boolean;
       onClose: () => void;
-      /** A game's cards, read-only: one per side, with a label ("Your side", "Opponents"). */
-      cards: { label: string; system: SystemSettings }[];
+      /**
+       * A game's cards, read-only: one per side, with a label ("Your side", "Opponents") and whose
+       * card it is (null: nobody on that side brought one, so SAYC as it comes).
+       */
+      cards: { label: string; system: SystemSettings; holder?: string | null }[];
     };
 
 export function BiddingSystemDialog(props: Props) {
   const editing = "onChange" in props;
   const [shown, setShown] = useState(0);
-  const card = editing ? props.system : (props.cards[shown] ?? props.cards[0]!).system;
+  const shownCard = editing ? null : (props.cards[shown] ?? props.cards[0]!);
+  const card = shownCard ? shownCard.system : (props as { system: SystemSettings }).system;
   const groups = [...new Set(SETTING_FIELDS.map((f) => f.group))];
 
   return (
@@ -60,15 +64,26 @@ export function BiddingSystemDialog(props: Props) {
       ) : (
         <>
           <Typography sx={{ mb: 1 }}>
-            Each side bids by its own card, fixed when the game started. Bots bid their person's card; bots with nobody on their side bid
-            SAYC as it comes.
+            Each side bids by one card, fixed when the game started: the owner's on the owner's side, otherwise the first
+            player's to join that side. Bots bid their person's card; bots with nobody on their side bid SAYC as it comes.
           </Typography>
           {props.cards.length > 1 && (
             <ChoiceGroup
               value={shown}
               onChange={setShown}
-              choices={props.cards.map((c, i) => ({ value: i, label: c.label, sub: isDefault(c.system) ? "SAYC as it comes" : "Their own choices" }))}
+              choices={props.cards.map((c, i) => ({
+                value: i,
+                label: c.label,
+                sub: c.holder ? `${c.holder}'s card` : "SAYC as it comes",
+              }))}
             />
+          )}
+          {shownCard && shownCard.holder !== undefined && (
+            <Typography color="text.secondary">
+              {shownCard.holder
+                ? `${shownCard.label} bid${shownCard.label === "Opponents" ? "" : "s"} by ${shownCard.holder}'s card${isDefault(card) ? ": SAYC as it comes" : ""}.`
+                : `${shownCard.label}: nobody brought a card, so SAYC as it comes.`}
+            </Typography>
           )}
           <Box sx={{ mb: 2 }} />
         </>

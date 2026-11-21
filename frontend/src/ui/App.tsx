@@ -19,6 +19,7 @@ import { HelpDialog } from "./components/HelpDialog";
 import { InstallBanner } from "./components/InstallBanner";
 import { useInstall } from "./install";
 import { BotHintsContext } from "./botHints";
+import { ConfirmBidsContext } from "./confirmBids";
 import { SeatRequestDialog } from "./components/SeatRequestDialog";
 import { formatJoinCode, sameName, seatRequestNews } from "./labels";
 import { Home } from "./screens/Home";
@@ -254,6 +255,7 @@ export function App() {
   const [systemOpen, setSystemOpen] = useState(false);
   const [mySystem, setMySystem] = useState(() => profile.biddingSystem());
   const [botHints, setBotHints] = useState(() => profile.botHints());
+  const [confirmBids, setConfirmBids] = useState(() => profile.confirmBids());
   const [leaveError, setLeaveError] = useState<string | null>(null);
 
   /** To Home with your game still current: Home's note about it has Resume. */
@@ -419,6 +421,8 @@ export function App() {
   }
 
   const isCreatorInLobby = snapshot?.status === "lobby" && snapshot.you?.isCreator;
+  // A game bid and played on the devices (online or practice): the bidding and play switches apply.
+  const onDevices = !!code && snapshot?.status === "playing" && snapshot.mode !== "cards";
 
   return (
     // The app fills the window: header (and install banner) on top, then the screen, whose middle
@@ -432,7 +436,7 @@ export function App() {
         onInstall={install.canInstall ? () => setDialog("install") : undefined}
         onSystem={() => setSystemOpen(true)}
         botHints={
-          code && snapshot?.status === "playing" && snapshot.mode !== "cards"
+          onDevices
             ? {
                 on: botHints,
                 onChange: (on) => {
@@ -442,10 +446,23 @@ export function App() {
               }
             : undefined
         }
+        confirmBids={
+          onDevices
+            ? {
+                on: confirmBids,
+                onChange: (on) => {
+                  profile.setConfirmBids(on);
+                  setConfirmBids(on);
+                },
+              }
+            : undefined
+        }
         reconnecting={reconnecting}
       />
       <InstallBanner open={dialog === "install"} onOpen={() => setDialog("install")} onClose={() => setDialog(null)} />
-      <BotHintsContext.Provider value={botHints}>{page}</BotHintsContext.Provider>
+      <BotHintsContext.Provider value={botHints}>
+        <ConfirmBidsContext.Provider value={confirmBids}>{page}</ConfirmBidsContext.Provider>
+      </BotHintsContext.Provider>
 
       <StartGame open={dialog === "start"} name={name} onClose={() => setDialog(null)} onCreated={enter} />
       <Practice open={dialog === "practice"} name={name} onClose={() => setDialog(null)} onCreated={enter} system={mySystem} onSystem={() => setSystemOpen(true)} />

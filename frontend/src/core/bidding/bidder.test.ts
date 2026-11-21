@@ -754,3 +754,22 @@ describe("overcalls over a conventional bid", () => {
     expect(over2C(".AKQJT98765432..")).toBe("7H");
   });
 });
+
+describe("an opening pass", () => {
+  const read = (auction: string, s: SystemSettings = SAYC_DEFAULTS) => {
+    const steps = readAuction({ dealer: "N", vul: "None" }, calls(auction), s);
+    const last = steps.at(-2)!;
+    return { hcp: steps.at(-1)!.position.shown[last.position.seat].hcp, meaning: last.read!.meaning };
+  };
+  it.each([
+    ["first seat, rule of 20", "PASS", SAYC_DEFAULTS, 11],
+    ["first seat, no rule of 20", "PASS", { ...SAYC_DEFAULTS, ruleOf20: false }, 12],
+    ["third seat", "PASS PASS PASS", SAYC_DEFAULTS, 11],
+    ["fourth seat, rule of 15", "PASS PASS PASS PASS", SAYC_DEFAULTS, 14],
+    ["fourth seat, no rule of 15", "PASS PASS PASS PASS", { ...SAYC_DEFAULTS, ruleOf15: false }, 11],
+  ])("shows at most the HCP that would still pass: %s", (_, auction, s, max) => {
+    const r = read(auction, s);
+    expect(r.hcp[1]).toBe(max);
+    expect(r.meaning).toContain(`at most ${max} HCP`);
+  });
+});

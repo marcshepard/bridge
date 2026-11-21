@@ -40,6 +40,7 @@ import type { Board } from "../../providers/types";
 import { BiddingReview } from "../components/BiddingReview";
 import { CardBacksFan, Hand, HandTiles, cardBackSx } from "../components/Hand";
 import { ContractText, StrainSymbol, SUIT_NAMES } from "../controls/BridgeText";
+import { HelpTip } from "../controls/HelpTip";
 import { NumberStepper } from "../controls/NumberStepper";
 import { PlayerName } from "../controls/PlayerName";
 import { PlayingCard } from "../controls/PlayingCard";
@@ -53,6 +54,8 @@ import { rememberDecision } from "../botMemory";
 const TURN_OVER_MS = 2000;
 /** How long a bot waits before playing, so everyone can follow the trick. */
 const BOT_DELAY_MS = 2000;
+/** How long before your only playable card plays itself: long enough to see it go. */
+const FORCED_DELAY_MS = 700;
 
 
 interface Props {
@@ -146,8 +149,9 @@ export function PlayHand(p: Props) {
   // played (nor a claim made) until the last trick is closed again. A pick made before stays.
   const lookingBack = isOpen && showing?.how === "look";
 
-  // Tap a card to pick it, then Play: the same two steps as a bid and Submit. A pick lasts until a
-  // card is played (anyone's). When you have only one card you can play, it's picked for you.
+  // Tap a card to pick it, then Play: the same two steps as a bid and Submit; or swipe a card up to
+  // play it at once. A pick lasts until a card is played (anyone's). When you have only one card
+  // you can play, it plays itself (see `forced` below).
   const myTurn = !over && !claim && yours(turn);
   const [pickedCard, setPickedCard] = useState<{ at: number; card: Card } | null>(null);
   const onlyCard = myTurn ? legalCards(state, turn) : [];
@@ -186,16 +190,26 @@ export function PlayHand(p: Props) {
             const led = currentTrick(state).cards[0]!.card.suit;
             setHint(`Follow suit: play a ${SUIT_NAMES[led].slice(0, -1)} ${SUIT_SYMBOLS[led]}`);
           },
+          onPlay: playCard,
         }
       : undefined;
 
-  function playPicked() {
-    if (!picked) return;
-    const card = picked;
+  function playCard(card: Card) {
     // Playing a card goes back to the trick in play.
     setShowing(null);
     void act("Playing your card…", () => p.onPlay(cards.length + 1, card));
   }
+
+  // Your only playable card (your last, or your only one in the suit led) plays itself after a
+  // moment: there's no choice to make. A lead waits, as the bots' do, for the trick just won to
+  // turn over.
+  const forced = myTurn && busy === null && !lookingBack && !justWon && !claiming ? preselect : null;
+  const forcedKey = forced ? `${cards.length}:${forced.suit}${forced.rank}` : null;
+  useEffect(() => {
+    if (!forced) return;
+    const timer = setTimeout(() => playCard(forced), FORCED_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [forcedKey]);
 
   const won = tricksWon(state);
   const ourSide = directionOf(seat) === directionOf(declarer) ? won.declarer : won.defence;
@@ -313,7 +327,7 @@ export function PlayHand(p: Props) {
       : claim
         ? `${claimText}: waiting for ${waitingOn.map((s) => SEAT_NAMES[s]).join(" and ")}`
         : preselect
-          ? "Only one card can go: it's picked for you"
+          ? "Only one card can go: playing it for you"
           : forBot && seat === actor && finished === 0
             ? "Your bot partner is declarer: you play both hands"
             : "";
@@ -393,7 +407,7 @@ export function PlayHand(p: Props) {
   const at = (r: "partner" | "lho" | "rho") => SEATS.find((s) => relationTo(seat, s) === r)!;
 
   return (
-    <Box component="section" aria-label="Card play">
+    <Box component="section" aria-label="Card play" className="no-select">
       {/* The status strip: the contract, whose turn it is and tricks for each side, then a line for
           why a card can't go, what's happening, or how the play went. The turn sits in a fixed-size
           box and the line below always takes its height, so nothing moves under your finger. */}
@@ -512,7 +526,7 @@ export function PlayHand(p: Props) {
               variant="contained"
               size="large"
               disabled={!myTurn || !picked || busy !== null || lookingBack}
-              onClick={playPicked}
+              onClick={() => picked && playCard(picked)}
               aria-label={picked ? `Play the ${cardWords(picked)}${turn === dummy ? " from dummy" : ""}` : undefined}
               sx={{ minWidth: (t) => t.spacing(20) }}
             >
@@ -529,6 +543,7 @@ export function PlayHand(p: Props) {
                 )}
               </span>
             </Button>
+            <PlayHelp />
           </Stack>
         )}
         {botAgrees && (
@@ -808,4 +823,22 @@ function TrickPile({ open }: { open: boolean }) {
 function cardWords(card: Card): string {
   const rank = { A: "ace", K: "king", Q: "queen", J: "jack", T: "10" }[card.rank] ?? card.rank;
   return `${rank} of ${SUIT_NAMES[card.suit]}`;
+}
+
+/** The "?" beside Play: the ways to play a card. */
+function PlayHelp() {
+  return (
+    <HelpTip label="About playing a card">
+      <span>
+        <strong>Tap and Play:</strong> tap a card to pick it (it lifts), then tap Play. With Bot hints on, you see
+        whether the bot would play it too before you do.
+      </span>
+      <span>
+        <strong>Swipe:</strong> swipe a card up, towards the table, to play it at once. With a mouse, drag it up. Let go
+        early and it drops back, unplayed.
+      </span>
+      <span>When only one card can go (your last, or your only one in the suit led), it plays itself.</span>
+      <span>There are no takebacks.</span>
+    </HelpTip>
+  );
 }

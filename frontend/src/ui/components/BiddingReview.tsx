@@ -11,8 +11,9 @@
 // here: it's seeded from the hand and the auction, so it gives the bot's answer at the table. The
 // rule of thumb shows until it's done.
 
+import CloseIcon from "@mui/icons-material/Close";
 import MailOutlineIcon from "@mui/icons-material/MailOutlined";
-import { Alert, Box, Button, Chip, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import type { Call } from "../../core/auction";
 import { type Decision, type ReviewedCall, decideWithSimulation, reviewAuction } from "../../core/bidding/bidder";
@@ -153,7 +154,34 @@ export function BiddingReview({ board, calls, seat, names, bots, systems, onSyst
   );
 }
 
-export function CallDialog({
+/**
+ * What a call in the auction means, shown in place under the auction during the bidding (a dialog
+ * there would cover the auction and your hand, which you want to read it against). Meanings only:
+ * never a bot's reason, which would give its hand away. Closed with its ×, or replaced by tapping
+ * another call.
+ */
+export function CallMeaning({ r, me, onClose }: { r: ReviewedCall; me: Seat; onClose: () => void }) {
+  const name = r.read.rule?.name;
+  const whose = r.seat === me ? "your" : `${SEAT_NAMES[r.seat]}'s`;
+  return (
+    <Paper variant="outlined" sx={{ mt: 1, p: 1.5, pr: 0.5 }} aria-live="polite">
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Typography variant="subtitle1" component="h3" sx={{ flex: 1, fontWeight: "fontWeightBold" }}>
+          What {whose} <CallText call={r.call} /> means
+        </Typography>
+        <IconButton aria-label="Close" onClick={onClose} sx={{ my: -1 }}>
+          <CloseIcon />
+        </IconButton>
+      </Box>
+      <Typography variant="body2" sx={{ pr: 1 }}>
+        <SuitString text={r.read.meaning} />
+      </Typography>
+      {name && !r.read.guessed && <Chip size="small" label={<SuitString text={name} />} sx={{ mt: 0.5 }} />}
+    </Paper>
+  );
+}
+
+function CallDialog({
   r,
   me,
   names,

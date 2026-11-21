@@ -148,6 +148,9 @@ export interface ProfileStore {
   /** Show bot hints ("✓ The bot would bid this too") while bidding and playing on the devices. Off unless turned on. */
   botHints(): boolean;
   setBotHints(on: boolean): void;
+  /** Bids need confirming (pick, then Submit). On unless turned off. */
+  confirmBids(): boolean;
+  setConfirmBids(on: boolean): void;
   /** The install banner was closed on this device: don't show it again. */
   installBannerClosed(): boolean;
   setInstallBannerClosed(): void;

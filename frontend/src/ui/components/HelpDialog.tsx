@@ -256,11 +256,22 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           example, after 2♥ the levels start at 2, and at the 2 level only ♠ and NT are left. The button at the bottom then says
           what you picked: tap <strong>Submit 3♥</strong> (or <strong>Submit Pass</strong>, and so on) to make it. A bid
           can't be taken back. Under the button is what your bid would tell partner, by your side's bidding
-          system, for example <strong>3♥: invitational raise</strong>. Pick another bid to see what that one means. To see what
-          anyone's bid means (partner's or an opponent's), tap it in the auction: it opens with what the bid shows by
-          that side's bidding system, and what the bidding had shown before it.
+          system, for example <strong>3♥: invitational raise</strong>. Pick another bid to see what that one means.
           With <strong>Bot hints</strong> on (see below), it also says <strong>✓ The bot would bid this too</strong>{" "}
           when the bot would make the same bid with your hand.
+        </li>
+        <li>
+          <strong>Bidding with one tap:</strong> tap your initial at the top right and turn off{" "}
+          <strong>Confirm bids</strong>. Then a bid goes as soon as you tap it: a level and then a suit or NT, or{" "}
+          <strong>Pass</strong>, <strong>X</strong> or <strong>XX</strong>, with no Submit. It's faster, but you don't
+          see what the bid means first, and a slip of the finger can't be undone. With Bot hints on, you're told
+          afterwards what the bot would have bid. The <strong>?</strong> beside <strong>Your bid</strong> explains both ways.
+        </li>
+        <li>
+          <strong>What a bid means:</strong> tap any bid in the auction, partner's, an opponent's or your own. What it
+          shows, by that side's bidding system, appears just under the auction, for example{" "}
+          <strong>What West's 1♥ means</strong>, so you can still see the auction and your hand. Tap the bid again, or
+          the <strong>×</strong>, to close it, or tap another bid to see that one.
         </li>
         <li>
           The auction ends after three passes in a row following a bid. The contract goes in for everyone, and the
@@ -285,7 +296,10 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           to set the choices SAYC leaves open the way you play them: your 1NT range, weak twos, Jacoby 2NT, how far
           negative doubles go, and so on. Your bot partner bids the same, and your bids are compared with it in the
           review. Your choices are kept on this device and go with you into each game you start or join; a game keeps
-          the card it started with. Bots with nobody on their side bid SAYC as it comes.
+          the card it started with. Each side bids by one card: the owner's on the owner's side, otherwise the first
+          player's to join that side. So if your partner's card is used, your bids are read by theirs. To see whose
+          card each side bids by, open the bidding review after a board and tap <strong>bot's evaluation</strong>.
+          Bots with nobody on their side bid SAYC as it comes.
         </li>
         <li>
           After the board, the tabs under the result have the reviews: <strong>Bidding</strong> goes through the
@@ -308,11 +322,21 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           <strong>North's turn</strong> with your name, so they know who they're waiting for.
         </li>
         <li>
-          To play a card, tap it to pick it (it lifts up), then tap <strong>Play</strong> under your cards. The
-          button says which card, for example <strong>Play 7♠</strong>, or <strong>Play 7♠ from dummy</strong>. Changed
-          your mind? Tap another card first. Cards you can't play right now are greyed out: you have to follow suit
-          when you can. When only one card can be played, it's already picked for you. A card can't be taken back
-          once it's played.
+          To play a card, either:
+          <ul>
+            <li>
+              <strong>Swipe it up</strong>, towards the table, and it's played at once. With a mouse, drag it up. Let go
+              before it's gone far and it drops back, unplayed.
+            </li>
+            <li>
+              Or <strong>tap it</strong> to pick it (it lifts up), then tap <strong>Play</strong> under your cards. The
+              button says which card, for example <strong>Play 7♠</strong>, or <strong>Play 7♠ from dummy</strong>.
+              Changed your mind? Tap another card first. This way, Bot hints can tell you about the card before you play it.
+            </li>
+          </ul>
+          Cards you can't play right now are greyed out: you have to follow suit when you can. When only one card can be
+          played (your last, or your only card in the suit led), it plays itself after a moment. A card can't be taken
+          back once it's played. The <strong>?</strong> beside <strong>Play</strong> sums this up.
         </li>
         <li>
           The other players' boxes show their name, how many cards they have left, and that many cards face down.
@@ -339,7 +363,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           off to start with, and only there during a game played online or a practice). Then, when the bid or card
           you've picked is the one the bot would choose with your cards, it says{" "}
           <strong>✓ The bot would bid this too</strong> (or <strong>play</strong>). It doesn't tell you the bot's
-          choice: try a few and see which gets the tick.
+          choice: try a few and see which gets the tick. (With Confirm bids off, it tells you after your bid what the
+          bot would have bid. A card you swipe, or one that plays itself, gets no hint.)
         </li>
         <li>
           <strong>Claim:</strong> when you know how the rest will go, tap <strong>Claim</strong> and say how many

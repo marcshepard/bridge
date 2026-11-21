@@ -380,6 +380,15 @@ played. If a board somehow hasn't started, the owner has **Play online**.
   hand (worked out as your turn starts, hard calls by the same seeded simulation as the review).
   Nothing when it doesn't: a nudge to try bids, not the answer. On
   anyone else's turn the box is replaced by one line: "East's bid — Neal, on your left".
+- **Confirm bids** (avatar menu, beside Bot hints; on by default, kept on the device,
+  `ProfileStore.confirmBids`, carried by a context in `ui/confirmBids.ts`): off, a bid goes as soon
+  as its strain (or Pass, X, XX) is tapped, with no Submit and no meaning shown first: faster, at
+  the risk of a slip. With Bot hints on, the hint comes after the bid instead ("The bot would have
+  bid 2♥"), until your next turn. A "?" (`HelpTip`) by the box's heading explains both ways.
+- **What a bid means, during the bidding:** tapping any call in the auction shades it and shows
+  its meaning in place under the auction ("What West's 1♥ means", × to close; `CallMeaning` in
+  `BiddingReview.tsx`), not in a dialog, so the auction and your hand stay in view. Meanings only,
+  never a bot's reason.
 - **Ending the auction:** three passes after a bid put the contract and declarer in the result
   (the backend works them out with `auctionResult`), and the play table takes over. Four passes
   save the board as passed out; the finished auction stays on screen for 3 seconds, like the play
@@ -418,9 +427,19 @@ played. If a board somehow hasn't started, the owner has **Play online**.
 - **Tap to pick, then Play** (as a bid and Submit): a picked card lifts without coming to the
   front, and a contained **Play 7♠** button under your hand plays it ("from dummy" for dummy's
   card), with Claim beside it. Tapping a card never plays it. Unplayable cards are greyed out and say
-  why when tapped. When only one card is legal it's picked already. No undo (a card shown to
-  partner can't be taken back). With Bot hints on, "✓ The bot would play this too" shows under the
-  button when the pick matches the bot's card (`decideCard`, worked out as your turn starts).
+  why when tapped. No undo (a card shown to partner can't be taken back). With Bot hints on, "✓ The
+  bot would play this too" shows under the button when the pick matches the bot's card
+  (`decideCard`, worked out as your turn starts).
+- **Swipe to play:** swiping a card up (pointer events in `HandTiles`, so a finger, mouse or pen
+  alike) plays it at once: it follows the pointer, and let go past 40% of its height it's played;
+  short of that it drops back. A press that barely moves is still a tap. No double-tap to play
+  (Marc's call: too easy to do by accident). Keyboard users pick and press Play.
+- **Forced cards play themselves:** when only one card is legal (your last, or your only one in the
+  suit led), it plays after 700 ms, for declarer's dummy too. A lead waits, like a bot's, for the
+  trick just won to turn over. No hint: there's no choice to make.
+- **Cards and bids aren't selectable text** (`.no-select` in `theme.ts`): Chrome on Android looks
+  up tapped text ("Touch to Search") when it isn't a button, as your cards are when it isn't your
+  turn.
 - **The trick:** a fixed-size compass in the middle. Friendlier than tournament rules: a finished
   trick shows face up for 2 seconds (`TURN_OVER_MS`), then goes face down onto the pile (or as soon
   as anyone plays to the next trick). The bots' lead waits until it has turned over, so it lands
@@ -437,7 +456,7 @@ played. If a board somehow hasn't started, the owner has **Play online**.
   stays face up, and can be hidden and shown the same way.
 - **Bot hints** (avatar menu, only during a game on the devices; off by default, kept on the device,
   `ProfileStore.botHints`): the bidding and play ticks above. A React context (`ui/botHints.ts`)
-  carries the setting to both screens.
+  carries the setting to both screens. A swiped card, or one that plays itself, gets no hint.
 - **Claims:** a player (not dummy) claims how many of the tricks left their side will take. Their
   hand is shown to everyone and play stops. The claimer's opponents answer, but never dummy: when a
   defender claims, declarer answers alone. One refusal ends the claim and play goes on; the

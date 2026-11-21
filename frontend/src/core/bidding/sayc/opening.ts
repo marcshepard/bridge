@@ -189,16 +189,38 @@ export function openingRules(p: Position): CallRule[] {
       );
     }
   }
+  const passMax = passMaxHcp(p);
   rules.push(
-    rule(PASS, seat === 4 ? "Not worth opening in fourth seat: the board is passed out." : "Not enough to open.", () => true, {
-      shows: { hcp: [0, seat === 3 ? 11 : 13] },
+    rule(
+      PASS,
+      seat === 4
+        ? `Not worth opening in fourth seat (at most ${passMax} HCP): the board is passed out.`
+        : `Not enough to open: at most ${passMax} HCP, and no weak two or preempt.`,
+      () => true,
+      {
+      shows: { hcp: [0, passMax] },
       why: (h) =>
         seat === 4 && p.s.ruleOf15
           ? `${hcpText(h)} plus ${h.len.S} spades makes ${h.hcp + h.len.S}, short of 15: pass it out`
           : `${hcpText(h)}: not enough to open`,
-    }),
+      },
+    ),
   );
   return rules;
+}
+
+/**
+ * The most HCP a hand can hold and still pass as opener, by the rules in `canOpenOne`, so a pass is
+ * read as showing what it really can. First or second seat: every 12-count opens by the rule of 20,
+ * but without it a 4-4-4-1 twelve has no length points and passes. Third seat: 11, as players
+ * read it (the rules here would still pass a 4-4-4-1 twelve, which needs fixing in `canOpenOne`).
+ * Fourth seat: by the rule of 15, up to 14 with no spades passes; without it, 11.
+ */
+export function passMaxHcp(p: Position): number {
+  const seat = openingSeat(p);
+  if (seat === 4) return p.s.ruleOf15 ? 14 : 11;
+  if (seat === 3) return 11;
+  return p.s.ruleOf20 ? 11 : 12;
 }
 
 export { SYMBOL };

@@ -44,3 +44,12 @@ describe("bot hints", () => {
     expect(p.botHints()).toBe(true);
   });
 });
+
+describe("confirm bids", () => {
+  it("is on until turned off", () => {
+    const p = new LocalProfileStore();
+    expect(p.confirmBids()).toBe(true);
+    p.setConfirmBids(false);
+    expect(p.confirmBids()).toBe(false);
+  });
+});

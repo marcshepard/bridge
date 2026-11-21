@@ -1,6 +1,6 @@
 // The bar at the top of every screen: app icon and name (in a game, one button that goes Home, your
 // game staying current), help, and your avatar. The avatar menu
-// holds the Dark mode switch, the Bot hints switch (during a game on the devices), the bidding
+// holds the Dark mode switch, the Bot hints and Confirm bids switches (during a game on the devices), the bidding
 // system the bots use, "Leave game", and "Install to home screen" until the app is installed.
 // While this device's live connection to the game is down, a small no-signal icon ("Reconnecting")
 // sits beside Help: in the bar, so it never moves the page or covers anything.
@@ -40,6 +40,8 @@ interface Props {
   onSystem: () => void;
   /** The Bot hints switch: only during a game bid and played on the devices (online or practice). */
   botHints?: { on: boolean; onChange: (on: boolean) => void };
+  /** The Confirm bids switch: shown with Bot hints. */
+  confirmBids?: { on: boolean; onChange: (on: boolean) => void };
 }
 
 const BRAND = { display: "flex", alignItems: "center", gap: 1, minWidth: 0, color: "inherit" } as const;
@@ -58,7 +60,7 @@ function Brand() {
   );
 }
 
-export function AppHeader({ name, onHelp, onHome, onLeaveGame, onInstall, onSystem, botHints, reconnecting = false }: Props) {
+export function AppHeader({ name, onHelp, onHome, onLeaveGame, onInstall, onSystem, botHints, confirmBids, reconnecting = false }: Props) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const { mode, setMode } = useColorScheme();
   const dark = mode === "dark";
@@ -151,6 +153,12 @@ export function AppHeader({ name, onHelp, onHome, onLeaveGame, onInstall, onSyst
           <MenuItem role="menuitemcheckbox" aria-checked={botHints.on} onClick={() => botHints.onChange(!botHints.on)}>
             <ListItemText>Bot hints</ListItemText>
             <Switch edge="end" checked={botHints.on} tabIndex={-1} slotProps={{ input: { "aria-hidden": true } }} />
+          </MenuItem>
+        )}
+        {confirmBids && (
+          <MenuItem role="menuitemcheckbox" aria-checked={confirmBids.on} onClick={() => confirmBids.onChange(!confirmBids.on)}>
+            <ListItemText>Confirm bids</ListItemText>
+            <Switch edge="end" checked={confirmBids.on} tabIndex={-1} slotProps={{ input: { "aria-hidden": true } }} />
           </MenuItem>
         )}
         <MenuItem

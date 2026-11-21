@@ -23,6 +23,7 @@ export function PlayingCard({ card, won = false, current = false, label, badge, 
   return (
     <Box
       aria-label={label || undefined}
+      className="no-select"
       sx={{
         position: "relative",
         width: (t) => t.spacing(5),

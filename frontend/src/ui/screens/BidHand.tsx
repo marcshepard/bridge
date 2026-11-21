@@ -18,14 +18,16 @@ import { hcp } from "../../core/deal";
 import { type Seat, type Strain, STRAINS, SEAT_NAMES } from "../../core/types";
 import type { Board } from "../../providers/types";
 import { AuctionTable } from "../components/Auction";
-import { CallDialog, useReviewedAuction } from "../components/BiddingReview";
+import { CallMeaning, useReviewedAuction } from "../components/BiddingReview";
 import { HandTiles } from "../components/Hand";
 import { CallText, ContractText, StrainSymbol, SuitString, callWords } from "../controls/BridgeText";
 import { ChoiceGroup } from "../controls/ChoiceGroup";
+import { HelpTip } from "../controls/HelpTip";
 import { Section } from "../controls/Layout";
 import { TurnStrip } from "../controls/TurnStrip";
 import { playerPlace, vulnerableShort } from "../labels";
 import { useBotHints } from "../botHints";
+import { useConfirmBids } from "../confirmBids";
 import { BID_COLOURS } from "../theme";
 
 const STRAIN_WORDS: Record<Strain, string> = { C: "Clubs", D: "Diamonds", H: "Hearts", S: "Spades", NT: "No trumps" };
@@ -102,21 +104,33 @@ export function BidHand(p: Props) {
   // pick matches: a nudge, not the answer.
   // Only with Bot hints on (the avatar menu).
   const hints = useBotHints();
+  const confirm = useConfirmBids();
   const [botCall, setBotCall] = useState<Call | null>(null);
+  // The same answer as a promise, for the word after a bid made with one tap (it may still be working).
+  const botCallLater = useRef<Promise<Call> | null>(null);
   useEffect(() => {
     setBotCall(null);
+    botCallLater.current = null;
     if (!mine || !hints) return;
     let cancelled = false;
     const deal = { dealer, vul: board.vul };
-    void chooseCallWithSimulation(board.hands[seat], deal, calls, p.systems, doubleDummy)
+    const later = chooseCallWithSimulation(board.hands[seat], deal, calls, p.systems, doubleDummy)
       .catch(() => chooseCall(board.hands[seat], deal, calls, p.systems))
-      .then((d) => {
-        if (!cancelled) setBotCall(d.call);
-      });
+      .then((d) => d.call);
+    botCallLater.current = later;
+    void later.then((c) => {
+      if (!cancelled) setBotCall(c);
+    });
     return () => {
       cancelled = true;
     };
   }, [mine, calls.length, hints]);
+  // With Confirm bids off there's no pick to show the hint on, so it comes after the bid: whether
+  // the bot would have bid the same, and if not, what. Until your next turn.
+  const [after, setAfter] = useState<{ call: Call; bot: Call } | null>(null);
+  useEffect(() => {
+    if (mine) setAfter(null);
+  }, [mine]);
 
   // The picked bid read as partner would read it: the auction with it added, by your side's card.
   const meaning = useMemo(() => {
@@ -133,12 +147,14 @@ export function BidHand(p: Props) {
   const allowed = (call: Call) => mine && canCall(dealer, calls, call);
   const bidAllowed = (lv: number, strain: Strain) => allowed({ kind: "bid", level: lv, strain });
 
-  async function send() {
-    if (!picked) return;
+  async function send(call: Call | null = picked) {
+    if (!call) return;
     setHint(null);
     setBusy(true);
+    const later = confirm ? null : botCallLater.current;
     try {
-      await p.onCall(calls.length + 1, picked);
+      await p.onCall(calls.length + 1, call);
+      void later?.then((bot) => setAfter({ call, bot }));
     } catch (e) {
       setHint((e as Error).message);
     } finally {
@@ -156,7 +172,7 @@ export function BidHand(p: Props) {
   const vulText = `Vul: ${vulnerableShort(seat, board.vul)}`;
 
   return (
-    <Box component="section" aria-label="Bidding">
+    <Box component="section" aria-label="Bidding" className="no-select">
       <TurnStrip
         left={
           <Typography variant="h6" component="h1" sx={{ lineHeight: 1.2 }} noWrap>
@@ -193,24 +209,16 @@ export function BidHand(p: Props) {
           ))}
       </Typography>
 
-      <AuctionTable dealer={dealer} vul={board.vul} names={names} calls={calls} seat={seat} onOpenCall={setExplained} />
-      {calls.length > 0 && (
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Tap a bid to see what it means.
-        </Typography>
-      )}
-      {explained !== null && review[explained] && (
-        <CallDialog
-          r={review[explained]}
-          me={seat}
-          names={names}
-          isBot={false}
-          isMine={false}
-          onPrev={explained > 0 ? () => setExplained(explained - 1) : undefined}
-          onNext={explained < review.length - 1 ? () => setExplained(explained + 1) : undefined}
-          onClose={() => setExplained(null)}
-        />
-      )}
+      <AuctionTable
+        dealer={dealer}
+        vul={board.vul}
+        names={names}
+        calls={calls}
+        seat={seat}
+        onOpenCall={(i) => setExplained(explained === i ? null : i)}
+        shaded={explained ?? undefined}
+      />
+      {explained !== null && review[explained] && <CallMeaning r={review[explained]} me={seat} onClose={() => setExplained(null)} />}
 
       {/* Your hand sits above the bidding box, so it stays put while the box comes and goes below it. */}
       <Section title={`Your hand (${hcp(board.hands[seat])} HCP)`} id="your-hand" tight>
@@ -226,7 +234,14 @@ export function BidHand(p: Props) {
       {!over && (
         <Box ref={boxRef}>
           {mine ? (
-            <Section title="Your bid" id="your-bid">
+            <Section
+              title={
+                <>
+                  Your bid <BiddingHelp />
+                </>
+              }
+              id="your-bid"
+            >
               <Box>
                 <ChoiceGroup
                   value={level}
@@ -247,7 +262,12 @@ export function BidHand(p: Props) {
                   space="tight"
                   value={picked?.kind === "bid" ? picked.strain : null}
                   disabled={busy || level === null}
-                  onChange={(strain) => level !== null && setPicked({ kind: "bid", level, strain })}
+                  onChange={(strain) => {
+                    if (level === null) return;
+                    const call: Call = { kind: "bid", level, strain };
+                    setPicked(call);
+                    if (!confirm) void send(call);
+                  }}
                   choices={STRAINS.map((s) => ({
                     value: s,
                     label: <StrainSymbol strain={s} />,
@@ -264,6 +284,7 @@ export function BidHand(p: Props) {
                     if (kind === "gap") return;
                     setLevel(null);
                     setPicked({ kind });
+                    if (!confirm) void send({ kind });
                   }}
                   choices={[
                     { value: "pass", label: "Pass", color: BID_COLOURS.pass },
@@ -277,6 +298,7 @@ export function BidHand(p: Props) {
                   One tap makes the bid you've put together. It says which ("Submit 3♥", "Submit Pass"),
                   worded unlike the box's own buttons, so it never looks like a second "Pass".
                 */}
+                {confirm && (
                 <Box sx={{ textAlign: "center", mt: 2 }}>
                   <Button
                     variant="contained"
@@ -295,8 +317,9 @@ export function BidHand(p: Props) {
                     )}
                   </Button>
                 </Box>
+                )}
                 {/* What the picked bid would tell partner, by your side's card: the same reading as the bidding review. */}
-                {meaning && (
+                {confirm && meaning && (
                   <Typography variant="body2" sx={{ mt: 1.5 }} aria-live="polite">
                     <strong>{meaning.call.kind === "bid" ? <CallText call={meaning.call} /> : callWords(meaning.call)}:</strong>{" "}
                     <SuitString text={meaning.read.meaning} />
@@ -308,7 +331,7 @@ export function BidHand(p: Props) {
                     )}
                   </Typography>
                 )}
-                {hints && picked && botCall && sameCall(picked, botCall) && (
+                {confirm && hints && picked && botCall && sameCall(picked, botCall) && (
                   <Typography variant="body2" color="success.main" sx={{ mt: 0.5, fontWeight: "fontWeightMedium" }} aria-live="polite">
                     ✓ The bot would bid this too
                   </Typography>
@@ -323,7 +346,8 @@ export function BidHand(p: Props) {
                   {SEAT_NAMES[caller]}'s bid{" "}
                   <Typography component="span" variant="body1" color="text.secondary">
                     — {playerPlace(seat, caller, names[caller])}
-                  </Typography>
+                  </Typography>{" "}
+                  <BiddingHelp />
                 </>
               }
             >
@@ -332,6 +356,40 @@ export function BidHand(p: Props) {
           )}
         </Box>
       )}
+      {/* After a bid made with one tap (Confirm bids off), the bot hint it had no time to show. */}
+      {hints && after && !mine && (
+        <Typography
+          variant="body2"
+          color={sameCall(after.call, after.bot) ? "success.main" : "text.secondary"}
+          sx={{ mt: 1, fontWeight: "fontWeightMedium" }}
+          aria-live="polite"
+        >
+          {sameCall(after.call, after.bot) ? "✓ The bot would have bid this too" : "The bot would have bid "}
+          {!sameCall(after.call, after.bot) && (after.bot.kind === "bid" ? <CallText call={after.bot} /> : callWords(after.bot))}
+        </Typography>
+      )}
     </Box>
+  );
+}
+
+/** The "?" by the bidding box's heading: seeing what bids mean, and the two ways to bid. */
+function BiddingHelp() {
+  return (
+    <HelpTip label="About bidding">
+      <span>Tap any bid in the auction to see what it means. Tap it again, or the ×, to close it.</span>
+      <span>
+        <strong>Confirm bids on</strong> (the usual): tap a bid, then Submit. Before you submit you see what your bid
+        tells partner and, with Bot hints on, whether the bot would bid it too. Safer, since there are no takebacks.
+      </span>
+      <span>
+        <strong>Confirm bids off:</strong> a bid goes as soon as you tap it (a level then a suit, or Pass, X or XX).
+        Faster, but a slip of the finger can't be undone. With Bot hints on, you're told afterwards what the bot would
+        have bid.
+      </span>
+      <span>
+        Both switches are in the menu under your initial, top right. What bids mean, and how the bots bid, follow each
+        side's bidding system: SAYC, with the choices on its card (Bidding system, in the same menu).
+      </span>
+    </HelpTip>
   );
 }

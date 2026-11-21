@@ -175,12 +175,19 @@ export function tally(session: Session, game: Game): Tally {
  * side (by place) who sent one; SAYC as it comes when nobody did (a side of bots, say). A bot
  * partner therefore bids its person's card, and bot opponents bid plain SAYC.
  */
-export function tableSystems(players: Array<{ seat: Seat | null; isBot: boolean; isCreator: boolean; slot: number; system: SystemSettings | null }>): TableSystems {
-  const cardFor = (side: "NS" | "EW"): SystemSettings => {
-    const people = players
-      .filter((p) => p.seat && directionOf(p.seat) === side && !p.isBot && p.system)
-      .sort((a, b) => Number(b.isCreator) - Number(a.isCreator) || a.slot - b.slot);
-    return people[0]?.system ?? SAYC_DEFAULTS;
-  };
-  return { NS: cardFor("NS"), EW: cardFor("EW") };
+export function tableSystems(players: CardPlayer[]): TableSystems {
+  return { NS: cardHolder(players, "NS")?.system ?? SAYC_DEFAULTS, EW: cardHolder(players, "EW")?.system ?? SAYC_DEFAULTS };
+}
+
+/** Whose card each side bids by (see `tableSystems`): their name, or null for SAYC as it comes. */
+export function tableSystemHolders(players: Array<CardPlayer & { name: string }>): Record<"NS" | "EW", string | null> {
+  return { NS: cardHolder(players, "NS")?.name ?? null, EW: cardHolder(players, "EW")?.name ?? null };
+}
+
+type CardPlayer = { seat: Seat | null; isBot: boolean; isCreator: boolean; slot: number; system: SystemSettings | null };
+
+function cardHolder<P extends CardPlayer>(players: P[], side: "NS" | "EW"): (P & { system: SystemSettings }) | undefined {
+  return players
+    .filter((p): p is P & { system: SystemSettings } => !!p.seat && directionOf(p.seat) === side && !p.isBot && !!p.system)
+    .sort((a, b) => Number(b.isCreator) - Number(a.isCreator) || a.slot - b.slot)[0];
 }

@@ -83,7 +83,12 @@ export const theme = createTheme({
   },
   components: {
     MuiCssBaseline: {
-      styleOverrides: { ".num": { fontVariantNumeric: "tabular-nums" } },
+      styleOverrides: {
+        ".num": { fontVariantNumeric: "tabular-nums" },
+        // Cards, bids and the play table: text you tap, never select. Selectable text makes Chrome on
+        // Android look the word up ("Touch to Search") when you tap a card that isn't a button.
+        ".no-select": { userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" },
+      },
     },
     MuiAppBar: {
       styleOverrides: {

@@ -1,5 +1,5 @@
 import { Box, ButtonBase, type Theme, Typography } from "@mui/material";
-import type { ReactNode } from "react";
+import { type PointerEvent, type ReactNode, useRef, useState } from "react";
 import type { Card } from "../../core/play";
 import { type Hand as HandT, type Seat, type Strain, type Suit, SEAT_NAMES, SUIT_SYMBOLS } from "../../core/types";
 import { StrainSymbol, SUIT_NAMES } from "../controls/BridgeText";
@@ -19,6 +19,12 @@ const CARD_WIDTH = 2.4;
 const SHORT_CARD_WIDTH = 1.55;
 /** How far a picked card lifts, in strips: enough to show its whole width above the fan. */
 const LIFT = 1.2;
+/** How far up a card has to be swiped to play it, as a share of the card's height. */
+const SWIPE_SHARE = 0.4;
+/** Movement (px) below which a press is still a tap, not a swipe. */
+const TAP_SLOP = 8;
+/** A click this soon after a swipe ends is the swipe's own, not a tap. */
+const CLICK_AFTER_SWIPE_MS = 400;
 
 interface TilesProps {
   hand: HandT;
@@ -33,7 +39,8 @@ interface TilesProps {
   short?: boolean;
   /**
    * Makes the cards pickable: tap a card to pick it (it lifts); a Play button elsewhere plays it.
-   * Cards `canPlay` rejects are greyed out; tapping one calls `onBlocked` (to say why).
+   * Swiping a card up (finger, mouse or pen) plays it at once, through `onPlay`.
+   * Cards `canPlay` rejects are greyed out; tapping or swiping one calls `onBlocked` (to say why).
    */
   play?: {
     canPlay: (card: Card) => boolean;
@@ -41,6 +48,8 @@ interface TilesProps {
     picked: Card | null;
     onPick: (card: Card) => void;
     onBlocked?: (card: Card) => void;
+    /** Plays a card swiped up. */
+    onPlay?: (card: Card) => void;
   };
   /**
    * During card play: sized for a full 13 cards, centred, and always with room above for a picked
@@ -88,8 +97,55 @@ export function HandTiles({ hand, trump, label = "Your cards", short = false, pl
     else play.onPick(card);
   }
 
+  // Swiping a card up plays it: the card follows the pointer up, and let go past SWIPE_SHARE of its
+  // height it's played; short of that it drops back. Pointer events, so a finger, a mouse or a pen
+  // all work the same. A press that hardly moves stays a tap (the click picks the card).
+  const [drag, setDrag] = useState<{ key: string; dy: number } | null>(null);
+  const press = useRef<{ id: number; y: number; x: number; height: number; moved: boolean } | null>(null);
+  // When the last swipe ended: the click the browser sends straight after it isn't a tap.
+  const swipedAt = useRef(0);
+  const swipeHandlers = (card: Card, key: string) =>
+    play?.onPlay
+      ? {
+          onPointerDown: (e: PointerEvent<HTMLElement>) => {
+            if (e.pointerType === "mouse" && e.button !== 0) return;
+            press.current = { id: e.pointerId, y: e.clientY, x: e.clientX, height: e.currentTarget.offsetHeight, moved: false };
+            e.currentTarget.setPointerCapture(e.pointerId);
+          },
+          onPointerMove: (e: PointerEvent<HTMLElement>) => {
+            const pr = press.current;
+            if (!pr || pr.id !== e.pointerId) return;
+            const dy = e.clientY - pr.y;
+            if (!pr.moved && Math.hypot(dy, e.clientX - pr.x) < TAP_SLOP) return;
+            pr.moved = true;
+            setDrag({ key, dy: Math.min(0, dy) });
+          },
+          onPointerUp: (e: PointerEvent<HTMLElement>) => {
+            const pr = press.current;
+            if (!pr || pr.id !== e.pointerId) return;
+            press.current = null;
+            setDrag(null);
+            if (!pr.moved) return;
+            swipedAt.current = Date.now();
+            if (pr.y - e.clientY >= pr.height * SWIPE_SHARE) {
+              if (play.canPlay(card)) play.onPlay!(card);
+              else play.onBlocked?.(card);
+            }
+          },
+          onPointerCancel: () => {
+            press.current = null;
+            setDrag(null);
+          },
+        }
+      : {};
+  /** A tap picks the card; the click that ends a swipe doesn't. */
+  function click(card: Card) {
+    if (Date.now() - swipedAt.current < CLICK_AFTER_SWIPE_MS) return;
+    tap(card);
+  }
+
   return (
-    <Box sx={{ containerType: "inline-size" }}>
+    <Box className="no-select" sx={{ containerType: "inline-size" }}>
       <Box
         role="list"
         aria-label={label}
@@ -136,15 +192,26 @@ export function HandTiles({ hand, trump, label = "Your cards", short = false, pl
             >
               {play ? (
                 <ButtonBase
-                  onClick={() => tap(card)}
+                  onClick={() => click(card)}
+                  {...swipeHandlers(card, suit + rank)}
                   aria-label={isPicked ? `${name}, picked` : blocked ? `${name}, can't be played now` : name}
                   aria-pressed={isPicked}
                   sx={{
                     ...faceSx(suit),
                     borderColor: isPicked ? "primary.main" : "card.edge",
                     boxShadow: isPicked ? 4 : 1,
-                    transform: isPicked ? `translateY(${strip(-LIFT)})` : undefined,
-                    transition: (t) => t.transitions.create("transform", { duration: t.transitions.duration.shortest }),
+                    transform:
+                      drag?.key === suit + rank
+                        ? `translateY(calc(${isPicked ? strip(-LIFT) : "0px"} + ${drag.dy}px))`
+                        : isPicked
+                          ? `translateY(${strip(-LIFT)})`
+                          : undefined,
+                    // Following the pointer exactly while swiped; easing back otherwise.
+                    transition: (t) =>
+                      drag?.key === suit + rank ? "none" : t.transitions.create("transform", { duration: t.transitions.duration.shortest }),
+                    ...(drag?.key === suit + rank && { zIndex: 1 }),
+                    // The page doesn't scroll from a swipe that starts on a card you can play.
+                    ...(play.onPlay && { touchAction: "none" }),
                     "&.Mui-focusVisible": { outline: (t) => `${t.spacing(0.25)} solid ${t.palette.primary.main}`, zIndex: 1 },
                     // Greyed out, still tappable (to say why it can't be played).
                     ...(blocked && { "& > *": { opacity: (t) => t.palette.action.disabledOpacity } }),
@@ -190,7 +257,7 @@ const CARD_RATIO = 1.4;
 export function CardBacksFan({ count }: { count: number }) {
   const strip = (k: number) => `calc(var(--strip) * ${k})`;
   return (
-    <Box sx={{ containerType: "inline-size" }}>
+    <Box className="no-select" sx={{ containerType: "inline-size" }}>
       <Box
         aria-hidden
         sx={{

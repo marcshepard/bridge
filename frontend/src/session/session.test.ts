@@ -12,6 +12,7 @@ import {
   nextUnplayed,
   pendingContract,
   sessionFromShared,
+  tableSystemHolders,
   tableSystems,
   tally,
   toStored,
@@ -129,6 +130,18 @@ describe("tableSystems", () => {
     const t = tableSystems([player(1, "S", { isCreator: true, system: mine }), player(2, "W", { isBot: true }), player(3, "N", { isBot: true }), player(4, "E", { isBot: true })]);
     expect(t.NS).toEqual(mine);
     expect(t.EW).toEqual(SAYC_DEFAULTS);
+  });
+
+  it("names whose card each side bids by: the owner's, else the first to join", () => {
+    const named = (name: string, pl: ReturnType<typeof player>) => ({ ...pl, name });
+    const h = tableSystemHolders([
+      named("Ann", player(1, "S", { isCreator: true, system: mine })),
+      named("Bob", player(2, "N", { system: SAYC_DEFAULTS })),
+      named("Cat", player(4, "E", { system: SAYC_DEFAULTS })),
+      named("Dan", player(3, "W", { system: mine })),
+    ]);
+    expect(h).toEqual({ NS: "Ann", EW: "Dan" });
+    expect(tableSystemHolders([named("Bot", player(2, "W", { isBot: true }))]).EW).toBeNull();
   });
 
   it("prefers the owner's card on their side, then the first person by place", () => {

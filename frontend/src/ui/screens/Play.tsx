@@ -15,6 +15,7 @@ import {
   fromStored,
   pendingContract,
   sessionFromShared,
+  tableSystemHolders,
   tableSystems,
   tally as tallyOf,
 } from "../../session/session";
@@ -73,6 +74,7 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onSkipped, onCall
   const practicePlay = isOwner && bots.length === 3 && snapshot.mode === "devices";
   // The card each side bids by (fixed when the game started), for the bots and the review.
   const systems = useMemo(() => tableSystems(snapshot.players), [snapshot.players]);
+  const holders = useMemo(() => tableSystemHolders(snapshot.players), [snapshot.players]);
   const [cardsOpen, setCardsOpen] = useState(false);
   // The owner's device makes the bots' calls.
   const autoSeats: Seat[] = isOwner ? bots : [];
@@ -374,8 +376,8 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onSkipped, onCall
         open={cardsOpen}
         onClose={() => setCardsOpen(false)}
         cards={[
-          { label: "Your side", system: systems[directionOf(seat)] },
-          { label: "Opponents", system: systems[directionOf(seat) === "NS" ? "EW" : "NS"] },
+          { label: "Your side", system: systems[directionOf(seat)], holder: holders[directionOf(seat)] },
+          { label: "Opponents", system: systems[directionOf(seat) === "NS" ? "EW" : "NS"], holder: holders[directionOf(seat) === "NS" ? "EW" : "NS"] },
         ]}
       />
       <TallyDialog
