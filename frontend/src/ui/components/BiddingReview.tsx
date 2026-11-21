@@ -155,8 +155,9 @@ export function BiddingReview({ board, calls, seat, names, bots, systems, onSyst
 }
 
 /**
- * What a call in the auction means, shown in place under the auction during the bidding (a dialog
- * there would cover the auction and your hand, which you want to read it against). Meanings only:
+ * What a call in the auction means, and what the bidding had shown before it, shown in place under
+ * the auction during the bidding (a dialog there would cover the auction and your hand, which you
+ * want to read it against). Meanings only:
  * never a bot's reason, which would give its hand away. Closed with its ×, or replaced by tapping
  * another call.
  */
@@ -177,6 +178,9 @@ export function CallMeaning({ r, me, onClose }: { r: ReviewedCall; me: Seat; onC
         <SuitString text={r.read.meaning} />
       </Typography>
       {name && !r.read.guessed && <Chip size="small" label={<SuitString text={name} />} sx={{ mt: 0.5 }} />}
+      <Box sx={{ mt: 1, pr: 1 }}>
+        <ShownBefore r={r} me={me} small />
+      </Box>
     </Paper>
   );
 }
@@ -203,7 +207,6 @@ function CallDialog({
   onNext?: () => void;
   onClose: () => void;
 }) {
-  const known = SEATS.filter((s) => describeShown(r.shownBefore[s]));
   const name = r.read.rule?.name;
   return (
     <SheetDialog
@@ -249,24 +252,35 @@ function CallDialog({
           </Box>
         )}
 
-        {known.length > 0 && (
-          <Box>
-            <Typography variant="subtitle2" component="h3" color="text.secondary">
-              What the bidding had shown before this
-            </Typography>
-            <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
-              {known.map((s) => (
-                <li key={s}>
-                  <Typography>
-                    {seatWithRelation(me, s)}: <SuitString text={describeShown(r.shownBefore[s])!} />
-                  </Typography>
-                </li>
-              ))}
-            </Box>
-          </Box>
-        )}
+        <ShownBefore r={r} me={me} />
       </Stack>
     </SheetDialog>
+  );
+}
+
+/**
+ * What the bidding had shown before a call, hand by hand ("West (left-hand opponent): 12–21 HCP,
+ * 5+ hearts"): in the call's dialog and in the panel under the auction. Nothing when nobody had
+ * shown anything yet. `small`: body2 text, for the panel.
+ */
+function ShownBefore({ r, me, small = false }: { r: ReviewedCall; me: Seat; small?: boolean }) {
+  const known = SEATS.filter((s) => describeShown(r.shownBefore[s]));
+  if (known.length === 0) return null;
+  return (
+    <Box>
+      <Typography variant="subtitle2" component="h3" color="text.secondary">
+        What the bidding had shown before this
+      </Typography>
+      <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+        {known.map((s) => (
+          <li key={s}>
+            <Typography variant={small ? "body2" : "body1"}>
+              {seatWithRelation(me, s)}: <SuitString text={describeShown(r.shownBefore[s])!} />
+            </Typography>
+          </li>
+        ))}
+      </Box>
+    </Box>
   );
 }
 

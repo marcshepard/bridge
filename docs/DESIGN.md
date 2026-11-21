@@ -386,7 +386,8 @@ played. If a board somehow hasn't started, the owner has **Play online**.
   the risk of a slip. With Bot hints on, the hint comes after the bid instead ("The bot would have
   bid 2♥"), until your next turn. A "?" (`HelpTip`) by the box's heading explains both ways.
 - **What a bid means, during the bidding:** tapping any call in the auction shades it and shows
-  its meaning in place under the auction ("What West's 1♥ means", × to close; `CallMeaning` in
+  its meaning, and what the bidding had shown before it, in place under the auction ("What West's
+  1♥ means", × to close; `CallMeaning` in
   `BiddingReview.tsx`), not in a dialog, so the auction and your hand stay in view. Meanings only,
   never a bot's reason.
 - **Ending the auction:** three passes after a bid put the contract and declarer in the result

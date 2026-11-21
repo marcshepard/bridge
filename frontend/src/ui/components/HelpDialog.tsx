@@ -270,7 +270,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         <li>
           <strong>What a bid means:</strong> tap any bid in the auction, partner's, an opponent's or your own. What it
           shows, by that side's bidding system, appears just under the auction, for example{" "}
-          <strong>What West's 1♥ means</strong>, so you can still see the auction and your hand. Tap the bid again, or
+          <strong>What West's 1♥ means</strong>, with what the bidding had shown about each hand before it, so you
+          can still see the auction and your hand. Tap the bid again, or
           the <strong>×</strong>, to close it, or tap another bid to see that one.
         </li>
         <li>
