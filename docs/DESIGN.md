@@ -430,7 +430,8 @@ played. If a board somehow hasn't started, the owner has **Play online**.
   why when tapped. No undo (a card shown to partner can't be taken back). With Bot hints on, "✓ The
   bot would play this too" shows under the button when the pick matches the bot's card
   (`decideCard`, worked out as your turn starts).
-- **Swipe to play:** swiping a card up (pointer events in `HandTiles`, so a finger, mouse or pen
+- **Swipe to play:** swiping a card towards the table, up from your hand and down from a hand at the
+  top (dummy, or a bot declarer's you're playing; `towards` in `HandTiles`'s `play`) (pointer events, so a finger, mouse or pen
   alike) plays it at once: it follows the pointer, and let go past 40% of its height it's played;
   short of that it drops back. A press that barely moves is still a tap. No double-tap to play
   (Marc's call: too easy to do by accident). Keyboard users pick and press Play.

@@ -19,7 +19,7 @@ const CARD_WIDTH = 2.4;
 const SHORT_CARD_WIDTH = 1.55;
 /** How far a picked card lifts, in strips: enough to show its whole width above the fan. */
 const LIFT = 1.2;
-/** How far up a card has to be swiped to play it, as a share of the card's height. */
+/** How far a card has to be swiped towards the table to play it, as a share of the card's height. */
 const SWIPE_SHARE = 0.4;
 /** Movement (px) below which a press is still a tap, not a swipe. */
 const TAP_SLOP = 8;
@@ -39,7 +39,7 @@ interface TilesProps {
   short?: boolean;
   /**
    * Makes the cards pickable: tap a card to pick it (it lifts); a Play button elsewhere plays it.
-   * Swiping a card up (finger, mouse or pen) plays it at once, through `onPlay`.
+   * Swiping a card towards the table (finger, mouse or pen) plays it at once, through `onPlay`.
    * Cards `canPlay` rejects are greyed out; tapping or swiping one calls `onBlocked` (to say why).
    */
   play?: {
@@ -48,8 +48,10 @@ interface TilesProps {
     picked: Card | null;
     onPick: (card: Card) => void;
     onBlocked?: (card: Card) => void;
-    /** Plays a card swiped up. */
+    /** Plays a card swiped towards the table. */
     onPlay?: (card: Card) => void;
+    /** Where the table is from this hand: up from yours at the bottom (the default), down from one at the top. */
+    towards?: "up" | "down";
   };
   /**
    * During card play: sized for a full 13 cards, centred, and always with room above for a picked
@@ -97,13 +99,15 @@ export function HandTiles({ hand, trump, label = "Your cards", short = false, pl
     else play.onPick(card);
   }
 
-  // Swiping a card up plays it: the card follows the pointer up, and let go past SWIPE_SHARE of its
+  // Swiping a card towards the table (up, or down from a hand at the top) plays it: the card follows
+  // the pointer that way, and let go past SWIPE_SHARE of its
   // height it's played; short of that it drops back. Pointer events, so a finger, a mouse or a pen
   // all work the same. A press that hardly moves stays a tap (the click picks the card).
   const [drag, setDrag] = useState<{ key: string; dy: number } | null>(null);
   const press = useRef<{ id: number; y: number; x: number; height: number; moved: boolean } | null>(null);
   // When the last swipe ended: the click the browser sends straight after it isn't a tap.
   const swipedAt = useRef(0);
+  const down = play?.towards === "down";
   const swipeHandlers = (card: Card, key: string) =>
     play?.onPlay
       ? {
@@ -118,7 +122,7 @@ export function HandTiles({ hand, trump, label = "Your cards", short = false, pl
             const dy = e.clientY - pr.y;
             if (!pr.moved && Math.hypot(dy, e.clientX - pr.x) < TAP_SLOP) return;
             pr.moved = true;
-            setDrag({ key, dy: Math.min(0, dy) });
+            setDrag({ key, dy: down ? Math.max(0, dy) : Math.min(0, dy) });
           },
           onPointerUp: (e: PointerEvent<HTMLElement>) => {
             const pr = press.current;
@@ -127,7 +131,7 @@ export function HandTiles({ hand, trump, label = "Your cards", short = false, pl
             setDrag(null);
             if (!pr.moved) return;
             swipedAt.current = Date.now();
-            if (pr.y - e.clientY >= pr.height * SWIPE_SHARE) {
+            if ((down ? e.clientY - pr.y : pr.y - e.clientY) >= pr.height * SWIPE_SHARE) {
               if (play.canPlay(card)) play.onPlay!(card);
               else play.onBlocked?.(card);
             }

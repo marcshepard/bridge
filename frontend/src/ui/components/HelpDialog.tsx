@@ -325,7 +325,8 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           To play a card, either:
           <ul>
             <li>
-              <strong>Swipe it up</strong>, towards the table, and it's played at once. With a mouse, drag it up. Let go
+              <strong>Swipe it towards the table</strong> (up from your hand, down from dummy at the top) and it's played
+              at once. With a mouse, drag it. Let go
               before it's gone far and it drops back, unplayed.
             </li>
             <li>

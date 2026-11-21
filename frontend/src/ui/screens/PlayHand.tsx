@@ -149,7 +149,7 @@ export function PlayHand(p: Props) {
   // played (nor a claim made) until the last trick is closed again. A pick made before stays.
   const lookingBack = isOpen && showing?.how === "look";
 
-  // Tap a card to pick it, then Play: the same two steps as a bid and Submit; or swipe a card up to
+  // Tap a card to pick it, then Play: the same two steps as a bid and Submit; or swipe a card towards the table to
   // play it at once. A pick lasts until a card is played (anyone's). When you have only one card
   // you can play, it plays itself (see `forced` below).
   const myTurn = !over && !claim && yours(turn);
@@ -191,6 +191,8 @@ export function PlayHand(p: Props) {
             setHint(`Follow suit: play a ${SUIT_NAMES[led].slice(0, -1)} ${SUIT_SYMBOLS[led]}`);
           },
           onPlay: playCard,
+          // The table is below a hand at the top (dummy, or a bot declarer's hand you're playing).
+          towards: s === seat ? ("up" as const) : ("down" as const),
         }
       : undefined;
 
@@ -834,7 +836,8 @@ function PlayHelp() {
         whether the bot would play it too before you do.
       </span>
       <span>
-        <strong>Swipe:</strong> swipe a card up, towards the table, to play it at once. With a mouse, drag it up. Let go
+        <strong>Swipe:</strong> swipe a card towards the table to play it at once: up from your hand, down from dummy
+        at the top. With a mouse, drag it. Let go
         early and it drops back, unplayed.
       </span>
       <span>When only one card can go (your last, or your only one in the suit led), it plays itself.</span>
