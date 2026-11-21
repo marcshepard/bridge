@@ -5,13 +5,14 @@
 // equally good cards, so an opponent's card is a light hint (a deal that doesn't fit counts 0.8).
 //
 // Read: the opening lead (the card the lead agreements give from the leader's holding; against
-// notrump, usually a suit of four or more: a hint only), and the first card each player plays to
-// a suit when following without trying to win: attitude when partner led it, count when declarer's
-// side did.
+// notrump, usually a suit of four or more: a hint only); a defender's later lead of an honour, as
+// the top of a sequence (the J denies the Q: from QJ you lead the Q); and the first card each
+// player plays to a suit when following without trying to win: attitude when partner led it, count
+// when declarer's side did.
 
 import type { SystemSettings } from "../bidding/system";
 import { type Card, type PlayState, dummyOf, rankValue } from "../play";
-import { type Hand, type Seat, type Suit, partnerOf } from "../types";
+import { type Hand, type Seat, type Suit, RANKS, partnerOf } from "../types";
 import { leadCard } from "./carding";
 
 const PARTNER_MISFIT = 0.1;
@@ -36,6 +37,7 @@ export function cardingWeight(state: PlayState, hands: Record<Seat, Hand>, who: 
   let weight = 1;
   const misfit = (seat: Seat) => (weight *= seat === partnerOf(who) ? PARTNER_MISFIT : OPPONENT_MISFIT);
   const reads = (seat: Seat) => seat !== who && !known.includes(seat);
+  const defends = (seat: Seat) => seat !== state.declarer && seat !== dummyOf(state.declarer);
   const signalled = new Set<string>();
   const before = new Map<string, string[]>(); // cards of a suit each player has played so far, in order
 
@@ -52,6 +54,12 @@ export function cardingWeight(state: PlayState, hands: Record<Seat, Hand>, who: 
         const all = original(p.seat, p.card.suit);
         if (leadCard(all, s).rank !== p.card.rank) misfit(p.seat);
         if (state.trump === "NT" && all.length < 4 && !/^(AK|KQ|QJ|JT)/.test(all)) weight *= SHORT_NT_LEAD;
+      } else if (i === 0 && t > 0 && reads(p.seat) && defends(p.seat) && "KQJT".includes(p.card.rank)) {
+        // A defender's later lead of an honour is the top of a sequence: it denies the card just
+        // above it (the J denies the Q), except the K from AK when the side leads the K from AK.
+        const above = RANKS[RANKS.indexOf(p.card.rank) - 1]!;
+        const kingFromAk = p.card.rank === "K" && systemFor(p.seat).leadFromAk === "K";
+        if (holding.includes(above) && !kingFromAk) misfit(p.seat);
       } else if (i > 0 && p.card.suit === led.suit && reads(p.seat) && !signalled.has(key) && holding.length >= 2) {
         // Following suit, the first time in this suit, and not trying to win the trick: a signal.
         const tries = winner !== null && p.card.suit === winner.suit && rankValue(p.card.rank) > rankValue(winner.rank);
@@ -61,7 +69,7 @@ export function cardingWeight(state: PlayState, hands: Record<Seat, Hand>, who: 
           const leader = trick.cards[0]!.seat;
           const high = p.card.rank !== holding[holding.length - 1];
           const declaring = leader === state.declarer || leader === dummyOf(state.declarer);
-          const isDefender = p.seat !== state.declarer && p.seat !== dummyOf(state.declarer);
+          const isDefender = defends(p.seat);
           if (isDefender && leader === partnerOf(p.seat)) {
             // Attitude: an honour left in the suit encourages.
             const want = holding.some((r) => r !== p.card.rank && "AKQ".includes(r));

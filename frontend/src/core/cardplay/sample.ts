@@ -3,7 +3,11 @@
 // Hard facts: its own hand; dummy's once the opening lead is made; every card played; who has shown
 // out of a suit. Soft facts: what each hand's bids showed (HCP, suit lengths, an overcall's suit
 // quality). Bidding light is common, and so are false cards, so a deal that fits the bids exactly
-// counts in full, one a little off counts a third, and one further off is left out. The bot never looks at the real hidden hands.
+// is always kept, one a little off is kept a third of the time, and one further off is left out.
+// (Kept a third of the time, not always at a third of the weight: when the bidding is narrow, such
+// as exactly seven hearts for a preempt, near misses far outnumber exact fits and would otherwise
+// crowd them out of the sample.) The leads and signals seen weight the deals kept. The bot never
+// looks at the real hidden hands.
 
 import { type Shown, meetsQuality } from "../bidding/model";
 import { adjustedPoints, evaluate } from "../bidding/evaluate";
@@ -14,7 +18,7 @@ import { type Hand, type Seat, type Suit, RANKS, SEATS, SUITS } from "../types";
 
 const HCP: Record<string, number> = { A: 4, K: 3, Q: 2, J: 1 };
 
-/** A deal of everyone's remaining cards, and how much it counts (1, or a third for near misses). */
+/** A deal of everyone's remaining cards, and how much it counts (by the leads and signals seen; 1 when they all fit). */
 export interface WeightedDeal {
   hands: Record<Seat, Hand>;
   weight: number;
@@ -120,11 +124,13 @@ export function sampleDeals(
     let at = 0;
     const split = sizes.map((n) => pool.slice(at, (at += n)));
     if (!hidden.every((s, k) => split[k]!.every((i) => !out[s].has(SUITS[Math.floor(i / 13)]!)))) continue;
-    let weight = 1;
-    for (let k = 0; k < hidden.length && weight > 0; k++) {
-      weight *= fitWeight([...split[k]!.map(toCard), ...played[hidden[k]!]], shown[hidden[k]!]);
+    let fit = 1;
+    for (let k = 0; k < hidden.length && fit > 0; k++) {
+      fit *= fitWeight([...split[k]!.map(toCard), ...played[hidden[k]!]], shown[hidden[k]!]);
     }
-    if (weight === 0) continue;
+    // Kept as often as it fits the bidding (see the top of the file).
+    if (fit === 0 || (fit < 1 && rand() >= fit)) continue;
+    let weight = 1;
     const hands = { ...state.hands };
     hidden.forEach((s, k) => (hands[s] = handOf(split[k]!)));
     if (systemFor) weight *= cardingWeight(state, hands, who, known, systemFor);

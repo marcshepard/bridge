@@ -271,10 +271,17 @@ core/bidding/      pure, no I/O, used by the devices (to bid for bots, and for r
 - **What a bot knows:** its own hand; dummy after the opening lead; every card played and who has
   shown out of a suit (hard facts); what the bidding showed (HCP and suit-length ranges, an
   overcall's suit quality, each side read by its own card).
-- **Light bidding and false cards, by weight:** a deal that fits what a hand's bids showed counts in
-  full; one a little outside (up to 2 HCP light or heavy, a card short or long in a suit, an
-  overcall's suit weaker than it promised) counts a third; further off, it's left out. So the bot allows for light openings and overcalls without
-  trusting them blindly, and always finds enough deals.
+- **Light bidding:** a deal that fits what a hand's bids showed is always kept; one a little outside
+  (up to 2 HCP light or heavy, a card short or long in a suit, an overcall's suit weaker than it
+  promised) is kept a third of the time; further off, it's left out. So the bot allows for light
+  openings and overcalls without trusting them blindly, and always finds enough deals. (Kept a third
+  of the time, not always kept at a third of the weight: when the bidding is narrow, such as exactly
+  seven hearts for a 3♥ preempt, near misses far outnumber exact fits and crowded them out. On a
+  game-night board, only 2 of 40 deals gave the preempter seven hearts, and partner failed to ruff.)
+- **Leads and signals, by weight:** the opening lead (by the leading agreements), a defender's later
+  lead of an honour (the top of a sequence: the J denies the Q), and the first card each player
+  plays to a suit when following (attitude or count). A deal they don't fit counts a tenth when it's
+  partner's card (partners tell the truth) and 0.8 for an opponent's (they may false-card).
 - **Which of equal cards:** double dummy can't tell ♠Q from ♠J in ♠QJ. Sampling picks the group of
   equal cards; rules pick the card in it: the opening lead by the leading agreements (top of a
   sequence, A or K from AK, fourth best or third and fifth), a defender's card by the signalling

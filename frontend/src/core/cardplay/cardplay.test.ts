@@ -281,3 +281,25 @@ describe("the opening lead from AK", () => {
     expect(["HA", "HK"]).toContain(cardCode(decision.card));
   }, 60_000);
 });
+
+describe("partner's second lead", () => {
+  // Game night: South opens 3♥ (seven hearts), East plays 4♣. South cashes the ♥A (North's ♥K falls)
+  // and leads the ♥J. The J denies the Q, so East has it: North must ruff, or 4♣ makes. North
+  // used to discard: it didn't read the J, and its deals mostly gave South six hearts, not seven.
+  const hands = {
+    N: parseHand("A8743.K.AQ972.94"),
+    E: parseHand("Q5.Q6.64.AKQT652"),
+    S: parseHand("9.AJT9842.T3.J73"),
+    W: parseHand("KJT62.753.KJ85.8"),
+  };
+  it.each([
+    ["S", "Both", []],
+    ["W", "None", ["PASS", "PASS", "PASS"]],
+  ] as const)("is ruffed when it denies the Q (dealer %s, vulnerable %s)", async (dealer, vul, pre) => {
+    const calls = [...pre, "3H", "PASS", "PASS", "4C", "PASS", "PASS", "PASS"].map((c) => parseCall(c)!);
+    const ctx = playContext({ dealer, vul }, calls);
+    let state = startPlay(hands, "C", "E");
+    for (const code of ["HA", "H3", "HK", "H6", "HJ", "H5"]) state = playCard(state, { suit: code[0] as "H", rank: code[1]! });
+    expect((await decideCard(state, ctx, solver)).card.suit).toBe("C");
+  }, 60_000);
+});
