@@ -49,10 +49,13 @@ export function cardingWeight(state: PlayState, hands: Record<Seat, Hand>, who: 
       const led = trick.cards[0]!.card;
 
       if (t === 0 && i === 0 && reads(p.seat)) {
-        // The opening lead: the card the leader's agreements give from this holding.
+        // The opening lead: the card the leader's agreements give from this holding. Against a suit
+        // contract the ace of a suit without the K is a normal lead too (nobody underleads an ace
+        // there), though the lead rules would lead another card from it against notrump.
         const s = systemFor(p.seat);
         const all = original(p.seat, p.card.suit);
-        if (leadCard(all, s).rank !== p.card.rank) misfit(p.seat);
+        const aceAgainstSuit = state.trump !== "NT" && p.card.rank === "A" && all[1] !== "K";
+        if (leadCard(all, s).rank !== p.card.rank && !aceAgainstSuit) misfit(p.seat);
         if (state.trump === "NT" && all.length < 4 && !/^(AK|KQ|QJ|JT)/.test(all)) weight *= SHORT_NT_LEAD;
       } else if (i === 0 && t > 0 && reads(p.seat) && defends(p.seat) && "KQJT".includes(p.card.rank)) {
         // A defender's later lead of an honour is the top of a sequence: it denies the card just

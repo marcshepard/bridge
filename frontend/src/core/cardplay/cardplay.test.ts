@@ -15,6 +15,7 @@ import { botClaim, checkClaim } from "./claims";
 import { type CardOdds, markFor, oddsOf, reviewCard } from "./review";
 import type { CardSimulation } from "./decide";
 import { fitWeight, sampleDeals, voids } from "./sample";
+import { cardingWeight } from "./inference";
 import { unknownHand } from "../bidding/model";
 import { seeded } from "../random";
 
@@ -302,4 +303,11 @@ describe("partner's second lead", () => {
     for (const code of ["HA", "H3", "HK", "H6", "HJ", "H5"]) state = playCard(state, { suit: code[0] as "H", rank: code[1]! });
     expect((await decideCard(state, ctx, solver)).card.suit).toBe("C");
   }, 60_000);
+
+  it("reads the opening ♥A from A-J-10 as a normal lead against a suit, not against notrump", () => {
+    const after = (trump: "C" | "NT") => playCard(startPlay(hands, trump, "E"), { suit: "H", rank: "A" });
+    expect(cardingWeight(after("C"), after("C").hands, "N", ["W"], () => SAYC_DEFAULTS)).toBe(1);
+    // Against notrump the lead rules lead the J from A-J-10 (the top of an interior sequence).
+    expect(cardingWeight(after("NT"), after("NT").hands, "N", ["W"], () => SAYC_DEFAULTS)).toBeCloseTo(0.1);
+  });
 });

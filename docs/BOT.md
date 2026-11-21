@@ -278,7 +278,8 @@ core/bidding/      pure, no I/O, used by the devices (to bid for bots, and for r
   of the time, not always kept at a third of the weight: when the bidding is narrow, such as exactly
   seven hearts for a 3♥ preempt, near misses far outnumber exact fits and crowded them out. On a
   game-night board, only 2 of 40 deals gave the preempter seven hearts, and partner failed to ruff.)
-- **Leads and signals, by weight:** the opening lead (by the leading agreements), a defender's later
+- **Leads and signals, by weight:** the opening lead (by the leading agreements; against a suit
+  contract the ace of a suit without the K counts as normal too), a defender's later
   lead of an honour (the top of a sequence: the J denies the Q), and the first card each player
   plays to a suit when following (attitude or count). A deal they don't fit counts a tenth when it's
   partner's card (partners tell the truth) and 0.8 for an opponent's (they may false-card).
