@@ -931,7 +931,7 @@ describe("bots in online games", () => {
     expect((await add(ann.playerId)).status).toBe(403);
     expect((await add()).json).toEqual({ slot: 3 });
     let snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
-    expect(snap.players.find((p) => p.slot === 3)).toMatchObject({ name: "Bot 3", isBot: true, noApp: false });
+    expect(snap.players.find((p) => p.slot === 3)).toMatchObject({ name: "Bot", isBot: true, noApp: false });
     expect((await api("DELETE", `/events/${code}/players/bot/2`, undefined, created.playerId)).status).toBe(404); // Ann is a person
     expect((await api("DELETE", `/events/${code}/players/bot/3`, undefined, ann.playerId)).status).toBe(403);
     expect((await api("DELETE", `/events/${code}/players/bot/3`, undefined, created.playerId)).status).toBe(204);
@@ -989,6 +989,6 @@ describe("deleting and test players", () => {
     const res = await api<{ added: number[] }>("POST", `/events/${code}/test-players`);
     expect(res.json.added).toEqual([2, 3, 4]);
     const snap = (await api<EventSnapshot>("GET", `/events/${code}`)).json;
-    expect(snap.players.map((p) => p.name)).toEqual(["Marc", "Bot 2", "Bot 3", "Bot 4"]);
+    expect(snap.players.map((p) => p.name)).toEqual(["Marc", "Bot", "Bot", "Bot"]);
   });
 });

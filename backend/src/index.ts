@@ -359,8 +359,7 @@ app.delete("/events/:code/players/no-app/:slot", async (c) => {
 });
 
 /**
- * The owner adds a bot to an online game in the lobby, in the next free place ("Bot 3": the number
- * is the place). The owner's device bids and plays for it; someone can take the seat over later
+ * The owner adds a bot to an online game in the lobby, in the next free place. The owner's device bids and plays for it; someone can take the seat over later
  * with a seat request. Not in real-cards games: a bot can't hold real cards.
  */
 app.post("/events/:code/players/bot", async (c) => {
@@ -980,7 +979,7 @@ app.post("/events/:code/test-players", async (c) => {
   return c.json({ added });
 });
 
-/** Fills a game's empty places with bots ("Bot 2"…: the number is the place). Returns the places filled. */
+/** Fills a game's empty places with bots. Returns the places filled. */
 async function addBots(c: Ctx, code: string): Promise<number[]> {
   const players = await db.getPlayers(c.env.DB, code);
   const added: number[] = [];
@@ -993,9 +992,12 @@ async function addBots(c: Ctx, code: string): Promise<number[]> {
   return added;
 }
 
-/** A bot in a place: named by the place ("Bot 2"), with no bidding system of its own. */
+/**
+ * A bot in a place, with no bidding system of its own. Every bot is just "Bot": its seat tells the
+ * table which one it is, and the slot (not the name) is what tells players apart.
+ */
 function botRow(slot: number): db.PlayerRow {
-  return { player_id: newPlayerId(), slot, name: `Bot ${slot}`, is_creator: 0, is_bot: 1, no_app: 0, seat: null, system_json: null };
+  return { player_id: newPlayerId(), slot, name: "Bot", is_creator: 0, is_bot: 1, no_app: 0, seat: null, system_json: null };
 }
 
 app.all("*", (c) => c.json({ error: "Not found" }, 404));

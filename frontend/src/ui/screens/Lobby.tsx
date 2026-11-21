@@ -124,10 +124,11 @@ function PlayerList({
                   p ? (
                     <>
                       <PlayerName name={p.name} suffix={p.slot === mySlot ? " (you)" : ""} away={away} />
-                      {(p.isCreator || p.noApp || p.isBot) && (
+                      {/* A bot's name already says it's a bot. */}
+                      {(p.isCreator || p.noApp) && (
                         <Box component="span" sx={{ color: "text.secondary", typography: "body2" }}>
                           {" "}
-                          · {p.isCreator ? "Owner" : p.isBot ? "Bot" : "Without the app"}
+                          · {p.isCreator ? "Owner" : "Without the app"}
                         </Box>
                       )}
                     </>
@@ -140,7 +141,7 @@ function PlayerList({
                 }}
               />
               {(p?.noApp || p?.isBot) && onRemove && (
-                <Button variant="outlined" disabled={seating?.busy} onClick={() => onRemove(p.slot)} aria-label={`Remove ${p.name}`}>
+                <Button variant="outlined" disabled={seating?.busy} onClick={() => onRemove(p.slot)} aria-label={p.isBot ? `Remove the bot in place ${p.slot}` : `Remove ${p.name}`}>
                   Remove
                 </Button>
               )}

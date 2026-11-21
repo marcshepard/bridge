@@ -54,7 +54,7 @@ The rest of that feedback is built (see DESIGN.md). Still open:
   like the bidding simulation). If not, on a close decision "✓ The bot would play this too" could
   disagree with the play review.
 - **Bots at a shared table.** A "Waiting for Marc's device to play for the bot" message when the
-  owner's device is asleep or gone, and friendlier bot names than "Bot 3".
+  owner's device is asleep or gone.
 
 ## Reviews of earlier boards, for everyone
 

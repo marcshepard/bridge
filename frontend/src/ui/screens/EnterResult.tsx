@@ -37,7 +37,7 @@ interface Props {
   step: EntryStep;
   board: Board;
   seat: Seat;
-  /** Who sits in each seat ("Bot" for a bot), shown under each direction when picking declarer. */
+  /** Who sits in each seat, shown under each direction when picking declarer. */
   names?: Record<Seat, string>;
   /** What's entered so far (`tricks: null` when only the contract is in). */
   initial: { contract: Contract | null; declarer: Seat | null; tricks: number | null } | null;

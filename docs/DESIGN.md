@@ -536,8 +536,7 @@ The same goes for dev test players. A person who takes over a bot's seat stops b
 ### Dev mode: simulated players
 
 - **Fill with test players** (dev builds only, real-cards games; online games have Add a bot): a
-  lobby button that adds Bot 2, Bot 3 and Bot 4 (the
-  number is the order they joined) so a game starts immediately and every board can be played from one device. Nothing else
+  lobby button that fills the empty places with bots (each just named "Bot") so a game starts immediately and every board can be played from one device. Nothing else
   is needed from the test players: the owner enters the results and moves the table on.
 - **Several identities in one browser:** a dev-only URL option `?as=2` gives a tab its own player
   ID, so four tabs side by side behave like four players' devices for testing live sync.
@@ -640,7 +639,7 @@ the player with `isCreator`; there's no separate host key.
 | `POST /api/events/:code/players` | Anyone with the code | Join the lobby: `{ name }` → `{ code, playerId, slot }`. Closed once play starts or with 4 players |
 | `POST /api/events/:code/players/no-app` | Owner | Real-cards games, in the lobby: add a player without the app, `{ name }` → `{ slot }` |
 | `DELETE /api/events/:code/players/no-app/:slot` | Owner | In the lobby: take a player without the app back out |
-| `POST /api/events/:code/players/bot` | Owner | Online games, in the lobby: add a bot in the next free place ("Bot 3") → `{ slot }` |
+| `POST /api/events/:code/players/bot` | Owner | Online games, in the lobby: add a bot (named "Bot") in the next free place → `{ slot }` |
 | `DELETE /api/events/:code/players/bot/:slot` | Owner | In the lobby: take a bot back out |
 | `PUT /api/events/:code/current` | Owner | `{ board }`: move the table to a board; pushed to everyone as `board`. On the devices, starts its auction (refused while another board is being played) |
 | `POST /api/events/:code/skip-board` | Owner | `{ board }`: skip the current unscored real-cards board. Stores `SKIP` with no tricks, moves on if there's another board, and pushes `boardSkipped`. |
