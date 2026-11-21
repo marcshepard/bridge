@@ -24,7 +24,7 @@ import { CallText, ContractText, StrainSymbol, SuitString, callWords } from "../
 import { ChoiceGroup } from "../controls/ChoiceGroup";
 import { Section } from "../controls/Layout";
 import { TurnStrip } from "../controls/TurnStrip";
-import { playerPlace } from "../labels";
+import { playerPlace, vulnerableShort } from "../labels";
 import { useBotHints } from "../botHints";
 import { BID_COLOURS } from "../theme";
 
@@ -153,7 +153,7 @@ export function BidHand(p: Props) {
     : caller === seat
       ? "Your turn"
       :`${SEAT_NAMES[caller]}'s turn${p.bots.includes(caller) ? " (bot)" : awayNote}`;
-  const vulText = { None: "None vul", NS: "N/S vul", EW: "E/W vul", Both: "Both vul" }[board.vul];
+  const vulText = `Vul: ${vulnerableShort(seat, board.vul)}`;
 
   return (
     <Box component="section" aria-label="Bidding">
@@ -169,7 +169,8 @@ export function BidHand(p: Props) {
         turn={turn}
         mine={mine}
         right={
-          <Typography variant="caption" color="text.secondary">
+          // One line where there's room; on the narrowest phones it wraps rather than being cut off.
+          <Typography variant="caption" color="text.secondary" component="p" sx={{ lineHeight: 1.3 }}>
             {vulText}
           </Typography>
         }

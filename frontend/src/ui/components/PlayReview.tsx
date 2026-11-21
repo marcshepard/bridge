@@ -124,8 +124,20 @@ export function PlayReview({ board, contract, calls, cards, seat, names, bots, s
   const place = (r: "partner" | "lho" | "rho" | "you") => SEATS.find((s) => relationTo(seat, s) === r)!;
   const AREA = { partner: "top", lho: "left", rho: "right", you: "bottom" } as const;
 
-  const seatBox = (s: Seat) => (
-    <Box key={s} sx={{ border: 1, borderColor: s === seat ? "primary.main" : "divider", borderRadius: 1, p: 1, minWidth: 0 }}>
+  // Partner's and your boxes (top and bottom) fit their cards and sit centred over the trick, as in a
+  // printed hand diagram; the opponents' fill their columns beside it.
+  const seatBox = (s: Seat, centred = false) => (
+    <Box
+      key={s}
+      sx={{
+        border: 1,
+        borderColor: s === seat ? "primary.main" : "divider",
+        borderRadius: 1,
+        p: 1,
+        minWidth: 0,
+        ...(centred && { alignSelf: "center", maxWidth: 1 }),
+      }}
+    >
       <Typography variant="caption" component="p" color="text.secondary" noWrap>
         {s === dummy ? "Dummy: " : ""}
         {SEAT_NAMES[s]} ({s === seat ? "you" : names[s]})
@@ -190,7 +202,7 @@ export function PlayReview({ board, contract, calls, cards, seat, names, bots, s
       </Box>
 
       <Stack spacing={1}>
-        {seatBox(place("partner"))}
+        {seatBox(place("partner"), true)}
         <Box sx={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", gap: 1, alignItems: "center" }}>
           {seatBox(place("lho"))}
           <Box sx={{ textAlign: "center" }}>
@@ -236,7 +248,7 @@ export function PlayReview({ board, contract, calls, cards, seat, names, bots, s
           </Box>
           {seatBox(place("rho"))}
         </Box>
-        {seatBox(place("you"))}
+        {seatBox(place("you"), true)}
       </Stack>
 
       <Box sx={{ mt: 1.5 }}>
