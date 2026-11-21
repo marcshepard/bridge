@@ -381,7 +381,7 @@ function BiddingHelp() {
       <span>The menu under your initial (top right) has three settings for bidding:</span>
       <span>
         <strong>Bidding system:</strong> the SAYC choices you play. The bots bid by it, and the app uses it to explain
-        bids and to judge yours. A change applies to games you start or join after it.
+        bids and to judge yours. This setting is read at the start of a game, so changes only apply to future games.
       </span>
       <span>
         <strong>Bot hints:</strong> before you make a bid or play a card, it tells you whether the bot would choose it
