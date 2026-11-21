@@ -397,7 +397,7 @@ function BiddingHelp() {
         </li>
         <li>
           <strong>Off</strong>{yours(false)}: a bid goes as soon as you tap it. Faster, but you don't see what it means
-          first, and a misbid can't be undone. With Bot hints on, you're told afterwards what the bot would have bid.
+          first, and a misbid can't be undone.
         </li>
       </Box>
     </HelpTip>
