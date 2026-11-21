@@ -24,7 +24,8 @@ import { ContractText, SUIT_NAMES, SuitString } from "../controls/BridgeText";
 import { PlayingCard } from "../controls/PlayingCard";
 import { SheetDialog } from "../controls/SheetDialog";
 import { relationTo } from "../labels";
-import { Hand } from "./Hand";
+import { SeatFrame } from "../controls/Compass";
+import { SeatHand } from "./Hand";
 
 const PLAY_MARKS: Record<PlayMark, { symbol: string; color: string; name: string }> = {
   mistake: { symbol: "✗", color: "error.main", name: "a mistake" },
@@ -124,26 +125,18 @@ export function PlayReview({ board, contract, calls, cards, seat, names, bots, s
   const place = (r: "partner" | "lho" | "rho" | "you") => SEATS.find((s) => relationTo(seat, s) === r)!;
   const AREA = { partner: "top", lho: "left", rho: "right", you: "bottom" } as const;
 
-  // Partner's and your boxes (top and bottom) fit their cards and sit centred over the trick, as in a
-  // printed hand diagram; the opponents' fill their columns beside it.
+  // The same boxes as the bidding review's hands (SeatFrame and SeatHand). Partner's and yours (top
+  // and bottom) are half the width and centred, as there: they have rows of their own, not the
+  // trick's columns. The opponents' fill their columns beside the trick.
   const seatBox = (s: Seat, centred = false) => (
-    <Box
-      key={s}
-      sx={{
-        border: 1,
-        borderColor: s === seat ? "primary.main" : "divider",
-        borderRadius: 1,
-        p: 1,
-        minWidth: 0,
-        ...(centred && { alignSelf: "center", maxWidth: 1 }),
-      }}
-    >
-      <Typography variant="caption" component="p" color="text.secondary" noWrap>
-        {s === dummy ? "Dummy: " : ""}
-        {SEAT_NAMES[s]} ({s === seat ? "you" : names[s]})
-      </Typography>
-      <Hand hand={start.hands[s]} trump={trump} />
-    </Box>
+    <SeatFrame key={s} mine={s === seat} sx={centred ? { alignSelf: "center", width: "50%", minWidth: "fit-content", maxWidth: 1 } : undefined}>
+      <SeatHand
+        seat={s}
+        hand={start.hands[s]}
+        trump={trump}
+        title={`${s === dummy ? "Dummy: " : ""}${SEAT_NAMES[s]} (${s === seat ? "you" : names[s]})`}
+      />
+    </SeatFrame>
   );
 
   const summary =

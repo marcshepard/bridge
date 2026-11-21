@@ -1,4 +1,5 @@
 import { Box, ButtonBase, type Theme, Typography } from "@mui/material";
+import type { ReactNode } from "react";
 import type { Card } from "../../core/play";
 import { type Hand as HandT, type Seat, type Strain, type Suit, SEAT_NAMES, SUIT_SYMBOLS } from "../../core/types";
 import { StrainSymbol, SUIT_NAMES } from "../controls/BridgeText";
@@ -269,10 +270,13 @@ export function SeatHand({
   away = false,
   hand,
   trump,
+  title,
 }: {
   seat: Seat;
   /** The player's name, shown after the seat; none in the dev replay. */
   name?: string;
+  /** A heading in place of "North (name)" (the play review: "Dummy: North (Ann)"). */
+  title?: ReactNode;
   away?: boolean;
   hand: HandT;
   trump: Strain | null;
@@ -283,9 +287,13 @@ export function SeatHand({
         variant="subtitle2"
         component="h3"
         noWrap
-        sx={{ px: 1, py: 0.5, bgcolor: "action.hover", borderBottom: 1, borderColor: "divider" }}
+        sx={{ px: 1, py: 0.5, bgcolor: "action.hover", borderBottom: 1, borderColor: "divider", textAlign: "center" }}
       >
-        {SEAT_NAMES[seat]} {name && <PlayerName name={`(${name})`} away={away} />}
+        {title ?? (
+          <>
+            {SEAT_NAMES[seat]} {name && <PlayerName name={`(${name})`} away={away} />}
+          </>
+        )}
       </Typography>
       {/* Centred as a block, with the suits lined up on the left inside it. */}
       <Box sx={{ width: "fit-content", maxWidth: 1, mx: "auto", px: 1, py: 1 }}>

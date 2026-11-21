@@ -5,7 +5,7 @@
 // right. A hand diagram (all four hands once the board is over) keeps the standard layout instead,
 // South at the bottom (`bottom`). What goes in each box (its heading too) is the caller's.
 
-import { Box, Paper } from "@mui/material";
+import { Box, Paper, type SxProps, type Theme } from "@mui/material";
 import type { ReactNode } from "react";
 import { type Seat, SEATS } from "../../core/types";
 import { relationTo, type Relation } from "../labels";
@@ -40,18 +40,25 @@ export function Compass({ me, bottom = me, seats, label = "Who sits where" }: Pr
       }}
     >
       {SEATS.map((seat) => (
-        <Paper
-          key={seat}
-          variant="outlined"
-          sx={{
-            gridArea: AREA[relationTo(bottom, seat)],
-            overflow: "hidden",
-            ...(seat === me && { borderColor: "primary.main", borderWidth: 2 }),
-          }}
-        >
+        <SeatFrame key={seat} mine={seat === me} sx={{ gridArea: AREA[relationTo(bottom, seat)] }}>
           {seats[seat]}
-        </Paper>
+        </SeatFrame>
       ))}
     </Box>
+  );
+}
+
+/**
+ * One seat's box in a hand diagram (the compass, the play review): an outlined box, yours in the
+ * primary colour. What goes in it (usually a SeatHand: heading strip and cards) is the caller's.
+ */
+export function SeatFrame({ mine, sx, children }: { mine: boolean; sx?: SxProps<Theme>; children: ReactNode }) {
+  return (
+    <Paper
+      variant="outlined"
+      sx={[{ overflow: "hidden", minWidth: 0 }, mine && { borderColor: "primary.main", borderWidth: 2 }, ...(Array.isArray(sx) ? sx : [sx])]}
+    >
+      {children}
+    </Paper>
   );
 }
