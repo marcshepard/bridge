@@ -7,14 +7,8 @@
 // When it's yours, it's bold in the primary colour with a small pulsing dot to catch the eye.
 
 import { Box, Typography } from "@mui/material";
-import { keyframes } from "@mui/material/styles";
 import type { ReactNode } from "react";
-
-/** The dot beside "Your turn" swells and fades. */
-const pulse = keyframes`
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.35; transform: scale(0.6); }
-`;
+import { TurnDot } from "./TurnDot";
 
 interface Props {
   left: ReactNode;
@@ -45,21 +39,7 @@ export function TurnStrip({ left, turn, mine, right }: Props) {
           ...(mine && { fontWeight: "fontWeightBold" }),
         })}
       >
-        {mine && turn !== "" && (
-          <Box
-            component="span"
-            aria-hidden
-            sx={(t) => ({
-              flexShrink: 0,
-              width: t.spacing(1.25),
-              height: t.spacing(1.25),
-              borderRadius: "50%",
-              bgcolor: "primary.main",
-              animation: `${pulse} 1.2s ease-in-out infinite`,
-              "@media (prefers-reduced-motion: reduce)": { animation: "none" },
-            })}
-          />
-        )}
+        {mine && turn !== "" && <TurnDot />}
         {turn}
       </Typography>
       <Box sx={{ minWidth: 0, textAlign: "right" }}>{right}</Box>

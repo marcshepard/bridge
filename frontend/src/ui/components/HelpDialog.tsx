@@ -314,7 +314,9 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           at the bottom, the trick in the middle, and at the top the contract, whose turn it is and the tricks
           each side has won. When it's your turn, it says{" "}
           <strong>Your turn</strong> in bold green, with a small pulsing dot beside it. When you're declarer and it's
-          dummy's turn, it says <strong>Dummy's turn</strong> the same way: play a card from dummy.
+          dummy's turn, it says <strong>Dummy's turn</strong> the same way: play a card from dummy. Whoever plays
+          next, their box is shaded light green with a thicker green border, and the same pulsing dot is beside
+          their name.
         </li>
         <li>
           When your partner is a bot and it declares, you play the contract for it: its cards are at the top, marked{" "}
@@ -337,8 +339,10 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
               Changed your mind? Tap another card first. This way, Bot hints can tell you about the card before you play it.
             </li>
           </ul>
-          Cards you can't play right now are greyed out: you have to follow suit when you can. When only one card can be
-          played (your last, or your only card in the suit led), it plays itself after a moment. A card can't be taken
+          Cards you can't play right now are greyed out: you have to follow suit when you can. Your last card plays itself
+          after a moment. Before that, when only one card can be played (your only card in the suit led), it's picked
+          for you, but you still tap <strong>Play</strong>: if it went by itself, everyone would know you had no
+          choice. A card can't be taken
           back once it's played. The <strong>?</strong> beside <strong>Play</strong> sums this up.
         </li>
         <li>
@@ -346,12 +350,12 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
         <li>
           After the opening lead, dummy's cards are shown to everyone. Declarer plays dummy's cards as well as
-          their own; dummy just watches. If you're dummy, you can tap <strong>Show hand</strong> at the top right of
+          their own; dummy just watches, so dummy's own cards are shown one suit per line, easy to read. If you're dummy, you can tap <strong>Show hand</strong> at the top right of
           partner's box to look at declarer's cards (and <strong>Hide hand</strong> to put them away). Strict rules don't allow
           this, but in a friendly game it does no harm: dummy has no cards to play.
         </li>
         <li>
-          When a trick is complete, it stays face up in the middle for a couple of seconds (less if someone plays
+          When a trick is complete, it stays face up in the middle for three seconds (less if someone plays
           to the next trick), then goes face down onto a small pile of four card backs under the table: the last
           trick. Want another look? Tap the pile (<strong>← Tap to review last trick</strong>), at any time, dummy
           too: the last trick turns face up in the middle, and the cards of the trick being played are hidden while

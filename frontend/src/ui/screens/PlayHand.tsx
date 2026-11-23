@@ -35,7 +35,7 @@ import {
   tricksWon,
 } from "../../core/play";
 import { scoreResult } from "../../core/scoring";
-import { type Contract, type Seat, SEATS, SEAT_NAMES, SUIT_SYMBOLS, directionOf } from "../../core/types";
+import { type Contract, type Seat, type Strain, SEATS, SEAT_NAMES, SUIT_SYMBOLS, directionOf } from "../../core/types";
 import type { Board } from "../../providers/types";
 import { BiddingReview } from "../components/BiddingReview";
 import { CardBacksFan, Hand, HandTiles, cardBackSx } from "../components/Hand";
@@ -46,16 +46,17 @@ import { NumberStepper } from "../controls/NumberStepper";
 import { PlayerName } from "../controls/PlayerName";
 import { PlayingCard } from "../controls/PlayingCard";
 import { SheetDialog } from "../controls/SheetDialog";
+import { TurnDot } from "../controls/TurnDot";
 import { TurnStrip } from "../controls/TurnStrip";
 import { relationTo } from "../labels";
 import { useBotHints } from "../botHints";
 import { rememberDecision } from "../botMemory";
 
-/** How long a finished trick stays face up before it turns over by itself. */
-const TURN_OVER_MS = 2000;
+/** How long a finished trick stays face up before it turns over by itself: time to take it in. */
+const TURN_OVER_MS = 3000;
 /** How long a bot waits before playing, so everyone can follow the trick. */
 const BOT_DELAY_MS = 2000;
-/** How long before your only playable card plays itself: long enough to see it go. */
+/** How long before your last card plays itself: long enough to see it go. */
 const FORCED_DELAY_MS = 700;
 
 
@@ -161,11 +162,12 @@ export function PlayHand(p: Props) {
 
   // Tap a card to pick it, then Play: the same two steps as a bid and Submit; or swipe a card towards the table to
   // play it at once. A pick lasts until a card is played (anyone's). When you have only one card
-  // you can play, it plays itself (see `forced` below).
+  // you can play, it's picked for you; your last card plays itself (see `forced` below).
   const myTurn = !over && !claim && yours(turn);
   const [pickedCard, setPickedCard] = useState<{ at: number; card: Card } | null>(null);
   const onlyCard = myTurn ? legalCards(state, turn) : [];
   const preselect = onlyCard.length === 1 ? onlyCard[0]! : null;
+  const lastCard = preselect !== null && Object.values(state.hands[turn]).join("").length === 1;
   const picked = myTurn ? ((pickedCard?.at === cards.length ? pickedCard.card : null) ?? preselect) : null;
 
   // Bot hints (the avatar menu): what the bot would play for you here, worked out as your turn
@@ -222,10 +224,11 @@ export function PlayHand(p: Props) {
     });
   }
 
-  // Your only playable card (your last, or your only one in the suit led) plays itself after a
-  // moment: there's no choice to make. A lead waits, as the bots' do, for the trick just won to
-  // turn over.
-  const forced = myTurn && busy === null && !lookingBack && !justWon && !claiming ? preselect : null;
+  // Your last card plays itself after a moment: everyone has one card left, so there's no choice
+  // and nothing to give away. Earlier, an only card in the suit led is picked for you but waits for
+  // you to play it: playing it at once would tell the table you had no choice. A lead waits for
+  // the trick just won to turn over.
+  const forced = lastCard && myTurn && busy === null && !lookingBack && !justWon && !claiming ? preselect : null;
   const forcedKey = forced ? `${cards.length}:${forced.suit}${forced.rank}` : null;
   useEffect(() => {
     if (!forced) return;
@@ -254,10 +257,11 @@ export function PlayHand(p: Props) {
   // pause. It's chosen by sampling with double dummy (core/cardplay), worked out during the pause; the
   // simple robot rules if double dummy isn't available. The backend takes the first card for each
   // turn, so a repeat can't play twice.
-  // A bot's lead waits until the trick just won has turned over, so it lands on a clear table. A bot
-  // also waits until the backend has your card (`pending`), so it never plays after a card that
-  // might yet be refused.
-  const botTurn = !over && !claim && !justWon && !pending && p.playsForBots && p.bots.includes(waitingFor);
+  // A bot's lead to a new trick waits as long as the trick just won stays face up (TURN_OVER_MS, its
+  // pause running meanwhile), so it lands as the table clears. A bot also waits until the backend
+  // has your card (`pending`), so it never plays after a card that might yet be refused.
+  const botTurn = !over && !claim && !pending && p.playsForBots && p.bots.includes(waitingFor);
+  const botPauseMs = finished > 0 && currentTrick(state).cards.length === 0 ? Math.max(BOT_DELAY_MS, TURN_OVER_MS) : BOT_DELAY_MS;
   const context = useMemo(() => playContext({ dealer: board.dealer, vul: board.vul }, p.calls, p.systems), [board, p.calls, p.systems]);
   // A bot considers claiming once a board (when its side's tricks are certain, it claims instead of
   // playing on); refused, it plays on.
@@ -265,7 +269,7 @@ export function PlayHand(p: Props) {
   useEffect(() => {
     if (!botTurn) return;
     let cancelled = false;
-    const pause = new Promise((resolve) => setTimeout(resolve, BOT_DELAY_MS));
+    const pause = new Promise((resolve) => setTimeout(resolve, botPauseMs));
     const key = `${board.number}-${waitingFor}`;
     void (async () => {
       if (doubleDummy && !claimTried.current.has(key)) {
@@ -350,8 +354,10 @@ export function PlayHand(p: Props) {
       ? busy
       : claim
         ? `${claimText}: waiting for ${waitingOn.map((s) => SEAT_NAMES[s]).join(" and ")}`
-        : preselect
-          ? "Only one card can go: playing it for you"
+        : lastCard
+          ? "Your last card: playing it for you"
+          : preselect
+            ? "Only one card can go: it's picked for you"
           : forBot && seat === actor && finished === 0
             ? "Your bot partner is declarer: you play both hands"
             : "";
@@ -387,7 +393,7 @@ export function PlayHand(p: Props) {
           · {count} {count === 1 ? "card" : "cards"}
         </Typography>
         {peekable && peek ? (
-          <Hand hand={state.hands[s]} trump={trump} />
+          <CentredHand hand={state.hands[s]} trump={trump} />
         ) : (
           <Box sx={{ mt: 0.5 }}>
             <CardBacksFan count={count} />
@@ -580,7 +586,13 @@ export function PlayHand(p: Props) {
                   : `You: ${SEAT_NAMES[seat]}`
             }
           >
+            {/* Dummy watching partner play never picks a card, so one suit per line, easier to read and the
+              same as partner's hand under Show hand; playing a hand, the row of cards to pick from. */}
+          {seat === dummy && !forBot ? (
+            <CentredHand hand={state.hands[seat]} trump={trump} />
+          ) : (
             <HandTiles hand={state.hands[seat]} trump={trump} inPlay play={playFor(seat)} />
+          )}
           </SeatBox>
         </Stack>
 
@@ -646,25 +658,44 @@ function ClaimDialog({ left, onClose, onClaim }: { left: number; onClose: () => 
 }
 
 /**
+ * A hand one suit per line, in the middle of a full-width seat box (dummy's own hand, partner's
+ * under Show hand), where the cards in a row are too. The suits stay lined up under each other.
+ */
+function CentredHand({ hand, trump }: { hand: PlayState["hands"][Seat]; trump: Strain }) {
+  return (
+    <Box sx={{ display: "flex", justifyContent: "center" }}>
+      <Hand hand={hand} trump={trump} />
+    </Box>
+  );
+}
+
+/**
  * One seat's box: a caption title (always the same size), and optionally a button at the top right
  * (dummy's Show hand). The button is taller than the caption, so the box gives back that space:
  * less padding above, and no gap below the title row.
+ *
+ * The box whose turn it is (`active`): a light green tint, a thicker green border and the pulsing
+ * turn dot on its title. The extra border is drawn inside the outline (an inset shadow), so the box
+ * keeps its size and nothing shifts as the turn moves round.
  */
 function SeatBox({ title, active, action, children }: { title: string; active: boolean; action?: ReactNode; children: ReactNode }) {
   return (
     <Paper
       variant="outlined"
-      sx={{
+      sx={(t) => ({
         p: 1,
         ...(action && { pt: 0.5 }),
         ...(active && {
           borderColor: "primary.main",
-          bgcolor: "action.selected",
+          // The outline doubled, inside the box.
+          boxShadow: `inset 0 0 0 ${t.spacing(0.125)} ${t.vars!.palette.primary.main}`,
+          bgcolor: t.vars!.palette.turn,
         }),
-      }}
+      })}
     >
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: action ? 0 : 0.5 }}>
-        <Typography variant="caption" component="p" color="text.secondary">
+        <Typography variant="caption" component="p" color={active ? "text.primary" : "text.secondary"} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+          {active && <TurnDot />}
           {title}
         </Typography>
         {action}
@@ -873,8 +904,8 @@ function PlayHelp() {
         mouse, drag it and let go.
       </span>
       <span>
-        <strong>Autoplay:</strong> when there is only one legal play (your last, or your only one in the suit led), it
-        plays itself after a moment.
+        <strong>Autoplay:</strong> your last card plays itself after a moment. Before that, when there is only one
+        legal play (your only one in the suit led), it's picked for you: tap Play.
       </span>
     </HelpTip>
   );

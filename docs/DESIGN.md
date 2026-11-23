@@ -436,21 +436,28 @@ played. If a board somehow hasn't started, the owner has **Play online**.
   alike) plays it at once: it follows the pointer, and let go past 40% of its height it's played;
   short of that it drops back. A press that barely moves is still a tap. No double-tap to play
   (Marc's call: too easy to do by accident). Keyboard users pick and press Play.
-- **Forced cards play themselves:** when only one card is legal (your last, or your only one in the
-  suit led), it plays after 700 ms, for declarer's dummy too. A lead waits, like a bot's, for the
-  trick just won to turn over. No hint: there's no choice to make.
+- **Only your last card plays itself:** after 700 ms, for declarer's dummy too; everyone has one
+  card, so there's nothing to give away. A lead waits for the trick just won to turn over. Earlier,
+  an only legal card (your only one in the suit led) is picked for you but waits for you to tap
+  Play: playing it at once was a tell (feedback, Nov 2026). The bots always take their 2 seconds.
+- **Dummy watching a person play** sees their own hand one suit per line (`Hand`), the same as
+  partner's hand under Show hand: they never pick a card, and the list is easier to read. Anyone
+  playing a hand gets the row of cards (`HandTiles`) to pick from.
+- **Whose turn:** the seat box that plays next has a light green tint (`palette.turn`), a doubled
+  green border and the pulsing `TurnDot` on its title, the same dot as beside "Your turn" in the
+  `TurnStrip`. Not MUI's grey `action.selected`, which players read as greyed out.
 - **Cards and bids aren't selectable text** (`.no-select` in `theme.ts`): Chrome on Android looks
   up tapped text ("Touch to Search") when it isn't a button, as your cards are when it isn't your
   turn.
 - **The trick:** a fixed-size compass in the middle. Friendlier than tournament rules: a finished
-  trick shows face up for 2 seconds (`TURN_OVER_MS`), then goes face down onto the pile (or as soon
-  as anyone plays to the next trick). The bots' lead waits until it has turned over, so it lands
-  on a clear table. The pile sits in a fixed-height row under the trick row (`TrickRow`), so nothing
+  trick shows face up for 3 seconds (`TURN_OVER_MS`; 2 was too short, players kept reopening it),
+  then goes face down onto the pile (or as soon as anyone plays to the next trick). A bot's lead
+  takes those 3 seconds as its pause (not 3 and then its 2), so it lands as the table clears. The pile sits in a fixed-height row under the trick row (`TrickRow`), so nothing
   below moves: a small, tightly overlapped fan of card backs, one per trick played. It's the button:
   anyone, dummy included, can tap it at any time to turn the last trick face up in the middle (the
   current trick's cards are hidden meanwhile); tapping it again goes back. While you're looking
   back, your cards can't be picked and Play and Claim are greyed out, so nobody plays without seeing
-  the trick; a card picked before stays picked. (During a trick's 2 seconds face up as it's won,
+  the trick; a card picked before stays picked. (During a trick's 3 seconds face up as it's won,
   nothing is blocked: playing to the next trick closes it.) Beside
   it, "← Tap to review last trick" while closed, nothing while open, and, when it's your turn and
   you're looking back, the whole row becomes one warning-coloured button, without the pile: "It's
