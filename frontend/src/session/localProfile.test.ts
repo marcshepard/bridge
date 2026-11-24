@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LocalProfileStore } from "./localProfile";
-import type { CurrentGameInfo } from "./store";
+import { type CurrentGameInfo, type GameHistoryEntry, MAX_HISTORY } from "./store";
 
 const info = (title: string): CurrentGameInfo => ({ title, board: 12, boardCount: 36, others: ["Ann", "Bob", "Carol"], practice: false });
 
@@ -42,6 +42,38 @@ describe("bot hints", () => {
     expect(p.botHints()).toBe(false);
     p.setBotHints(true);
     expect(p.botHints()).toBe(true);
+  });
+});
+
+describe("game history", () => {
+  const entry = (code: string, startedAt: string, net = 10): GameHistoryEntry => ({
+    code,
+    startedAt,
+    title: "Club night",
+    direction: "NS",
+    net,
+    boards: 4,
+    partner: { name: "Ann", bot: false },
+    opponents: [{ name: "Bob", bot: false }, { name: "Bot", bot: true }],
+  });
+
+  it("keeps one entry per game, updated as it goes, newest first", () => {
+    const p = new LocalProfileStore();
+    p.recordGame(entry("AAA", "2026-11-20T19:00:00Z"));
+    p.recordGame(entry("BBB", "2026-11-22T19:00:00Z"));
+    p.recordGame(entry("AAA", "2026-11-20T19:00:00Z", 55.5));
+    expect(p.gameHistory().map((e) => [e.code, e.net])).toEqual([["BBB", 10], ["AAA", 55.5]]);
+  });
+
+  it(`keeps only the ${MAX_HISTORY} most recent, and can be cleared`, () => {
+    const p = new LocalProfileStore();
+    for (let i = 0; i < MAX_HISTORY + 3; i++) p.recordGame(entry(`G${i}`, new Date(Date.UTC(2026, 0, 1 + i)).toISOString()));
+    const kept = p.gameHistory();
+    expect(kept).toHaveLength(MAX_HISTORY);
+    expect(kept[0]!.code).toBe(`G${MAX_HISTORY + 2}`);
+    expect(kept.some((e) => e.code === "G0")).toBe(false);
+    p.clearGameHistory();
+    expect(p.gameHistory()).toEqual([]);
   });
 });
 

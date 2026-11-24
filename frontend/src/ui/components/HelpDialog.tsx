@@ -386,6 +386,36 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
       </Box>
 
+      <Heading>New partners</Heading>
+      <Typography sx={{ mb: 1 }}>
+        In an online game with other people, the table can change partners partway through. Say you've played boards
+        1 to 8 with Ann and want to play the rest with Bob.
+      </Typography>
+      <Box component="ol" sx={{ m: 0, pl: 2.5, display: "grid", gap: 1 }}>
+        <li>
+          After a board, the owner taps <strong>New partners</strong> (beside <strong>Next board</strong>), then{" "}
+          <strong>Start new game</strong>. This game ends, and a new one starts from the next board (board 9), with
+          the same boards.
+        </li>
+        <li>
+          Everyone else sees <strong>New partners</strong> on their screen and taps <strong>Join the new game</strong>.
+        </li>
+        <li>The owner chooses the seats in the new game's lobby, with the new partnerships, and play goes on.</li>
+      </Box>
+      <Typography sx={{ mt: 1, mb: 1 }}>
+        Each game keeps its own score, and both show in your game history.
+      </Typography>
+
+      <Heading>Your games</Heading>
+      <Typography sx={{ mb: 1 }}>
+        Tap your initial at the top right, then <strong>Your games</strong>, to see the online games you've played
+        on this device, newest first: when each started, your score, your partner and your opponents. Your score is
+        the one at the top right of the result screen. On each board it's your side's matchpoint % minus the
+        opponents': 63% counts as +26, 40% as −20. These are added up over the game, so after those two boards
+        you'd be on <strong>+6</strong>. Practice games aren't included. The list keeps your last 20 games, on this
+        device only; <strong>Clear history</strong> empties it.
+      </Typography>
+
       <Heading>Going back to the first screen</Heading>
       <Typography sx={{ mb: 1 }}>
         Tap the ♠ <strong>Bridge Replay</strong> at the top left to go to the first screen, for example to start

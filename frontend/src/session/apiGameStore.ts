@@ -110,7 +110,9 @@ export class ApiGameStore implements GameStore {
         return c;
       }
     }
-    return this.remember(await this.request<JoinedResponse>("POST", `/events/${c}/players`, undefined, { name }));
+    // Your bidding system goes with you, as when you start a game: the game keeps it from then on.
+    const body: JoinRequest = { name, system: this.profile.biddingSystem() };
+    return this.remember(await this.request<JoinedResponse>("POST", `/events/${c}/players`, undefined, body));
   }
 
   snapshot(code: string): Promise<EventSnapshot> {
@@ -141,6 +143,13 @@ export class ApiGameStore implements GameStore {
 
   async assignSeats(code: string, choice: PartnershipsRequest): Promise<void> {
     await this.request<unknown>("POST", `/events/${code}/partnerships`, code, choice);
+  }
+
+  async continueWithNewPartners(code: string): Promise<string> {
+    const joined = await this.request<JoinedResponse>("POST", `/events/${code}/continue`, code);
+    // The old game is over: this device moves to the new one.
+    this.profile.forget(code);
+    return this.remember(joined);
   }
 
   async moveTo(code: string, board: number): Promise<void> {

@@ -106,7 +106,10 @@ export function PlayHand(p: Props) {
   const pending = sending !== null && sending.at === p.cards.length ? sending.card : null;
   const cards = useMemo(() => (pending ? [...p.cards, pending] : p.cards), [p.cards, pending]);
   const state = useMemo(() => replay(board.hands, trump, declarer, cards), [board, trump, declarer, cards]);
+  // Why something didn't go. `hint`: about the table (a claim), shown at the top; `cardHint`: about
+  // your card (follow suit, a refused card), shown above Play, where you act.
   const [hint, setHint] = useState<string | null>(null);
+  const [cardHint, setCardHint] = useState<string | null>(null);
   // Something on its way to the backend (a card, a claim, an answer): no more taps until it's done.
   const [busy, setBusy] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
@@ -175,14 +178,19 @@ export function PlayHand(p: Props) {
   const hints = useBotHints();
   const [botCard, setBotCard] = useState<{ at: number; card: Card } | null>(null);
 
-  /** Runs one action against the backend, showing why if it's refused. */
-  async function act(what: string, run: () => Promise<void>) {
+  /**
+   * Runs one action against the backend, showing why if it's refused: at the top for a claim, above
+   * Play for a card. `what` says what's happening meanwhile ("Claiming…"); empty for a card, which
+   * is already on the table.
+   */
+  async function act(what: string, run: () => Promise<void>, about: "table" | "card" = "table") {
     setHint(null);
+    setCardHint(null);
     setBusy(what);
     try {
       await run();
     } catch (e) {
-      setHint((e as Error).message);
+      (about === "card" ? setCardHint : setHint)((e as Error).message);
     } finally {
       setBusy(null);
     }
@@ -195,12 +203,12 @@ export function PlayHand(p: Props) {
           canPlay: (card: Card) => legalCards(state, s).some((c) => sameCard(c, card)),
           picked,
           onPick: (card: Card) => {
-            setHint(null);
+            setCardHint(null);
             setPickedCard({ at: cards.length, card });
           },
           onBlocked: () => {
             const led = currentTrick(state).cards[0]!.card.suit;
-            setHint(`Follow suit: play a ${SUIT_NAMES[led].slice(0, -1)} ${SUIT_SYMBOLS[led]}`);
+            setCardHint(`Follow suit: play a ${SUIT_NAMES[led].slice(0, -1)} ${SUIT_SYMBOLS[led]}`);
           },
           onPlay: playCard,
           // The table is below a hand at the top (dummy, or a bot declarer's hand you're playing).
@@ -213,15 +221,19 @@ export function PlayHand(p: Props) {
     setShowing(null);
     const at = cards.length;
     setSending({ at, card });
-    void act("Playing your card…", async () => {
-      try {
-        await p.onPlay(at + 1, card);
-      } catch (e) {
-        // Refused: back to your hand.
-        setSending(null);
-        throw e;
-      }
-    });
+    void act(
+      "",
+      async () => {
+        try {
+          await p.onPlay(at + 1, card);
+        } catch (e) {
+          // Refused: back to your hand.
+          setSending(null);
+          throw e;
+        }
+      },
+      "card",
+    );
   }
 
   // Your last card plays itself after a moment: everyone has one card left, so there's no choice
@@ -304,7 +316,8 @@ export function PlayHand(p: Props) {
       cancelled = true;
     };
   }, [myTurn, hints, state]);
-  const botAgrees = hints && !!picked && botCard?.at === cards.length && sameCard(botCard.card, picked);
+  // Only when you had a choice: an only card raised for you needs no tick.
+  const botAgrees = hints && !!picked && !preselect && botCard?.at === cards.length && sameCard(botCard.card, picked);
 
   // A claim the bots have to answer: the owner's device checks it for each of them in turn.
   // (Not a bot declarer whose contract a person is playing: they answer for it.)
@@ -347,20 +360,17 @@ export function PlayHand(p: Props) {
             : forBot && turn === declarer
               ? `${SEAT_NAMES[turn]}'s turn (${names[actor]})${awayNote}`
               : `${SEAT_NAMES[turn]}'s turn${awayNote}`;
-  // The line below: why a card can't go, what's happening, or how the play went.
+  // The line under the strip, about the table: how the play went, a claim (and answering it), or
+  // that you're playing for your bot partner. What's about your own card goes above Play instead.
   const statusText = over
     ? resultText
     : busy
       ? busy
       : claim
         ? `${claimText}: waiting for ${waitingOn.map((s) => SEAT_NAMES[s]).join(" and ")}`
-        : lastCard
-          ? "Your last card: playing it for you"
-          : preselect
-            ? "Only one card can go: it's picked for you"
-          : forBot && seat === actor && finished === 0
-            ? "Your bot partner is declarer: you play both hands"
-            : "";
+        : forBot && seat === actor && finished === 0
+          ? "Your bot partner is declarer: you play both hands"
+          : "";
 
   // Dummy can peek at partner's (declarer's) hand: not strict bridge, but a friendly game, and
   // dummy has no cards to play. Hidden again on each new board.
@@ -437,14 +447,20 @@ export function PlayHand(p: Props) {
   const at = (r: "partner" | "lho" | "rho") => SEATS.find((s) => relationTo(seat, s) === r)!;
 
   // Play the picked card (it says which, and "from dummy" when it's dummy's), and Claim beside it,
-  // pinned to the bottom of the screen so they're never scrolled out of sight. The bot hint sits
-  // just above them.
+  // pinned to the bottom of the screen so they're never scrolled out of sight. Just above them, one
+  // line about your card: why it can't go ("Follow suit…", a refused card) or else the bot hint.
   const footer = !over && !claim && (seat !== dummy || seat === actor) && (
     <Box className="no-select">
-      {botAgrees && (
-        <Typography variant="body2" color="success.main" sx={{ mb: 1, fontWeight: "fontWeightMedium" }} aria-live="polite">
-          ✓ The bot would play this too
+      {cardHint ? (
+        <Typography variant="body2" color="error" sx={{ mb: 1 }} aria-live="polite">
+          {cardHint}
         </Typography>
+      ) : (
+        botAgrees && (
+          <Typography variant="body2" color="success.main" sx={{ mb: 1, fontWeight: "fontWeightMedium" }} aria-live="polite">
+            ✓ The bot would play this too
+          </Typography>
+        )
       )}
       <Stack direction="row" spacing={1} sx={{ justifyContent: "center" }}>
         <Button variant="outlined" disabled={lookingBack} onClick={() => setClaiming(true)}>

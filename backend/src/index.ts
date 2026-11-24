@@ -294,6 +294,8 @@ app.get("/events/:code", async (c) => {
     claims,
     requests: me ? requests.map(db.toSeatRequest) : [],
     you: me ? { slot: me.slot, isCreator: me.is_creator === 1, seat: me.seat } : null,
+    createdAt: event.created_at,
+    continuedIn: event.continued_in ?? null,
     now,
   };
   return c.json(snapshot);
@@ -795,6 +797,39 @@ app.get("/events/:code/results", async (c) => {
     currentBoard: currentBoard(event),
     now,
   });
+});
+
+/**
+ * Play on with new partners: the owner ends this online game and starts a new one from the next
+ * board, with the same boards, and joins it as its owner. Everyone else sees the game has
+ * continued (`continuedIn`) and can join the new one; the owner chooses the seats in its lobby as
+ * usual. One way: this game is over. Only between boards, in an online game with other people in it
+ * (not practice), and only when there's a board left.
+ */
+app.post("/events/:code/continue", async (c) => {
+  const event = await loadEvent(c);
+  const players = await db.getPlayers(c.env.DB, event.code);
+  const me = caller(c, players);
+  ownerOnly(me, "start a game with new partners");
+  if (event.status !== "playing" || event.mode !== "devices" || event.continued_in) {
+    throw new HttpError(409, "Only an online game in play can carry on with new partners");
+  }
+  if (players.filter((p) => p.is_bot === 0).length < 2) throw new HttpError(409, "Practice can't carry on with new partners");
+  const results = await db.getResults(c.env.DB, event.code);
+  if (results.some((r) => r.onDevices && r.tricks === null)) throw new HttpError(409, "Finish the board being played first");
+  const game = JSON.parse(event.game_json) as GameFileV1;
+  const order = boardOrderFrom(game.boards.map((b) => b.number), event.start_board);
+  const next = order[order.indexOf(currentBoard(event)) + 1];
+  if (next === undefined) throw new HttpError(409, "That was the last board");
+
+  const joined = await createEvent(c, me.name, game, next, event.mode, me.system_json);
+  if (!(await db.continueEvent(c.env.DB, event.code, joined.code))) {
+    // Someone got there first (a double tap): this new game isn't wanted.
+    await db.deleteEvent(c.env.DB, joined.code);
+    throw new HttpError(409, "This game has already ended");
+  }
+  await push(c, event.code, { type: "status", status: "ended" });
+  return c.json<JoinedResponse>(joined, 201);
 });
 
 /** End the game. Only the owner can (the app asks them to confirm). */

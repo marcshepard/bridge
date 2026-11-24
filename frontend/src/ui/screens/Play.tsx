@@ -24,7 +24,7 @@ import type { CallDto, ClaimDto, EventSnapshot, PlayDto, ResultDto, SkipBoardRes
 import { callCode, isAuctionOver, parseCall } from "../../core/auction";
 import { parseContract } from "../../core/contract";
 import { cardCode, parseCard } from "../../core/play";
-import { doubleDummy, games } from "../../services";
+import { doubleDummy, games, profile } from "../../services";
 import { BoardInfoDialog, BreakdownDialog, FieldDialog } from "../components/BoardDialogs";
 import { BiddingSystemDialog } from "../components/BiddingSystemDialog";
 import { TallyDialog } from "../components/TallyDialog";
@@ -39,7 +39,7 @@ import { PlayBoard } from "./PlayBoard";
 /** How long the finished table stays on screen after the play ends, before the result screen. */
 const END_PAUSE_MS = 3000;
 
-type Dialog = EntryStep | "tally" | "info" | "breakdown" | "field" | "skip" | null;
+type Dialog = EntryStep | "tally" | "info" | "breakdown" | "field" | "skip" | "partners" | null;
 
 interface Props {
   snapshot: EventSnapshot;
@@ -58,9 +58,11 @@ interface Props {
   onClaim: (board: number, claim: ClaimDto | null) => void;
   /** Show a notice about something someone else did (see controls/Notice). */
   onNotice: (notice: NoticeMessage) => void;
+  /** The owner carried on in a new game with new partners: go to it (its join code). */
+  onContinued: (code: string) => void;
 }
 
-export function Play({ snapshot, game, seat, onSaved, onMoved, onSkipped, onCalled, onPlayed, onClaim, onNotice }: Props) {
+export function Play({ snapshot, game, seat, onSaved, onMoved, onSkipped, onCalled, onPlayed, onClaim, onNotice, onContinued }: Props) {
   const session = useMemo(
     () => sessionFromShared(game, seat, snapshot.startBoard, snapshot.results),
     [game, seat, snapshot.startBoard, snapshot.results],
@@ -177,6 +179,42 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onSkipped, onCall
   const next = order[order.indexOf(tableBoard) + 1] ?? null;
   const skipped = shared?.contract === "SKIP";
   const canSkip = isOwner && snapshot.mode === "cards" && board.number === tableBoard && !comparison && !skipped;
+  // Carrying on with new partners: an online game with other people in it (not practice), between
+  // boards, with a board left. The new game starts from the next board.
+  const people = snapshot.players.filter((p) => !p.isBot).length;
+  const canSwap = isOwner && snapshot.mode === "devices" && people >= 2 && next !== null && board.number === tableBoard;
+  const [swapping, setSwapping] = useState(false);
+
+  // Your game history (the avatar menu): an online game with other people in it, not practice or
+  // real cards. Updated after each board with the running tally and who's at the table.
+  const historyOn = snapshot.mode === "devices" && people >= 2 && tally.played > 0;
+  useEffect(() => {
+    if (!historyOn) return;
+    const at = (s: Seat) => {
+      const p = snapshot.players.find((x) => x.seat === s);
+      return { name: p?.name ?? "?", bot: p?.isBot ?? false };
+    };
+    profile.recordGame({
+      code: snapshot.code,
+      startedAt: snapshot.createdAt,
+      title: snapshot.title,
+      direction: dir,
+      net: tally.margin,
+      boards: tally.played,
+      partner: at(SEATS.find((s) => s !== seat && directionOf(s) === dir)!),
+      opponents: SEATS.filter((s) => directionOf(s) !== dir).map(at),
+    });
+  }, [historyOn, tally.played, tally.margin, snapshot.players]);
+  async function newPartners() {
+    if (!canSwap || swapping) return;
+    setSwapping(true);
+    setDialog(null);
+    try {
+      await act("Couldn't start the new game", async () => onContinued(await games.continueWithNewPartners(snapshot.code)));
+    } finally {
+      setSwapping(false);
+    }
+  }
 
   const tallyLabel = tally.played === 0 ? `${dir}: no boards yet` : `${dir} ${formatMargin(tally.margin)}`;
 
@@ -337,7 +375,30 @@ export function Play({ snapshot, game, seat, onSaved, onMoved, onSkipped, onCall
                 })
             : undefined
         }
+        onNewPartners={canSwap && !swapping ? () => setDialog("partners") : undefined}
       />
+
+      {canSwap && dialog === "partners" && (
+        <SheetDialog
+          open
+          title="Play on with new partners?"
+          onClose={() => setDialog(null)}
+          actions={
+            <>
+              <Button onClick={() => setDialog(null)}>Cancel</Button>
+              <Button variant="contained" onClick={() => void newPartners()}>
+                Start new game
+              </Button>
+            </>
+          }
+        >
+          <Typography>
+            This game ends here, and a new one starts at board {next}, with the same boards. Everyone here is asked to
+            join it, and you choose the seats in its lobby as usual. This game's tally is kept: each game shows in
+            everyone's game history.
+          </Typography>
+        </SheetDialog>
+      )}
 
       {canSkip && dialog === "skip" && (
         <SheetDialog

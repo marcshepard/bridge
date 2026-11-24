@@ -71,6 +71,12 @@ export interface GameStore {
   assignSeats(code: string, choice: PartnershipsRequest): Promise<void>;
   /** The owner moves the table to a board; every device follows. */
   moveTo(code: string, board: number): Promise<void>;
+  /**
+   * Play on with new partners: the owner ends this online game and starts a new one from the next
+   * board, with the same boards, as its owner. Everyone else is offered the new game to join.
+   * Returns the new game's join code (now the current game).
+   */
+  continueWithNewPartners(code: string): Promise<string>;
   /** Skip the current real-cards board without scoring it. */
   skipBoard(code: string, board: number): Promise<SkipBoardResponse>;
   /** The owner saves or corrects the table's result on a board. Everyone sees it straight away. */
@@ -119,6 +125,34 @@ export interface CurrentGameInfo {
   practice: boolean;
 }
 
+/** How many games your history keeps: the most recent. */
+export const MAX_HISTORY = 20;
+
+/** A player in a game history entry, by name, and whether they were a bot. */
+export interface HistoryPlayer {
+  name: string;
+  bot: boolean;
+}
+
+/**
+ * One online game you played (not practice or real cards), as your game history shows it. Kept on
+ * this device, updated after each board.
+ */
+export interface GameHistoryEntry {
+  /** The game's join code: one entry per game. */
+  code: string;
+  /** When the game started (ISO). */
+  startedAt: string;
+  title: string;
+  /** Your side, and its running tally: the net figure the result screen shows ("NS +120.3"). */
+  direction: "NS" | "EW";
+  net: number;
+  /** Boards scored. */
+  boards: number;
+  partner: HistoryPlayer;
+  opponents: HistoryPlayer[];
+}
+
 /** Who you are on this device: no accounts, just a display name and a key per game joined. */
 export interface ProfileStore {
   name(): string;
@@ -151,6 +185,11 @@ export interface ProfileStore {
   /** Bids need confirming (pick, then Submit). On unless turned off. */
   confirmBids(): boolean;
   setConfirmBids(on: boolean): void;
+  /** Your game history, newest first (at most `MAX_HISTORY` games). */
+  gameHistory(): GameHistoryEntry[];
+  /** Add or update a game in your history (by its code); the oldest drop off past the limit. */
+  recordGame(entry: GameHistoryEntry): void;
+  clearGameHistory(): void;
   /** The install banner was closed on this device: don't show it again. */
   installBannerClosed(): boolean;
   setInstallBannerClosed(): void;

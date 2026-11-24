@@ -4,7 +4,7 @@
 // the visit, from memory; it just isn't remembered after a reload.
 
 import { type SystemSettings, parseSystemSettings } from "../core/bidding/system";
-import type { CurrentGameInfo, ProfileStore } from "./store";
+import { type CurrentGameInfo, type GameHistoryEntry, type HistoryPlayer, MAX_HISTORY, type ProfileStore } from "./store";
 
 interface Profile {
   name: string;
@@ -21,6 +21,43 @@ interface Profile {
   confirmBids: boolean;
   /** Your bidding system; checked on reading, so an old or damaged one falls back to SAYC. */
   biddingSystem: SystemSettings;
+  /** Your online games, newest first; checked on reading. */
+  history: GameHistoryEntry[];
+}
+
+/** Newest first, at most MAX_HISTORY. */
+function trimHistory(entries: GameHistoryEntry[]): GameHistoryEntry[] {
+  return [...entries].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, MAX_HISTORY);
+}
+
+function readPlayer(raw: unknown): HistoryPlayer | null {
+  const p = raw as Partial<HistoryPlayer> | null | undefined;
+  return p && typeof p.name === "string" ? { name: p.name, bot: p.bot === true } : null;
+}
+
+/** Saved history, checked: an entry that isn't what's expected (older or damaged) is dropped. */
+function readHistory(raw: unknown): GameHistoryEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const entries: GameHistoryEntry[] = [];
+  for (const item of raw) {
+    const e = item as Partial<GameHistoryEntry> | null;
+    const partner = readPlayer(e?.partner);
+    if (
+      !e ||
+      typeof e.code !== "string" ||
+      typeof e.startedAt !== "string" ||
+      typeof e.title !== "string" ||
+      (e.direction !== "NS" && e.direction !== "EW") ||
+      typeof e.net !== "number" ||
+      typeof e.boards !== "number" ||
+      !partner
+    ) {
+      continue;
+    }
+    const opponents = Array.isArray(e.opponents) ? e.opponents.map(readPlayer).filter((p): p is HistoryPlayer => p !== null) : [];
+    entries.push({ code: e.code, startedAt: e.startedAt, title: e.title, direction: e.direction, net: e.net, boards: e.boards, partner, opponents });
+  }
+  return trimHistory(entries);
 }
 
 /** A saved game summary, checked: anything unexpected (an older or damaged profile) is dropped. */
@@ -59,12 +96,13 @@ export class LocalProfileStore implements ProfileStore {
           botHints: p.botHints === true,
           confirmBids: p.confirmBids !== false,
           biddingSystem: parseSystemSettings(p.biddingSystem),
+          history: readHistory(p.history),
         };
       }
     } catch {
       // Unreadable or unavailable: start fresh.
     }
-    return { name: "", playerIds: {}, currentGame: null, currentGameInfo: null, lastInGameAt: null, installBannerClosed: false, botHints: false, confirmBids: true, biddingSystem: parseSystemSettings(null) };
+    return { name: "", playerIds: {}, currentGame: null, currentGameInfo: null, lastInGameAt: null, installBannerClosed: false, botHints: false, confirmBids: true, biddingSystem: parseSystemSettings(null), history: [] };
   }
 
   private write(): void {
@@ -153,6 +191,20 @@ export class LocalProfileStore implements ProfileStore {
 
   setConfirmBids(on: boolean): void {
     this.profile.confirmBids = on;
+    this.write();
+  }
+
+  gameHistory(): GameHistoryEntry[] {
+    return this.profile.history;
+  }
+
+  recordGame(entry: GameHistoryEntry): void {
+    this.profile.history = trimHistory([...this.profile.history.filter((e) => e.code !== entry.code), entry]);
+    this.write();
+  }
+
+  clearGameHistory(): void {
+    this.profile.history = [];
     this.write();
   }
 

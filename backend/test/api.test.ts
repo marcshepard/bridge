@@ -721,6 +721,58 @@ describe("live updates", () => {
   });
 });
 
+// ---- New partners ----------------------------------------------------------------------------------
+
+describe("carrying on with new partners", () => {
+  const cont = (code: string, id: string) => api<JoinedResponse>("POST", `/events/${code}/continue`, undefined, id);
+  /** Board `n` finished by the owner entering its result. */
+  const finish = (code: string, n: number, id: string) =>
+    api("PUT", `/events/${code}/boards/${n}`, { contract: "3NT", declarer: "S", tricks: 9 }, id);
+
+  it("ends the game and starts a new one from the next board, owned by the owner; everyone is told", async () => {
+    const { code, creator, others } = await gameInPlay("devices");
+    const ann = await connect(code, others[0]!.playerId);
+    expect((await cont(code, creator.playerId)).status).toBe(409); // board 1's auction is under way
+    await finish(code, 1, creator.playerId);
+    expect((await cont(code, others[0]!.playerId)).status).toBe(403);
+
+    const res = await cont(code, creator.playerId);
+    expect(res.status).toBe(201);
+    const next = res.json;
+    expect(next.code).not.toBe(code);
+    await ann.waitFor((m) => m.type === "status" && m.status === "ended");
+    ann.ws.close();
+
+    const old = (await api<EventSnapshot>("GET", `/events/${code}`, undefined, others[0]!.playerId)).json;
+    expect(old).toMatchObject({ status: "ended", continuedIn: next.code });
+    expect(old.results).toMatchObject([{ board: 1, tricks: 9 }]); // kept
+    const fresh = (await api<EventSnapshot>("GET", `/events/${next.code}`, undefined, next.playerId)).json;
+    expect(fresh).toMatchObject({ status: "lobby", mode: "devices", startBoard: 2, currentBoard: 2, continuedIn: null, you: { isCreator: true } });
+    expect(fresh.players.map((p) => p.name)).toEqual(["Marc"]);
+    expect(typeof fresh.createdAt).toBe("string");
+
+    // One way: it can't be continued twice, and anyone can join the new game.
+    expect((await cont(code, creator.playerId)).status).toBe(409);
+    expect((await api("POST", `/events/${next.code}/players`, { name: "Ann" })).status).toBe(201);
+  });
+
+  it("isn't for real-cards games, practice, or after the last board", async () => {
+    const cards = await gameInPlay("cards");
+    expect((await cont(cards.code, cards.creator.playerId)).status).toBe(409);
+
+    const practice = (await api<JoinedResponse>("POST", "/events/practice", { name: "Marc", game, startBoard: 1, play: true })).json;
+    expect((await cont(practice.code, practice.playerId)).status).toBe(409);
+
+    const { code, creator } = await gameInPlay("devices");
+    await finish(code, 1, creator.playerId);
+    for (const n of [2, 3]) {
+      await api("PUT", `/events/${code}/current`, { board: n }, creator.playerId);
+      await finish(code, n, creator.playerId);
+    }
+    expect((await cont(code, creator.playerId)).status).toBe(409);
+  });
+});
+
 // ---- Seat requests ---------------------------------------------------------------------------------
 
 describe("seat requests", () => {

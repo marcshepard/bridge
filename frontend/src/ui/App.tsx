@@ -15,6 +15,7 @@ import { Screen } from "./controls/Layout";
 import { Notice, type NoticeMessage } from "./controls/Notice";
 import { SheetDialog } from "./controls/SheetDialog";
 import { BiddingSystemDialog } from "./components/BiddingSystemDialog";
+import { GameHistoryDialog } from "./components/GameHistoryDialog";
 import { HelpDialog } from "./components/HelpDialog";
 import { InstallBanner } from "./components/InstallBanner";
 import { useInstall } from "./install";
@@ -29,7 +30,7 @@ import { Play } from "./screens/Play";
 import { Practice } from "./screens/Practice";
 import { StartGame } from "./screens/StartGame";
 
-type Dialog = "start" | "join" | "practice" | "help" | "leave" | "install" | null;
+type Dialog = "start" | "join" | "practice" | "help" | "leave" | "install" | "history" | null;
 
 /** A code from a shared link, removed from the address bar once read (other options, like dev mode's `?as=`, stay). */
 function takeJoinCodeFromUrl(): string | null {
@@ -395,10 +396,22 @@ export function App() {
         onPlayed={mergePlay}
         onClaim={mergeClaim}
         onNotice={setNews}
+        onContinued={enter}
       />
     );
   } else if (snapshot) {
-    page = <Lobby snapshot={snapshot} onDone={() => onGone("")} />;
+    page = (
+      <Lobby
+        snapshot={snapshot}
+        onDone={() => onGone("")}
+        onJoinNext={async (next) => {
+          const joined = await games.join(next, name);
+          // The old game is over: forget it on this device.
+          if (code) profile.forget(code);
+          enter(joined);
+        }}
+      />
+    );
   } else {
     page = (
       <Screen>
@@ -435,6 +448,7 @@ export function App() {
         onLeaveGame={code && snapshot ? () => setDialog("leave") : undefined}
         onInstall={install.canInstall ? () => setDialog("install") : undefined}
         onSystem={() => setSystemOpen(true)}
+        onHistory={() => setDialog("history")}
         botHints={
           onDevices
             ? {
@@ -489,6 +503,7 @@ export function App() {
         onJoined={enter}
       />
       <HelpDialog open={dialog === "help"} onClose={() => setDialog(null)} />
+      <GameHistoryDialog open={dialog === "history"} onClose={() => setDialog(null)} />
       <Notice notice={news} onClose={() => setNews(null)} />
       {code && snapshot && request && (
         <SeatRequestDialog

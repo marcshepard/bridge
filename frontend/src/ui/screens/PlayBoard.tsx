@@ -132,6 +132,8 @@ interface Props {
   backTo: { board: number; onBack: () => void } | null;
   /** Move the table on (the owner only). */
   onNext?: () => void;
+  /** Carry on in a new game with new partners (the owner of an online game with other people in it). */
+  onNewPartners?: () => void;
 }
 
 export function PlayBoard(p: Props) {
@@ -203,9 +205,18 @@ export function PlayBoard(p: Props) {
   ) : p.next === null ? (
     <Typography color="text.secondary">That was the last board.</Typography>
   ) : p.onNext ? (
-    <Button variant="contained" size="large" fullWidth onClick={p.onNext}>
-      Next board
-    </Button>
+    // After it, for an online game: carry on with new partners instead (a new game from the next
+    // board). On the right, read second: Next board is the usual way on.
+    <Stack direction="row" spacing={1}>
+      <Button variant="contained" size="large" fullWidth onClick={p.onNext}>
+        Next board
+      </Button>
+      {p.onNewPartners && (
+        <Button variant="outlined" size="large" onClick={p.onNewPartners} sx={{ flexShrink: 0 }}>
+          New partners
+        </Button>
+      )}
+    </Stack>
   ) : (
     <Typography color="text.secondary" role="status">
       Waiting for {p.owner} to start the next board…

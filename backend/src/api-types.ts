@@ -133,6 +133,13 @@ export interface EventSnapshot {
   requests: SeatRequestDto[];
   /** Present when the request carried a valid X-Player-Id for this game. */
   you: { slot: number; isCreator: boolean; seat: Seat | null } | null;
+  /** When the game was started (ISO): the date in each player's game history. */
+  createdAt: string;
+  /**
+   * The join code of the game the owner continued this one in, with new partners (POST
+   * /events/:code/continue). Set once the game has ended that way; null otherwise.
+   */
+  continuedIn: string | null;
   /** Server time; pass it as `since` to fetch only later changes. */
   now: string;
 }

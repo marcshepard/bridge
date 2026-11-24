@@ -14,6 +14,8 @@ export interface EventRow {
   current_board: number | null;
   /** Read as `mode: "bidding"` (bidding practice); see migration 0009. Not set when inserting. */
   bidding_only?: number;
+  /** The game the owner continued this one in, with new partners (migration 0011). Not set when inserting. */
+  continued_in?: string | null;
   created_at: string;
   expires_at: string;
 }
@@ -118,6 +120,18 @@ export async function setSeatsAndStart(db: D1Database, code: string, seats: Map<
 /** The owner moves the table to a board. */
 export async function setCurrentBoard(db: D1Database, code: string, board: number) {
   await db.prepare("UPDATE events SET current_board = ? WHERE code = ?").bind(board, code).run();
+}
+
+/**
+ * Ends a game in play as continued in `next` (new partners). False when it wasn't in play or was
+ * already continued: someone got there first.
+ */
+export async function continueEvent(db: D1Database, code: string, next: string): Promise<boolean> {
+  const r = await db
+    .prepare("UPDATE events SET status = 'ended', continued_in = ? WHERE code = ? AND status = 'playing' AND continued_in IS NULL")
+    .bind(next, code)
+    .run();
+  return r.meta.changes === 1;
 }
 
 export async function setStatus(db: D1Database, code: string, status: EventStatus) {

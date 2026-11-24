@@ -151,11 +151,15 @@ interesting, the way the Common Game's are (hundreds of tables per board). None 
 | Hand generators (Dealer, BigDeal, Goldsmith) | deals only | no `Event`/`Date`; `#` repeats |
 | PBN 2.1 standard examples | edge cases | escaped quotes, multi-line commentary |
 
-**Switching partners during a session, with a running score for each player** (asked for after a
-weekend game, Nov 2026). Parked: it needs a tally per player as well as per pair across boards played
-in different seats, a way for all four devices to agree a seat swap between boards, and a result
-screen that makes sense when your partner changed partway. A lot of backend, data and screen work for
-a format most tables won't use.
+**Switching partners: what's left** (asked for after a weekend game, Nov 2026). Done the simple way:
+New partners starts a new game from the next board, and each person's game history adds up their
+games (DESIGN.md, "New partners and your game history"). Not done, and parked until asked for:
+
+- *A standing for the whole table across an evening:* each player's total over linked games
+  (the backend could link a game to the one it continued), shown to everyone. History is per person.
+- *Moving every device into its new seat automatically,* instead of each player tapping Join and the
+  owner setting seats: each device needs a new secret player ID, so it's much more work.
+- *History across devices,* which needs sign-in.
 
 **Dropped:** a "Continue on another device" QR code (joining as a replacement for your own seat
 already does it; the QR code would only skip the approval), and freeing your seat on "Leave game"

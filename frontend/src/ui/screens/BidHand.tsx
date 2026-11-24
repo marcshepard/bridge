@@ -175,47 +175,62 @@ export function BidHand(p: Props) {
 
   // With Confirm bids on, the bid you've put together and its Submit button are pinned to the
   // bottom of the screen, so Submit is never scrolled out of sight: first what the bid would tell
-  // partner (and the bot hint), then the button.
-  const footer = !over && mine && confirm && (
+  // partner (and the bot hint), then the button. While your bid is on its way, or if it was
+  // refused, that says so instead, there (Confirm bids off too: the line shows on its own).
+  const sendText = hint ?? (busy ? "Sending your bid…" : null);
+  // Picking another bid after a refusal shows what that one means again.
+  useEffect(() => setHint(null), [picked]);
+  const submit = mine && confirm;
+  const footer = !over && (submit || sendText !== null) && (
     <Box className="no-select">
-      {/* What the picked bid would tell partner, by your side's card: the same reading as the bidding review. */}
-      {meaning && (
-        <Typography variant="body2" sx={{ textAlign: "left", mb: 0.5 }} aria-live="polite">
-          <strong>{meaning.call.kind === "bid" ? <CallText call={meaning.call} /> : callWords(meaning.call)}:</strong>{" "}
-          <SuitString text={meaning.read.meaning} />
-          {meaning.read.guessed && (
-            <Typography component="span" variant="body2" color="text.secondary">
-              {" "}
-              (no rule covers this yet, so it's read as natural)
+      {sendText !== null ? (
+        <Typography variant="body2" color={hint ? "error" : undefined} sx={{ textAlign: submit ? "left" : undefined, mb: 0.5 }} aria-live="polite">
+          {sendText}
+        </Typography>
+      ) : (
+        <>
+          {/* What the picked bid would tell partner, by your side's card: the same reading as the bidding review. */}
+          {meaning && (
+            <Typography variant="body2" sx={{ textAlign: "left", mb: 0.5 }} aria-live="polite">
+              <strong>{meaning.call.kind === "bid" ? <CallText call={meaning.call} /> : callWords(meaning.call)}:</strong>{" "}
+              <SuitString text={meaning.read.meaning} />
+              {meaning.read.guessed && (
+                <Typography component="span" variant="body2" color="text.secondary">
+                  {" "}
+                  (no rule covers this yet, so it's read as natural)
+                </Typography>
+              )}
             </Typography>
           )}
-        </Typography>
-      )}
-      {hints && picked && botCall && sameCall(picked, botCall) && (
-        <Typography variant="body2" color="success.main" sx={{ textAlign: "left", mb: 0.5, fontWeight: "fontWeightMedium" }} aria-live="polite">
-          ✓ The bot would bid this too
-        </Typography>
+          {hints && picked && botCall && sameCall(picked, botCall) && (
+            <Typography variant="body2" color="success.main" sx={{ textAlign: "left", mb: 0.5, fontWeight: "fontWeightMedium" }} aria-live="polite">
+              ✓ The bot would bid this too
+            </Typography>
+          )}
+        </>
       )}
       {/*
         One tap makes the bid you've put together. It says which ("Submit 3♥", "Submit Pass"),
         worded unlike the box's own buttons, so it never looks like a second "Pass".
       */}
-      <Button
-        variant="contained"
-        size="large"
-        disabled={busy || !picked}
-        aria-label={picked ? `Submit ${callWords(picked)}` : undefined}
-        onClick={() => void send()}
-        sx={{ minWidth: (t) => t.spacing(20), mt: 0.5 }}
-      >
-        Submit
-        {picked && (
-          <>
-            &nbsp;
-            {picked.kind === "bid" ? <CallText call={picked} /> : callWords(picked)}
-          </>
-        )}
-      </Button>
+      {submit && (
+        <Button
+          variant="contained"
+          size="large"
+          disabled={busy || !picked}
+          aria-label={picked ? `Submit ${callWords(picked)}` : undefined}
+          onClick={() => void send()}
+          sx={{ minWidth: (t) => t.spacing(20), mt: 0.5 }}
+        >
+          Submit
+          {picked && (
+            <>
+              &nbsp;
+              {picked.kind === "bid" ? <CallText call={picked} /> : callWords(picked)}
+            </>
+          )}
+        </Button>
+      )}
     </Box>
   );
 
@@ -241,22 +256,19 @@ export function BidHand(p: Props) {
             </Typography>
           }
         />
-        {/* Why a bid didn't go, what's happening, or how the auction ended. Always its height. */}
-        <Typography variant="subtitle1" noWrap sx={{ mb: 1 }} aria-live="polite" color={hint ? "error" : undefined}>
-          {hint ??
-            (busy ? (
-              "Sending your bid…"
-            ) : end ? (
-              end.contract && end.declarer ? (
-                <>
-                  The contract is <ContractText contract={end.contract} /> by {SEAT_NAMES[end.declarer]}
-                </>
-              ) : (
-                "Passed out"
-              )
+        {/* How the auction ended. Always its height. (Your own bid's news goes above Submit.) */}
+        <Typography variant="subtitle1" noWrap sx={{ mb: 1 }} aria-live="polite">
+          {end ? (
+            end.contract && end.declarer ? (
+              <>
+                The contract is <ContractText contract={end.contract} /> by {SEAT_NAMES[end.declarer]}
+              </>
             ) : (
-              " "
-            ))}
+              "Passed out"
+            )
+          ) : (
+            " "
+          )}
         </Typography>
 
         <AuctionTable

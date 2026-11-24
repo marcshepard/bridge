@@ -1,7 +1,8 @@
 // The bar at the top of every screen: app icon and name (in a game, one button that goes Home, your
 // game staying current), help, and your avatar. The avatar menu
 // holds the Dark mode switch, the Bot hints and Confirm bids switches (during a game on the devices), the bidding
-// system the bots use, "Leave game", and "Install to home screen" until the app is installed.
+// system the bots use, your game history ("Your games"), "Leave game", and "Install to home screen"
+// until the app is installed.
 // While this device's live connection to the game is down, a small no-signal icon ("Reconnecting")
 // sits beside Help: in the bar, so it never moves the page or covers anything.
 
@@ -38,6 +39,8 @@ interface Props {
   reconnecting?: boolean;
   /** Open the bidding system page. */
   onSystem: () => void;
+  /** Open your game history. */
+  onHistory: () => void;
   /** The Bot hints switch: only during a game bid and played on the devices (online or practice). */
   botHints?: { on: boolean; onChange: (on: boolean) => void };
   /** The Confirm bids switch: shown with Bot hints. */
@@ -60,7 +63,7 @@ function Brand() {
   );
 }
 
-export function AppHeader({ name, onHelp, onHome, onLeaveGame, onInstall, onSystem, botHints, confirmBids, reconnecting = false }: Props) {
+export function AppHeader({ name, onHelp, onHome, onLeaveGame, onInstall, onSystem, onHistory, botHints, confirmBids, reconnecting = false }: Props) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const { mode, setMode } = useColorScheme();
   const dark = mode === "dark";
@@ -168,6 +171,14 @@ export function AppHeader({ name, onHelp, onHome, onLeaveGame, onInstall, onSyst
           }}
         >
           <ListItemText>Bidding system</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setAnchor(null);
+            onHistory();
+          }}
+        >
+          <ListItemText>Your games</ListItemText>
         </MenuItem>
         <Divider />
         <MenuItem

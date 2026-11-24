@@ -403,13 +403,19 @@ played. If a board somehow hasn't started, the owner has **Play online**.
 - No alerts or explanations yet (see "Convention cards and alerts" in the backlog).
 
 - The board screen becomes the play table: the join code and tally on top, then a status strip
-  (the contract, whose turn it is, and tricks for each side, with a line below for why a card
-  can't go, a claim, or how the play went), the partner's edge on top, left and right opponents
-  beside the trick, and your hand at the bottom. Opponents show only their name and card count.
-  Whose turn it is sits in a fixed-size box centred between the contract and the tricks ("East's
-  turn", "Your turn", "Dummy's turn"); when it's yours (your hand, or dummy's when you're declarer) the box is
-  the primary colour and pulses (it stays still if the device asks for reduced motion). The strip
-  never changes height, so your cards don't move under your finger as turns change.
+  (the contract, whose turn it is, and tricks for each side, with a line below about the table: a
+  claim and answering it, playing for your bot partner, how the play went), the partner's edge on
+  top, left and right opponents beside the trick, and your hand at the bottom. Opponents show only
+  their name and card count. Whose turn it is sits in a fixed-size place centred between the
+  contract and the tricks ("East's turn", "Your turn", "Dummy's turn"); when it's yours (your hand,
+  or dummy's when you're declarer) it's bold primary text with the pulsing `TurnDot` (still if the
+  device asks for reduced motion). Not a filled box: that read as a button. The strip never changes
+  height, so your cards don't move under your finger as turns change.
+- **Play and Submit are pinned to the bottom** (the `Screen` footer), with one line above them
+  about your own card or bid: why it can't go ("Follow suit…", a refused card or bid), "Sending
+  your bid…", or else the bot hint (and, bidding, what the bid means). Messages about you sit where
+  you act; the line under the strip is for the table. No "Playing your card…": the card is
+  already on the table while it's sent. No tick for an only card raised for you: there was no choice.
 - **Dummy** goes down after the opening lead. Declarer's dummy is always partner, so it's opposite
   only when you're declarer: a short fan you tap to play from. On your left or right (you're
   defending) it's a read-only suit-per-row list, never rotated. Declarer plays dummy's cards;
@@ -522,6 +528,25 @@ review inline: the auction with every call tappable for its meaning and reason, 
 compared with the bot's. You always bid and play your own seat; the "Bots bid for me" switch (the
 bots taking your seat too) was removed, since the reviews already show what the bots would do. The goals, design and stages are in [BOT.md](BOT.md).
 
+### New partners and your game history
+
+Switching partners partway through an evening (feedback, Nov 2026) is done without a tally that
+spans partnerships: each partnership plays its own game, and each person's history adds them up.
+
+- **New partners** (owner, on the result screen of an online game with other people, beside Next
+  board): after a confirmation, `POST /events/:code/continue` ends the game and starts a new one
+  from the next board with the same boards; the owner lands in its lobby. Everyone else's screen
+  turns into "New partners" with **Join the new game** (an ordinary join), and the owner sets the
+  new seats in the lobby as usual. One way: the old game is over. Chosen over moving every device
+  into its new seat automatically (each device needs a new secret player ID, so that's much harder);
+  try this first.
+- **Your games** (avatar menu): the last 20 online games played with other people on this device,
+  newest first (`ProfileStore.gameHistory`, in the profile). Each entry is updated after every board
+  (`Play.tsx`): start time (the snapshot's `createdAt`), your side's net (the result screen's
+  running tally, `tally.margin`) and boards played, partner and opponents (bots marked). Practice
+  and real-cards games aren't recorded. **Clear history** empties it. Per device for now; if
+  sign-in comes, the same entries could live in a profile.
+
 ### Bidding systems
 
 Each player's bidding system (SAYC, with the choices it leaves open set their way) is kept on their
@@ -633,7 +658,8 @@ The schema is `backend/migrations/0001_init.sql`. In short:
   `bidding_only` (bidding practice: reported as mode `bidding`, since SQLite can't widen `mode`'s
   CHECK; migration 0009),
   `current_board` (the board the table is on; NULL means the start board), `created_at`,
-  `expires_at` (30 days).
+  `expires_at` (30 days), `continued_in` (the join code of the game the owner carried on in with
+  new partners; migration 0011).
 - **players**: `player_id` (the device's secret key), `slot` (public handle 1–4, in join order),
   `name`, `is_creator` (the owner), `is_bot`, `system_json` (their bidding system, checked with
   `parseSystemSettings`; NULL for SAYC as it comes; migration 0010), `no_app` (a player without the app: their key is
@@ -685,6 +711,7 @@ the player with `isCreator`; there's no separate host key.
 | `POST /api/events/:code/boards/:board/claim/answer` | The claimer's opponents, not dummy (the owner for a bot) | `{ accept, seat? }`. A refusal ends the claim |
 | `DELETE /api/events/:code/boards/:board/claim` | The claimer | Take the claim back (until it's accepted) |
 | `GET /api/events/:code/results?since=` | A player | Results changed at or after a timestamp, and the current board (catching up after a reconnect) |
+| `POST /api/events/:code/continue` | Owner | New partners: online games with other people in them (not practice), between boards, with a board left. Ends this game (`ended`, with `continuedIn` set in the snapshot, pushed as `status`) and creates a new one from the next board, same boards and mode, with the owner as its owner → `{ code, playerId, slot }`. One way |
 | `POST /api/events/:code/end` | Owner | End the game |
 | `DELETE /api/events/:code` | Owner | Delete the game and its results |
 | `POST /api/events/:code/live-ticket` | A player | `{ ticket }`: a single-use pass to open the WebSocket, valid for a minute. Browsers can't send headers on a WebSocket, and the secret `playerId` mustn't appear in an address (addresses end up in logs) |

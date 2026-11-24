@@ -351,11 +351,62 @@ function DevTools({ code }: { code: string }) {
 interface Props {
   snapshot: EventSnapshot;
   onDone: () => void;
+  /** The owner carried on in a new game with new partners: join it (rejects with the reason). */
+  onJoinNext: (code: string) => Promise<void>;
 }
 
-export function Lobby({ snapshot, onDone }: Props) {
+export function Lobby({ snapshot, onDone, onJoinNext }: Props) {
   const you = snapshot.you;
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+
+  // The owner carried on with new partners: the next game is a tap away.
+  const nextCode = snapshot.continuedIn;
+  if (snapshot.status === "ended" && nextCode) {
+    const owner = snapshot.players.find((p) => p.isCreator)?.name ?? "The owner";
+    return (
+      <Screen
+        footer={
+          <Button
+            variant="contained"
+            size="large"
+            fullWidth
+            disabled={joining}
+            onClick={() => {
+              setJoining(true);
+              setJoinError(null);
+              onJoinNext(nextCode).catch((e: Error) => {
+                setJoinError(e.message);
+                setJoining(false);
+              });
+            }}
+          >
+            Join the new game
+          </Button>
+        }
+      >
+        <Typography variant="h6" component="h1" sx={{ mb: 1 }}>
+          New partners
+        </Typography>
+        <Typography>
+          {owner} has ended {snapshot.title} and started a new game from the next board, with the same boards, to play on
+          with new partners. Join it, and {owner} chooses the seats.
+        </Typography>
+        <Typography color="text.secondary" sx={{ mt: 1 }}>
+          This game's score is kept in your game history (the menu under your initial).
+        </Typography>
+        {joinError && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {joinError}
+          </Alert>
+        )}
+        <Button color="inherit" sx={{ mt: 2 }} onClick={onDone}>
+          Not now
+        </Button>
+      </Screen>
+    );
+  }
 
   if (snapshot.status === "ended") {
     return (
