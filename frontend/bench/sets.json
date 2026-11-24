@@ -1,0 +1,9 @@
+{
+  "quick": {
+    "stage": 1,
+    "deals": 1000,
+    "seed": 1,
+    "layouts": 50,
+    "filter": 1
+  }
+}

@@ -34,9 +34,11 @@ Two reasons to have a bot at the table:
 - **They play fair.** A bot uses only what its seat would know at a real table: its own hand, the
   auction, dummy after the lead, the cards played. The game file has all four hands, so this is a
   rule the bot keeps, not something the data stops.
-- **Good enough, not expert.** Club-player standard: a bidding system a club player would recognise,
-  and card play that draws trumps, sets up long suits, finesses, gives count and attitude, and
-  doesn't revoke or make obviously silly plays. Not world-class.
+- **Advanced, and approaching expert over time.** Club-player standard is the floor: a bidding system
+  a club player would recognise, and card play that draws trumps, sets up long suits, finesses,
+  gives count and attitude, and doesn't revoke or make obviously silly plays. The aim beyond that
+  is advanced standard in bidding, declarer play and defence, then step by step towards expert,
+  each step measured by the evaluation harness ([HARNESS.md](HARNESS.md)). Not world-class.
 - **A partner you can trust.** A bot partner bids a known, stated system so that a person can bid
   with it. Its calls mean what the system says they mean, every time.
 - **Claims.** Bots accept a claim that's right and refuse one that isn't, and can claim themselves
@@ -117,7 +119,8 @@ Two reasons to have a bot at the table:
 
 ## Not goals (for now)
 
-- Expert or tournament-strength bots.
+- World-class bots. Expert standard is the long-term aim, approached in measured steps (see
+  "Advanced, and approaching expert over time"), not a promise.
 - Systems other than SAYC to start with (2/1 next; the design allows for it).
 - Hiding the hands from someone reading the game's data with developer tools. The boards are
   replays of published deals, and the screens already show each player only what they should see.

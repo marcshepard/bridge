@@ -12,5 +12,8 @@ __pycache__/
 .wrangler/
 .dev.vars*
 
+# The evaluation harness's dealt boards, solved layouts and runs (rebuilt from frontend/bench/sets.json)
+frontend/bench/.cache/
+
 # Private sample data (e.g. saved Common Game pages and PBNs). Never commit.
 private/

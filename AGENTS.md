@@ -42,6 +42,8 @@ frontend/                 Vite + React 19 + MUI 9 + TypeScript (strict). All fro
     imps.ts               IMP table and field datum
     bidding/              The bidding bot: SAYC rules, reading an auction, the bot's call and its reason (docs/BOT.md)
     cardplay/             The bots' card play: sampling with double dummy, leads and signals, claims
+  src/bench/              The bots' evaluation harness (docs/HARNESS.md): deal sets, the ideal contract, runs, the report. Pure; not part of the app
+  scripts/bench.ts        The harness's command line (`npm run bench`); bench/ holds its set definitions and baselines
   src/providers/          WHERE GAMES COME FROM. One importer per source, each producing GameFileV1.
     types.ts              Game/Board/FieldResult model (+ GameProvider, for a future feed)
     gameFile.ts           our JSON game format (schemaVersion 1) → Game, with validation
@@ -71,6 +73,7 @@ scripts/                  Python data tools (sample-game generator; needs `endpl
 docs/DESIGN.md            Design and rationale, plus working notes for a new session
 docs/BACKLOG.md           What's left to build, and what was parked
 docs/BOT.md               The bots: goals, design and stages
+docs/HARNESS.md           The bots' evaluation harness: plan, stages, known issues, commands
 prototypes/dds/           Prototype: the DDS double-dummy solver in WebAssembly, with timings
 .vscode/tasks.json        Install, start frontend/backend/both, tests, build, generate sample game
 ```
@@ -91,6 +94,11 @@ it, see "Deploying" in README.md).
 `npm run bidding-report` in `frontend/` has the bots bid every board of a game file (the demo game
 by default; `-- path/to/file`, `--board N`, `--simulate` for hard calls by simulation, `--play` to have
 the bots play each board out against double dummy) and prints each auction with the reason for every call.
+
+`npm run bench` in `frontend/` is the bots' evaluation harness ([docs/HARNESS.md](docs/HARNESS.md)):
+`-- run quick` bids 1,000 deals with the opponents silent and compares the loss against the ideal
+contract with the baseline (`-- show latest --board N` for one board). After a bidding change, run it
+and say what it showed; it doesn't count as a full test suite.
 
 From the repo root: `python scripts/make_sample_game.py` regenerates the sample game (`--demo`: the
 demo game in `backend/src/demo/`), after

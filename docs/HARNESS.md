@@ -1,0 +1,457 @@
+# Bot evaluation harness: plan
+
+A plan for measuring the bots' bidding and play, so that every change to them can be judged by
+numbers rather than by a few hand-picked boards. Stages 0 and 1 are built in their minimal form
+(November 2026; see "The harness's interface"); the rest isn't yet. When a stage is done,
+its section here gets a short "Done" note and the details move into [BOT.md](BOT.md).
+
+## Why
+
+The bots branch (merged November 2026) changed about 20 bidding rules. Each was judged on the
+example that prompted it. The headline result ("+80 IMPs on 1,200 deals") can't be reproduced
+from the repo, rested on 25 boards that scored differently, and one existing test's expected call
+changed as a side effect (5♥ became 4NT). A harness answers three questions quickly and
+repeatably:
+
+1. Did this change help or hurt, overall?
+2. Did it break anything I wasn't looking at?
+3. Where are the bots losing the most?
+
+## Goals
+
+- **Advanced first, then towards expert.** Bring each area (uncontested bidding, bidding with
+  interference, declarer play, defence) to advanced standard with the current design, then take on
+  the hard problems that separate advanced from expert in a final stage. An honest list of what
+  the bots still do worse than an expert, all the way (BOT.md, "Advanced, and approaching expert
+  over time").
+- **Fast.** A bidding run in seconds, a play run in minutes, so changes can be tried quickly.
+- **Objective.** Every number comes from scoring on solved deals, the same way every time.
+- **Single dummy where it matters.** Judge players on what they could know (their own hand, the
+  auction, the cards seen), not on the one layout that happened.
+- **Clear about strengths and gaps.** Results broken down by situation, so the report doubles as a
+  "what the bots do well and badly" list.
+
+## Principles
+
+- **Frozen, seeded deal sets.** The same deals every run. Sets are made from a generator version
+  and a seed, so they can be rebuilt exactly.
+- **Paired comparison.** A change is judged on the same deals as the baseline, board by board.
+  Most boards don't change; the ones that do carry the signal.
+- **Uncertainty shown.** Every comparison reports a 95% confidence interval (bootstrap over boards)
+  and a plain verdict: better, worse, or no clear difference.
+- **Solve once, score often.** Anything that doesn't depend on the bot's version (the solved
+  layouts) is cached once per deal set, so a run only does the bot's own work.
+- **Held-out deals.** Tuning happens on a working set; a separate held-out set is checked now and
+  then to catch over-tuning to the working set.
+- **Fair bots.** The bots only use what their seat knows. A test checks it: change the hidden
+  cards in a way that leaves a seat's information the same, and its decision must not change.
+- **Start small.** Build the least that answers the three questions above, use it, and grow it only
+  when a question needs more. If the minimal version doesn't turn up things worth fixing, stop.
+
+## Advanced and expert
+
+Bridge players' own scale runs roughly beginner, intermediate, club player, **advanced**, expert,
+world class. The plan has two phases:
+
+- **Phase 1, to advanced (stages 0–5).** For each area: build its part of the harness, record a
+  baseline, and improve the current design (rules for bidding, sampling with double dummy for
+  play) until it reaches advanced standard. Everything in phase 1 fits the current design and the
+  in-app time budget.
+- **Phase 2, towards expert (stage 6).** The problems that need a different method, much more
+  computing time, or both. Taken on only once phase 1 is done, one problem at a time, each measured
+  on the same harness.
+
+**What "advanced" means here.** For each area, all of these:
+- The harness's main measure has stopped improving much from rule fixes and tuning: the last few
+  changes each gained little.
+- No situation tag loses badly compared with the overall average (about twice the average, as a
+  first guess).
+- Marc, reviewing the costliest boards, finds mostly system limits, bad luck or stage 6 problems,
+  and few plain errors.
+- The area's "can't do yet" list names only stage 6 problems.
+
+The numbers are set after each area's first baseline, when we know what's realistic.
+
+## Stages
+
+| Stage | What it measures | Opponents | Scored by | Speed of a run |
+|---|---|---|---|---|
+| 0. Foundation | (the shared parts) | | | |
+| 1. Non-competitive bidding | Does the partnership reach the right contract? | Silent | The ideal contract for the two hands, over sampled layouts | Seconds |
+| 2. Competitive bidding | Who wins the auction when both sides bid? | Baseline bots | A teams match against the baseline, and par | About a minute |
+| 3. Opening lead | Is the lead the best one from the leader's seat? | | Tricks after each lead, solved on the real deal | About a minute |
+| 4. Declarer play | Does declarer take the tricks available? | Baseline defenders | Tricks and score against double dummy, and against the baseline | Minutes |
+| 5. Defence | Do the defenders take theirs? | Baseline declarer | The same, from the defenders' side | Minutes |
+| 6. Towards expert | The hard problems, one at a time | As for the area | The same measures as the area's stage | Varies |
+
+Stages 1–5 each end at advanced standard (above), with a frozen "can and can't" list.
+
+**One feedback loop.** Stages 1 and 2 score with double dummy, which flatters thin contracts that
+depend on finding a guess or the right lead. Once the bots play well enough (after stage 4), score
+a sample of the bidding sets by playing the boards out with the bots, and check which bidding
+decisions flip.
+
+### Stage 0: foundation
+
+- **Deal sets.** A generator that deals random boards with a seed, rotates dealer and
+  vulnerability, and applies a filter for the stage (for stage 1: neither opponent has a clear
+  bid). Targeted generators later, for rare situations (slams, 2NT openings, misfits), so each has
+  enough deals.
+- **Solved-layout cache.** Built once per set, stored on disk, reused by every run.
+- **Runner.** Runs the current code over a set and writes a run file: per board, the auction with
+  each call's reason, the contract and declarer, the score, and situation tags.
+- **Comparison.** Any run against any other, board by board, with the confidence interval.
+- **Report.** A summary in the terminal, plus an HTML page for browsing boards.
+- **Two versions at once** (needed from stage 2): build the baseline from a git ref into a separate
+  bundle, the way `bidding-report` is bundled, and load both.
+
+### Stage 1: non-competitive bidding
+
+**Deals.** North–South hands from random deals where neither East nor West has a clear bid. The
+filter is fixed and doesn't use the bot's bidder, so a bidding change never changes the test.
+The filter (`hasClearBid` in `src/bench/deals.ts`, version 1) counts a hand as having a clear bid
+when it has 12+ HCP or opens by the rule of 20, a 7-card suit with 5+ HCP, a 6-card suit with 8+
+HCP, two 5-card suits with 8+ HCP, or a 5-card suit with 10+ HCP. East–West pass throughout.
+Dealer and vulnerability follow the usual board rotation, so North–South open in every seat.
+
+**The ideal contract.** For each deal:
+
+1. Keep North–South's hands. Deal East–West's 26 cards at random about 50 times, keeping only
+   layouts that pass the same filter.
+2. Solve each layout: tricks for each strain with North or South declaring (10 numbers). The
+   level doesn't change the trick count, only the score, so these 10 numbers price every North–South
+   contract at every level, plus passing it out.
+3. The ideal is the contract and declarer with the best average score over the layouts.
+
+**Scoring the bot.** The bot bids the real deal with East–West silent. On each layout, the IMP
+difference between the ideal contract and the bot's contract; averaged over the layouts, that's the
+bot's expected loss on the board. Per layout matters: IMPs aren't linear, so a few big swings must
+count as big swings.
+
+Worked example (made-up numbers, neither side vulnerable): a 9-card club fit and a weak heart stop.
+
+| Contract | Average score | Expected loss |
+|---|---|---|
+| **2♣ by South** | **+116** | (the ideal; 1♣ scores the same here) |
+| 3♣ by South | +102 | 0.4 IMP |
+| 1NT by North | +77 | 1.1 IMPs |
+| 3NT by North | −45 | 4.0 IMPs |
+| 5♣ by South | −85 | 5.1 IMPs |
+
+(The losses depend on which trick counts fall on the same layout; these pair the best club
+layouts with the best notrump ones. A test in `src/bench/bench.test.ts` checks these numbers.)
+
+**What's cached.** Per deal: 50 layouts × 10 trick counts. About 500 small numbers per deal; a
+1,000-deal set is well under a megabyte. Building it: one full solve takes about 155 ms on one
+thread in Node; with 30 worker threads, 1,000 deals × 50 layouts takes about 12 minutes, once.
+
+**Caveats.**
+- Double dummy within each layout: declarer always guesses right and the defence always finds the
+  best lead. Averaging over layouts gets a 50% finesse right, but guesses and leads are flattered.
+- No doubles: a reckless slam goes down undoubled. Slightly kind to overbidding.
+- The loss never reaches zero. The ideal assumes both hands are known, which no partnership has.
+  Experts lose against it too, so it's a measure to track, not a target to hit.
+- Near-ties: missing an ideal by a tenth of an IMP is nearly free. That's why the measure is
+  expected loss, not "% of boards at the ideal".
+- The filter favours strong North–South hands. With East and West both too weak to bid, North–South
+  hold more than their share of the points, so slams are about a fifth of the quick set, far more
+  than at the table. The overall average leans heavily on slam boards; read it alongside the
+  breakdown by the ideal's level.
+- Double dummy flatters slams most. A slam or grand slam that needs a guess or a finesse makes on
+  every layout where it works and costs nothing for the guess, and the solver always finds the line.
+  So some "ideal" slams, grand slams especially, are ones an expert wouldn't bid. Before acting on a
+  missed slam, look at the board with `show` and judge it as a bridge player.
+
+**Sizes.** A quick set of about 1,000 deals for every run; a full set of about 5,000 to confirm a
+subtle change; a held-out set of about 2,000. Roughly, a clear fix (1 IMP better on each board it
+changes) shows up on 1,000 deals; a subtle one (0.5 IMP) needs about 5,000.
+
+**Exit criteria:** advanced standard, as defined above, with the numbers set after the first
+baseline.
+
+**First baseline** (set `quick`, 1,000 deals, 24 November 2026, bidding code as at commit
+`6232024`):
+
+| Measure | Value |
+|---|---|
+| Average loss against the ideal | 3.23 IMPs per board (95% interval 3.00 to 3.47) |
+| At the ideal contract exactly | 18.3% of boards |
+| Losing 3 or more IMPs | 40.1% of boards |
+| Calls with no rule | 1 |
+
+| Ideal contract's level | Boards | Average loss |
+|---|---|---|
+| Part-score | 266 | 2.44 |
+| Game | 540 | 2.11 |
+| Small slam | 164 | 7.14 |
+| Grand slam | 27 | 9.90 |
+
+- Too low is by far the biggest kind of miss (2,056 IMPs, against 756 for the wrong strain, 381
+  for too high and 22 for the wrong declarer). The costliest boards are nearly all missed slams.
+- The worst situations: the strong 2♣ opening (5.27 per board), Blackwood (5.05), the waiting 2♦
+  (4.15).
+- To check first: a sample of the costly slam boards with `show`, to see how many are real bidding
+  errors and how many are double dummy's flattering slams (see the caveats). That decides how far
+  to trust the slam numbers, and whether the filter or the ideal needs adjusting.
+
+### Stage 2: competitive bidding
+
+- **Deals.** Random deals, no filter. Opponents bid.
+- **Teams match.** Table 1: the new version North–South against the baseline East–West. Table 2:
+  the baseline North–South against the new version East–West. IMP the two tables board by board.
+  Deal luck cancels.
+- **Absolute measure.** IMPs against par for the real deal. Par is double dummy for both sides, so
+  it's noisier than stage 1's ideal; it's a trend to watch, not a verdict.
+- **Simulated hard calls** are the slow part. They're seeded, so cache them per position.
+- **Also measured here:** the `--continue-auction` option against the current "each candidate ends
+  the auction" assumption (a trial of 45 positions lost 9 IMPs with continuations).
+- **Self-play bias** is largest here: the bots compete against copies of themselves. Cross-check
+  with field results from Marc's Common Game sessions, kept outside the repo.
+
+### Stage 3: opening lead
+
+- **Deals.** Random deals, bid by the bots (or the stage 1 and 2 sets with their auctions).
+- **Score.** Solve the real deal after each possible lead: tricks given up by the bot's lead
+  against the best lead. Over thousands of deals the luck of the layout averages out, so the real
+  deal is a fair judge here, with no circular "what could the leader infer".
+- **Also:** whether each lead lets the contract make that the best lead would beat, which matters
+  more at IMPs than an overtrick.
+- Cheap: one solve per lead per deal.
+
+### Stage 4: declarer play
+
+- **Deals.** Deal, auction and contract fixed (from the bidding sets). The defenders play the
+  baseline; only declarer's policy changes.
+- **Score.** Tricks and score against double dummy on the real deal, how often a contract that
+  makes double dummy is made, and IMPs against the baseline declarer on the same boards.
+- **Speed.** Every card is a sampling decision, so a board takes seconds. Run on worker threads,
+  with smaller sets (500–1,000 boards), and record time per decision against the in-app budget.
+
+### Stage 5: defence
+
+The same as stage 4 with the sides swapped: baseline declarer, new defenders. Signals and
+inference from partner's cards matter most here, and it's the hardest stage of phase 1.
+
+### Stage 6: towards expert
+
+The problems that separate advanced from expert, and that the current design can't solve with
+tuning. Each is an experiment: try it, measure it on the area's harness, keep it only if it gains
+enough for its cost in time. Roughly in order of likely value for effort:
+
+| Problem | Area | Why it's hard | What to try |
+|---|---|---|---|
+| **Strategy fusion.** Each sampled deal is solved as if declarer could see it, so declarer "knows" which way to finesse. Misses safety plays, lines that gather information first, and keeping options open. | Declarer play | The fix is a search that chooses one line for all deals at once, which costs far more time than solving each deal separately. | α-μ search (from research on bridge card play), first in short endings and on the key decisions, where it's affordable. |
+| **Defenders who can see each other.** On each sampled deal, the solver lets the two defenders see each other's hands, so the bots defend as if they knew partner's cards. | Defence | The same problem as strategy fusion, worse: two players, and partner's cards are the main unknown. | The same search as above, from the defenders' side; meanwhile, more weight on partner's signals. |
+| **Judgment in constructive bidding.** Invite or bid game, 3NT or 4♠, whether to try for slam: fixed rules with fixed point totals. | Uncontested bidding | Deciding by simulation needs the rest of the auction played out on each sampled deal (`--continue-auction`), which lost IMPs in its first trial and costs time on the device. | Simulation with the auction continued, once stage 2 has made continuations reliable; perhaps on the backend or the fastest device only. |
+| **Playing for the opponents' mistakes.** Bots play as if every opponent is perfect, so they never give one a chance to go wrong. | Declarer play, defence | Needs a model of how people err, which double dummy doesn't have. | Prefer, among nearly equal lines, the one that leaves an opponent a guess. Measure against people, not just bots. |
+| **Deception.** Bots never false-card, and follow their signalling agreements only between equally good cards. | Declarer play, defence | Its value depends on who you play against: bots read signals mechanically, people don't. | Measure first how much honesty costs against the bot opponents; then decide. |
+| **Expert-level bidding coverage.** The long tail of situations and conventions experts handle, and when to bend the rules. | Both kinds of bidding | No end to it by hand-written rules. | Keep adding by situation tag; consider a learned model (as the open-source Ben bot uses) as a cross-check or a judge for hard calls. |
+| **An expert reference.** Without one, "expert" can't be measured. | All | Expert auctions and play records are scarce, and mostly copyright. | Another strong bot on the same deals; expert auction sets for private reference; Marc's judgment throughout. |
+
+## The harness's interface
+
+Commands run in `frontend/`, through one npm script with subcommands (`npm run bench` alone lists
+them).
+
+```
+npm run bench -- build <set> --deals 1000 --seed 1 --layouts 50   # deal a set and solve its layouts (once)
+npm run bench -- run <set>                                        # bid every deal, compare with the baseline
+npm run bench -- run <set> --label "jump shift fix"               # name the run
+npm run bench -- baseline <set> [<run>]                           # make a run (default: the latest) the baseline
+npm run bench -- compare <run> [<other run>]                      # compare two runs (default: with the baseline)
+npm run bench -- show <run> --board 214                           # one board: hands, auction and reasons, the ideal table
+npm run bench -- list                                             # sets, baselines and runs
+```
+
+A run is named by its id (`quick-2026-11-24-141502`), or as `latest` or `baseline` (with
+`--set <name>` when there's more than one set). Options: `--top <n>` (how many costly and changed
+boards to list, 10), `--changed` (list every changed board), `--min-boards <n>` (boards a situation
+needs to be listed, 15), `--threads <n>` (for `build`; all but two of the computer's).
+
+Each run records the git commit it ran on, and "with uncommitted changes" when the working tree
+had any (outside `frontend/bench/`). That's the usual state while trying a change. It means the
+run's code is the commit plus whatever was being tried, so give such runs a `--label` saying what
+the change was.
+
+Not built yet, for when they're needed: an HTML report, `--tag` to look at one situation, and
+`--against <git-ref>` (stage 2 on: build that ref as the opponent or baseline engine).
+
+**Where things live.**
+- `frontend/src/bench/`: the harness's logic (deal sets and the filter, the ideal contract, stage 1
+  runs, the report), pure and tested like `core/`, but not part of the app.
+- `frontend/scripts/bench.ts`: the command line, files and worker threads.
+- `frontend/bench/sets.json` (committed): each set's definition (size, seed, layouts, filter
+  version). The boards are rebuilt exactly from it.
+- `frontend/bench/baselines.json` (committed): each set's baseline run, with its git commit, a copy
+  of its per-board results (without the reasons), so anyone can compare against the same baseline.
+  One line per board (about 250 KB for 1,000 boards), so a new baseline's diff shows which boards
+  changed. Commit it whenever the baseline changes.
+- `frontend/bench/.cache/` (not committed): each set's dealt boards and solved layouts, and
+  `runs/`, one file per run with every call's reason.
+
+### What a run shows (stage 1)
+
+Illustrative output; the numbers are made up.
+
+```
+Set quick-1 (1,000 deals, stage 1)    Run 2026-11-25 3f2a9c1 "jump shift fix"
+Baseline: 2026-11-24 af6e74e
+
+Loss against the ideal contract (IMPs per board)
+                         this run    baseline    change
+  All boards               1.42        1.51      −0.09  (−0.16 to −0.03)  better
+  Boards at the ideal      58.1%       56.9%
+  Boards losing 3+ IMPs    13.0%       14.2%
+
+By the ideal contract's level            boards   loss   change
+  Pass out / part-score                    512    0.81   −0.02
+  Game                                     391    1.87   −0.14
+  Small slam                                84    3.90   −0.22
+  Grand slam                                13    6.10    0.00
+
+How the bot's contract went wrong        boards   IMPs lost
+  Too low (missed game or slam)             141    412
+  Too high                                   97    288
+  Wrong strain (missed a major fit)          38    121
+  Wrong strain (notrump against a suit)      44     96
+  Wrong declarer                             29     31
+
+By situation (worst first)               boards   loss   change
+  After a 2NT opening                        38    2.60   −0.05
+  Responder with game values after a 2/1     52    2.10   −0.41
+  ...
+
+Changed boards: 41 (better 24, worse 11, same score 6)
+  Board 214  3NT −45 → 4♠ +420   +9.1 IMPs  responder with game values after a 2/1
+  Board  87  2♦ +90 → 3NT −50    −3.2 IMPs  ...
+
+Calls with no rule: 3 (baseline 5)    Hard calls: 0    Time: 4.2 s
+```
+
+The parts:
+- **The headline:** average loss against the ideal, the change against the baseline with its 95%
+  confidence interval, and a verdict (better, worse, or no clear difference).
+- **Where the loss comes from:** by the ideal contract's level, by kind of error, and by situation
+  tag (the opening, conventions used, who had the values). These breakdowns are the "can and
+  can't" list.
+- **Changed boards,** sorted by size, so the biggest wins and losses are checked first.
+- **Health:** calls with no rule, hard calls, run time.
+
+`show` prints one board in full: the four hands, the auction with each call's reason (as
+`bidding-report` does), and the ideal table with each contract's average score and expected loss.
+
+### What later stages show
+
+- **Stage 2:** IMPs per board against the baseline in the teams match (with interval), IMPs against
+  par, and breakdowns by who opened, who won the auction, doubles (how often a penalty double
+  scored), and hard calls (how often simulation overturned the rule of thumb, and whether that won).
+- **Stage 3:** average tricks given up against the best lead, how often the lead was best, leads
+  that let a beatable contract make, by contract (notrump, suit, slam) and by kind of lead.
+- **Stages 4 and 5:** tricks lost against double dummy per board, the make rate on contracts that
+  make double dummy (or the beat rate, defending), IMPs against the baseline policy, the costliest
+  cards with their trick and situation, and time per decision (typical and slowest) against the
+  in-app budget.
+
+## Is expert level feasible?
+
+It depends on the area. The main limit is the in-app time budget (a bot acts within about two
+seconds, and an iPad is about ten times slower than Marc's PC), not the harness.
+
+- **Declarer play: largely feasible.** Sampling with double dummy plays most ordinary hands close
+  to expert standard. Its known weak spots are strategy fusion (it assumes it will know later what
+  it has to guess now, so it misses safety plays and lines that gather information first), no
+  deception, and playing as if the defenders never go wrong.
+- **Defence: hard.** It depends on signals, counting and reading partner's cards, where sampling
+  bots fall furthest short of experts. There's an extra problem in defence: on each sampled deal,
+  the solver lets the two defenders see each other's hands.
+- **Bidding: a long road.** Expert bidding is a much richer system plus judgment: when to bend
+  the rules, competitive decisions, slam bidding. Rules plus simulation can reach advanced
+  standard. Expert judgment needs far more coverage, perhaps learned models (as the open-source Ben
+  bot uses).
+- **No expert reference yet.** The harness measures progress and finds weak spots. To say "expert"
+  needs a reference: Marc's judgment on the costliest boards first; later perhaps another strong
+  bot, the club field, or expert auction sets (for private reference only, for copyright).
+
+**Verdict.** Advanced standard looks feasible in all four areas with the current design and time
+budget: most of what stands between today's bots and advanced is rules, tuning, valuation and
+better use of what the auction and the play have shown (the tables below). Expert standard is
+feasible in parts: declarer play could get close, while defence and bidding judgment may stay
+short of it. Those hard problems are stage 6.
+
+## Known issues and ideas to try, by stage
+
+From reading the current code (November 2026). Each is something to measure once the harness
+exists, not a change to make now. "Where" points at the code involved. These are phase 1 work,
+towards advanced; the hard problems are in stage 6 above.
+
+### Non-competitive bidding (stage 1)
+
+| Issue | Where | Ideas to try |
+|---|---|---|
+| Game and slam decisions use fixed point totals (game at 25 for notrump, 26 for a major, 28 for a minor; slam at 33, invite from 31). Valuation is HCP plus fixed length and shortness points. | `sayc/general.ts` (`GAME_POINTS`, `SLAM_POINTS`), `evaluate.ts` | Tune the thresholds on the harness. Add valuation adjustments: honours in long suits, wasted honours opposite shortness, misfits (in the backlog), a second fit (in the backlog), losing-trick count as a cross-check. |
+| What a call shows is HCP, suit lengths, balanced, suit quality and strength with a fit. No aces or key cards, controls, stoppers or where the honours are. After a Blackwood answer, the answer's ace count isn't used when the bots sample deals, in later bidding or in the play. | `model.ts` (`Shown`), `sayc/general.ts` (Blackwood answers) | Add aces and key cards (and later controls and stoppers) to `Shown`, and make the samplers respect them. |
+| Passes aren't used as evidence (didn't open, so under 12; didn't bid a major, so no five-card major). | `simulate.ts`, `cardplay/sample.ts` (in the backlog) | Add what a pass rules out to what the auction has shown. |
+| Conventions on the card that the bots don't use yet: splinters, inverted minors, new minor forcing, fourth suit forcing from the two level, Roman Key Card void answers and 5NT for kings. Not on the card yet: Texas transfers, Smolen, Drury. | `sayc/*.ts`, `system.ts` | Add one at a time; each should show up as a gain in its situation tag. |
+| Right-siding isn't a goal of any rule; declarer falls out of the auction. | `sayc/notrump.ts`, `sayc/general.ts` | The harness measures "wrong declarer" directly; act only if it's costly. |
+| The new "game values, no clear suit game" 3NT and the limiting 2NT after a 2/1 don't check stoppers (from the bots-branch review). | `sayc/constructive.ts` | Compare with a stopper check or a fourth-suit ask. |
+| Support points replaced HCP for raises and cuebid raises, so code that reads only `shown.hcp` (notrump decisions, the "Competing" pass rule) now sees a weaker partner (from the bots-branch review). | `position.ts` (`partnerPoints`), `sayc/competition.ts` | Check the notrump and competitive situation tags for losses after a raise. |
+| Calls with no rule fall back to a natural call or Pass. | `bidder.ts` | Track the count in every run; each one is a gap. |
+
+### Competitive bidding (stage 2)
+
+| Issue | Where | Ideas to try |
+|---|---|---|
+| Simulation treats each candidate as the last call of the auction. | `simulate.ts` | Compare with `--continue-auction` on fresh deals, as planned. |
+| Simulation scores candidates at matchpoints (share of deals), not IMPs. | `simulate.ts` | Score by the game's scoring; at IMPs, a game swing outweighs several part-score gains. |
+| Few candidates: pass, double and one bid. No redouble (in the backlog), no planned sacrifice beyond the Law of Total Tricks rule. | `sayc/competition.ts`, `sayc/general.ts` | Add candidates one at a time and measure. |
+| 60 sampled deals, simulation needs 16 to fit, with some leeway when too few fit. | `simulate.ts` | Measure how often simulation overturns the rule of thumb, and whether it wins when it does. Tune deal counts against time. |
+| Missing competitive tools: responsive doubles, support doubles, Lebensohl, lead-directing doubles of artificial bids. | `sayc/competition.ts` | Add one at a time, if the situation tags show a loss there. |
+| Penalty doubles judged by double dummy, which lets the defence always find the best line. | `simulate.ts` | Check doubled boards in stage 2's breakdown; compare with play-outs after stage 4. |
+| Self-play: the opponents are the same bots. | | Cross-check with Common Game field results kept outside the repo. |
+
+### Opening lead (stage 3)
+
+| Issue | Where | Ideas to try |
+|---|---|---|
+| The lead that's best on the most deals wins (most tricks). Against a game or slam at IMPs, beating the contract matters far more than an extra undertrick. | `cardplay/decide.ts` (in the backlog: judge by the game's scoring) | Score leads by the chance of beating the contract when that's what counts. |
+| Fixed preferences: a lead from AK unless another lead is 10% better (`AK_LEAD_MARGIN`); partner's suit on a 3% near-tie. | `cardplay/decide.ts` | Tune both margins on the harness. |
+| 40 deals for the lead, the costliest card of the hand; the play review uses 200 on a second pass. | `cardplay/decide.ts`, `cardplay/review.ts` | More deals for the lead only (100 deals take 0.6 s on the PC, about 5 s on an iPad). |
+| The leader's picture of the hidden hands is only the auction's ranges; no inference from what the opponents didn't do (no Stayman, so no 4-card major). | `cardplay/sample.ts` | Same as passes in stage 1: add what the auction rules out. |
+
+### Declarer play (stage 4)
+
+| Issue | Where | Ideas to try |
+|---|---|---|
+| Most tricks counts, not making the contract (matchpoints); risks the contract for an overtrick at IMPs. | `cardplay/decide.ts` (in the backlog) | Score by the game's scoring. |
+| Declarer reads the defenders' leads and signals as light hints, but not their discards, their choice of suit or what they didn't lead. | `cardplay/inference.ts` | Read discards and switches as evidence, carefully weighted. |
+| 40 deals per card; sampling by trial and error (up to 20,000 tries), dropping the bidding when fewer than 6 deals fit. | `cardplay/decide.ts`, `cardplay/sample.ts` | Measure tricks against deals and time; fewer deals late in the hand, more at the key decisions. |
+| Claims only when the rest is certain on every sampled deal. | `cardplay/claims.ts` | No effect on scores; low priority. |
+
+### Defence (stage 5)
+
+| Issue | Where | Ideas to try |
+|---|---|---|
+| Signals: only the first card played to a suit (attitude or count) and the first discard. No suit preference, no later signals, no reading partner's discards. | `cardplay/carding.ts`, `cardplay/inference.ts` | Add suit preference (after a ruff, and when attitude is already known), and read partner's discards. |
+
+### Across all stages
+
+- **Time budget.** Any gain that costs time must fit about two seconds on the slowest device that
+  thinks for bots. Every run records time per decision.
+- **Determinism.** Decisions are seeded, so runs repeat exactly. Keep it that way.
+- **Double dummy biases.** The stage 1 and 2 scores flatter guesses and leads. Measure the size of
+  that once play-outs are possible (after stage 4).
+
+## Order of work
+
+1. Stage 0 and stage 1 together, minimal: one 1,000-deal set (`quick`), the cache, `build`,
+   `run`, `baseline`, `compare`, `show`, and the terminal summary. No HTML, no targeted generators
+   yet. **Done** (November 2026).
+2. Use it on the next few bidding fixes. Keep going only if it shows things worth fixing or catches
+   side effects.
+3. Targeted generators and the full and held-out sets, as stage 1's breakdowns show where they're
+   needed.
+4. Stage 2 (needs two engines at once), then 3, 4 and 5, each to advanced standard.
+5. Stage 6, one problem at a time, once phase 1 is done.
+
+The "Ideas to revisit" list from the bots branch's `bidding_changes.md` (removed; it's in the git
+history, with the write-ups of each bidding change) is folded into this plan.
