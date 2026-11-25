@@ -98,7 +98,9 @@ the bots play each board out against double dummy) and prints each auction with 
 `npm run bench` in `frontend/` is the bots' evaluation harness ([docs/HARNESS.md](docs/HARNESS.md)):
 `-- run quick` bids 1,000 deals with the opponents silent and compares the loss against the ideal
 contract with the baseline (`-- show latest --board N` for one board). After a bidding change, run it
-and say what it showed; it doesn't count as a full test suite.
+and say what it showed; it doesn't count as a full test suite. **Analyse and tune only on `quick`.**
+The `holdout` set is for evaluation only: run it to confirm a change, report its headline, and
+never list, show or analyse its boards or pick fixes from them.
 
 From the repo root: `python scripts/make_sample_game.py` regenerates the sample game (`--demo`: the
 demo game in `backend/src/demo/`), after

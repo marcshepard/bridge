@@ -345,6 +345,106 @@ Still open:
 - **Controls aren't shown or tracked** (area 6): the takeover estimates partner's from points.
   Control bids and 5NT for kings would replace the estimate.
 
+**Responder's rebids and strain, second round** (25 November 2026). Where the loss sat after the
+slam round, as ideal level against the bots' level (`quick`, IMPs per board): slam ideal, game bid
+0.84 (mostly fit slams on 30 HCP or fewer, which bidding rarely finds); game ideal, part score bid
+0.40; right level, wrong strain 0.34 in games and 0.32 in part scores; part score ideal, game bid
+0.23. Missed and overbid games are mostly at 22–25 HCP and roughly balance: game judgment looks
+calibrated. The largest strain error was notrump instead of a major (0.24).
+
+Loss: `quick` 2.73 → 2.66 (−0.07, −0.14 to 0.00); `holdout` 3.34 → 3.18 (−0.16, −0.26 to −0.07,
+better). Slams bid with 33+ HCP on `quick`: 17 → 20 of 21.
+
+**Rule from now on (Marc): analyse and tune only on `quick`;** `holdout` is run to confirm a change
+and its headline reported, but its boards are never looked at. In this round, before that rule,
+three of the fixes below (marked †) were found from `holdout` boards; they are plain SAYC errors,
+not tuned numbers, but `holdout` isn't untouched for them.
+
+Kept:
+1. **Responder's game-level 3NT shows its strength** (13 up to just short of slam opposite
+   opener's least, unless earlier bids showed more). It showed nothing, so opener read the
+   first response's 6+ and passed 1♣–1♥–1♠–3NT with 19 opposite 18: five of the six missed slams
+   with 33+ HCP. Now opener with extras looks for slam.
+2. **The plan doesn't pull partner's game without slam** (3NT chosen knowing opener's suit), except
+   to a six-card suit opener jump-rebid (1♠–1NT–3♠–3NT–4♠). Needed with 1: once 3NT showed
+   strength, opener moved to 5♦ or 4♥ on fit points.
+3. **After opener's 1NT rebid†:** three-card support for opener's five-card major raises it (game or
+   invite); a six-card major invites with 3 of it, or bids game counting length, instead of 2NT.
+4. **After opener's jump rebid** (2NT, or three of opener's suit): responder with six of its major
+   bids game in it, with five bids 3 of it (forcing) so opener can raise with three.
+5. **2♣–2NT†:** opener shows a five-card suit (the higher of two) before notrump.
+6. **2NT transfer†:** opener with three trumps chooses 4 of the major over responder's 3NT (it needed
+   four). The answers to a transfer-then-2NT invitation now record opener's trumps.
+7. **Responder's second call, smaller fixes:** the 11–12 2NT invitation also when 1NT was cheaper
+   (1♦–1♥–1♠–2NT); a jump raise of opener's second major invites (10–12); a shapely 4–5 count
+   (a six-card suit, or 5-4 with a singleton or void) responds at the one level.
+
+8. **Slam after Stayman:** with no fit, 6NT or a quantitative 4NT as in the direct responses (opener
+   bids 6NT with the top of the range); with the fit, six of the major, or five to invite (4NT is
+   quantitative here). Board 807 (2NT–3♣–3♠ with 12 opposite 21) was the last `quick` board with
+   33+ HCP that missed slam.
+
+After item 8: `quick` 2.63 (−0.10, −0.17 to −0.02, better); `holdout` 3.19 (−0.15, better). Slams
+bid with 33+ HCP on `quick`: 21 of 21.
+
+9. **Raised majors toward slam.** Responder's raise to game records its support (two cards after a
+   jump rebid, three otherwise) and shows no extras (13–15 opposite 12), so opener with a long suit
+   sees the fit and can try for slam (1♠–2♦–3♠–4♠ with seven spades). After opener's raise of
+   responder's major, a responder in slam range on points, backed by about 29 HCP and 9 controls
+   (partner's HCP estimated from the raise's support points), leaves game to the slam rules; the
+   invitation is only for hands short of game. Tried first: a 13–18 range for suit games, as for
+   3NT. Worse: opener counted its shape on top and bid slams on 27–28 HCP.
+10. **Opener after a minor raise:** 16–18 invites with three of the minor; 19–22 bids 3NT (balanced,
+    18+ HCP) or five of the minor; more is left to the slam rules. It used to invite with any strength
+    (1♦–2♦–3♦ with 21 HCP, board 622).
+11. **All four aces opposite a weak two in a major:** with two-card support and 19+ HCP, the small
+    slam (board 198).
+
+After items 9–11: `quick` 2.61 (−0.12, −0.21 to −0.04, better); `holdout` 3.20 (−0.15, −0.25 to
+−0.04, better).
+
+Slams by combined HCP after this round (ideal slams bid, and missed; slams bid where the ideal
+isn't one):
+
+| Combined HCP | `quick`: bid / missed (not ideal) | `holdout`: bid / missed (not ideal) |
+|---|---|---|
+| 33+ | 21 / 0 (0) | 20 / 0 (0) |
+| 31–32 | 26 / 15 (3) | 28 / 25 (1) |
+| 29–30 | 17 / 38 (2) | 24 / 63 (4) |
+| 26–28 | 8 / 53 (2) | 7 / 65 (4) |
+| 25 or less | 0 / 13 (0) | 1 / 15 (0) |
+
+Missed slams with 33+ points counting shape but under 33 HCP (`quick`, before items 9–11): 28 boards,
+0.26 IMPs per board, all with 9+ controls. Groups: raised majors stopped in game (10; items 9–11
+reached three of them); long minor fits stopped in 3NT (10: needs an agreed minor and control bids
+above 3NT, or counting a running suit's tricks for 6NT); two bugs (items 10 and 11); notrump with
+five-card suits (1NT–3NT with 15 and a five-card suit, board 973).
+
+**31–32 HCP, drilled down** (`quick`, 15 missed slams, 3 slams bid where the ideal isn't one). Nine
+of the misses are balanced hands with no fit where the 33 rule invites at most; double dummy likes
+6NT there (it finds the queens). Marc: missing those is fine when the hands lack the HCP, a long
+suit or a fit, and the slam only "lucked out". The fixable ones:
+
+12. **Opener's raise to game is 19–21** (it had no top: 1♦–1♠–4♠ showed "24 points"). With 22+ and
+    four cards in partner's major, opener asks for aces with 4NT (boards 367, 588).
+13. **A long suit counts for notrump slam invitations** (one point a card over four), as the general
+    plan and the 1NT-rebid rules already did: the direct 4NT over 1NT and 2NT, the 4NT after Stayman,
+    and a new 4NT after a transfer with exactly five (16–17 counting the fifth; opener bids six of
+    the major with three, 6NT with two, at the top of the range). Boards 973, 450.
+14. **2♣–2NT with an unbalanced 4-4-4-1:** opener shows a four-card major (hearts first) and
+    responder shows four spades over 3♥ (board 914). The four-card rule comes first so partner reads
+    3 of a major as 4+ (a call is read by the first rule that makes it: with the five-card rule
+    first, responder read five and bid 6♠ on a 4-3 fit).
+
+After items 12–14: `quick` 2.59 (−0.14, −0.24 to −0.05, better); `holdout` 3.15 (−0.20, −0.32 to
+−0.08, better). Slams bid with 31–32 HCP on `quick`: 69% (was 60% after item 11, 54% at the
+baseline). New overbid: board 642, 6NT on 30 HCP after 2♣–2NT–3♠, because a 2♣ opener with exactly
+22 is read as about 24.
+
+Still open (from `quick`): 1♦–1♥–1NT and 1♣–1♠–1NT with a five-card major or the other major need
+new minor forcing (area 4); minor-suit slams past 3NT; the 2♣ opener's likely point (24) may be
+high.
+
 ### Stage 2: competitive bidding
 
 - **Deals.** Random deals, no filter. Opponents bid.

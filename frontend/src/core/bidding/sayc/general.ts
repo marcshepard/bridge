@@ -49,8 +49,9 @@ const SLAM_INVITE_FROM = 31;
  * pack's average). Points counted for shape on both sides add up past what the cards are worth, so
  * these check a slam the point count suggests.
  */
-export function slamCards(p: Position, h: HandFacts): { hcp: number; controls: number } {
-  const partnerHcp = likelyHcp(partnerShown(p));
+export function slamCards(p: Position, h: HandFacts, trump?: Suit): { hcp: number; controls: number } {
+  // A raise shows support points, not HCP: about two of them are shape.
+  const partnerHcp = Math.max(likelyHcp(partnerShown(p)), trump ? partnerPoints(p, trump).likely - 2 : 0);
   return { hcp: h.hcp + partnerHcp, controls: h.controls + 0.3 * partnerHcp };
 }
 
@@ -587,6 +588,14 @@ function plan(p: Position, h: HandFacts): Plan {
     return { call: PASS, why: `${why}, ${points}: ${ours!.level >= game ? "game is bid, which is high enough" : "we're high enough"}` };
   }
   if (ours && ours.level >= target && ours.level >= gameLevel(ours.strain) && !mustBid) return { call: PASS, why: `${points}: game is bid` };
+  // We're in a game partner chose (3NT knowing my suit): without slam, moving to another game
+  // only gets higher. Except to a six-card suit I've jump-rebid (1♠–1NT–3♠–3NT–4♠): 3NT there
+  // offers a choice, and the long suit is the usual answer.
+  const myShown = p.shown[p.seat];
+  const jumpSuit = strain !== "NT" && myShown.len[strain as Suit][0] >= 6 && !!myShown.strength?.some((e) => e.kind === "length" && e.range[0] >= 15);
+  if (ours && target < 6 && !jumpSuit && ours.level >= gameLevel(ours.strain) && isOurs(p, lastBid(p)!.seat) && lastBid(p)!.seat !== p.seat && !mustBid) {
+    return { call: PASS, why: `${points}: partner chose this game, and there's no slam` };
+  }
 
   // Outbid past where we were heading: not ours to raise the stakes by rule, it's a judgement.
   const lb = lastBid(p);

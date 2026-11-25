@@ -103,6 +103,8 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
   const slamMin = SLAM - nt.max;
   const slamSure = SLAM - nt.min;
   const range = `${nt.min}–${nt.max}`;
+  // A long suit is a source of tricks in notrump: one point for each card over four, for slam.
+  const lengthInvite = (h: HandFacts) => h.semiBalanced && h.points >= slamMin && h.hcp < slamMin;
   const major4 = (h: HandFacts) => h.len.H === 4 || h.len.S === 4;
   const major5 = (h: HandFacts) => h.len.H >= 5 || h.len.S >= 5;
   const transferSuit = (h: HandFacts): Suit | null => {
@@ -149,14 +151,14 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
       );
     }
     rules.push(
-      rule(bid(3, "NT"), `To play: enough for game (${gameMin}+ HCP), no interest in a major or a slam.`, (h) => h.hcp >= gameMin && h.hcp < slamMin, {
+      rule(bid(3, "NT"), `To play: enough for game (${gameMin}+ HCP), no interest in a major or a slam.`, (h) => h.hcp >= gameMin && h.hcp < slamMin && !lengthInvite(h), {
         shows: { hcp: [gameMin, slamMin - 1] },
         why: (h) => `${hcpText(h)} with opener's ${range}: ${h.hcp + nt.min}–${h.hcp + nt.max} together, enough for game, not for slam`,
       }),
-      rule(bid(4, "NT"), `Quantitative: invites 6NT with ${slamMin}–${slamSure - 1} HCP. Not Blackwood.`, (h) => h.hcp >= slamMin && h.hcp < slamSure && h.semiBalanced, {
+      rule(bid(4, "NT"), `Quantitative: invites 6NT with ${slamMin}–${slamSure - 1} points (a five-card suit counts one). Not Blackwood.`, (h) => h.points >= slamMin && h.hcp < slamSure && h.semiBalanced, {
         name: "Quantitative 4NT",
         shows: { hcp: [slamMin, slamSure - 1] },
-        why: (h) => `${hcpText(h)}: slam if opener has the top of the range`,
+        why: (h) => `${h.points === h.hcp ? hcpText(h) : `${h.points} points counting length`}: slam if opener has the top of the range`,
       }),
       rule(bid(6, "NT"), `To play: ${slamSure}+ HCP between us is enough for a small slam.`, (h) => h.hcp >= slamSure, {
         shows: { hcp: [slamSure, 37] },
@@ -226,6 +228,19 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
       const shownMajor: Suit | null = answer === `${L}H` ? "H" : answer === `${L}S` ? "S" : null;
       const out: CallRule[] = [];
       if (shownMajor) {
+        // The fit and slam values: 4NT here is quantitative (no fit), so bid the slam, or invite it
+        // with five of the major (partner bids six with the top of the range).
+        const fit = (h: HandFacts) => h.len[shownMajor] >= 4;
+        out.push(
+          rule(bid(6, shownMajor), `Small slam in the 4-4 fit: ${slamSure}+ HCP.`, (h) => fit(h) && h.hcp >= slamSure, {
+            why: (h) => `four ${SUIT_WORDS[shownMajor]} too, and ${hcpText(h)} with opener's ${range}: slam`,
+          }),
+          rule(bid(5, shownMajor), `Invites slam in the 4-4 fit: ${slamMin}–${slamSure - 1} HCP. Partner bids six with the top of the range.`, (h) => fit(h) && h.hcp >= slamMin, {
+            name: "Slam invitation",
+            shows: { hcp: [slamMin, slamSure - 1] },
+            why: (h) => `four ${SUIT_WORDS[shownMajor]} too, and ${hcpText(h)}: slam if opener has the top of the range`,
+          }),
+        );
         if (L === 2) {
           out.push(
             rule(bid(4, shownMajor), `Game in the 4-4 ${SUIT_WORDS[shownMajor].slice(0, -1)} fit.`, (h) => h.len[shownMajor] >= 4 && h.hcp >= gameMin, { why: (h) => `four ${SUIT_WORDS[shownMajor]} too, and ${hcpText(h)}: game` }),
@@ -235,6 +250,18 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
           out.push(rule(bid(4, shownMajor), `Game in the 4-4 ${SUIT_WORDS[shownMajor].slice(0, -1)} fit.`, (h) => h.len[shownMajor] >= 4, { why: () => `four ${SUIT_WORDS[shownMajor]} too: game` }));
         }
       }
+      // No major fit, and slam values: the same 6NT and quantitative 4NT as the direct responses.
+      const noFit = (h: HandFacts) => !shownMajor || h.len[shownMajor] < 4;
+      out.push(
+        rule(bid(6, "NT"), `No major fit: ${slamSure}+ HCP, a small slam.`, (h) => noFit(h) && h.hcp >= slamSure, {
+          why: (h) => `no fit, ${hcpText(h)} with opener's ${range}: at least ${h.hcp + nt.min} together`,
+        }),
+        rule(bid(4, "NT"), `Quantitative: no major fit, invites 6NT with ${slamMin}–${slamSure - 1} points. Not Blackwood.`, (h) => noFit(h) && h.points >= slamMin, {
+          name: "Quantitative 4NT",
+          shows: { hcp: [slamMin, slamSure - 1] },
+          why: (h) => `no fit, ${hcpText(h)}: slam if opener has the top of the range`,
+        }),
+      );
       if (L === 2) {
         out.push(
           rule(bid(3, "NT"), "No major fit: game in notrump.", (h) => h.hcp >= gameMin, { why: (h) => `no fit, ${hcpText(h)}: game in notrump` }),
@@ -264,8 +291,17 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
       // does); with exactly five, HCP plus length in another suit.
       const value = (h: HandFacts) => (five(h) ? h.hcp + h.lengthPoints - (h.len[m] - 4) : fitPoints(h, m, 5));
       const valueText = (h: HandFacts) => (value(h) === h.hcp ? hcpText(h) : `${value(h)} points counting shape`);
+      // Exactly five and slam values counting the fifth card: invite 6 with 4NT. Opener bids six of
+      // the major with three, 6NT with two, at the top of the range.
+      const fiveSlam = rule(bid(4, "NT"), `Quantitative: exactly 5 ${SYMBOL[m]} and ${slamMin}–${slamSure - 1} points. Invites slam.`,
+        (h) => five(h) && h.points >= slamMin && h.hcp < slamSure, {
+          name: "Quantitative 4NT",
+          shows: { len: len(m, 5, 5), hcp: [slamMin - 1, slamSure - 1] },
+          why: (h) => `five ${SUIT_WORDS[m]} and ${h.points} points counting length: slam if opener has the top of the range`,
+        });
       if (L === 2) {
         return [
+          fiveSlam,
           ...SUITS.filter((x) => x !== m).map((x) => rule(bid(3, x), `Natural: 5+ ${SYMBOL[x]} and game values.`,
             (h) => h.hcp >= gameMin && h.len[x] >= 5 && h.len[x] >= Math.max(...SUITS.filter((y) => y !== m).map((y) => h.len[y])), {
               name: "New suit after transfer", forcing: "game", shows: { len: len(x, 5), hcp: [gameMin, 37] },
@@ -279,6 +315,7 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
         ];
       }
       return [
+        fiveSlam,
         rule(bid(4, m), `Game: 6+ ${SYMBOL[m]}.`, (h) => !five(h) && h.hcp >= gameMin, { why: () => "game in the 8+ card fit" }),
         rule(bid(3, "NT"), `Choice of games: exactly 5 ${SYMBOL[m]}.`, (h) => h.hcp >= gameMin, { shows: { len: len(m, 5, 5), hcp: [gameMin, 37] }, why: () => "let opener choose between the games" }),
         rule(PASS, `Weak: stops in 3${SYMBOL[m]}.`, () => true, { why: (h) => `${hcpText(h)}: no game` }),
@@ -297,9 +334,9 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
       const m = transferred;
       if (third === "2NT" && L === 2) {
         return [
-          rule(bid(4, m), "Accepts, with 3+ trumps.", (h) => top(h) && h.len[m] >= 3, { why: (h) => `top of the range and ${h.len[m]} ${SUIT_WORDS[m]}` }),
-          rule(bid(3, "NT"), "Accepts, with only two trumps.", (h) => top(h), { why: () => "top of the range, only two trumps" }),
-          rule(bid(3, m), "Declines, with 3+ trumps.", (h) => h.len[m] >= 3, { why: () => "bottom of the range, but a fit: play in the suit" }),
+          rule(bid(4, m), "Accepts, with 3+ trumps.", (h) => top(h) && h.len[m] >= 3, { shows: { len: len(m, 3) }, why: (h) => `top of the range and ${h.len[m]} ${SUIT_WORDS[m]}` }),
+          rule(bid(3, "NT"), "Accepts, with only two trumps.", (h) => top(h), { shows: { len: len(m, 2, 2) }, why: () => "top of the range, only two trumps" }),
+          rule(bid(3, m), "Declines, with 3+ trumps.", (h) => h.len[m] >= 3, { shows: { len: len(m, 3) }, why: () => "bottom of the range, but a fit: play in the suit" }),
           rule(PASS, "Declines, with two trumps.", () => true, { why: () => "bottom of the range, no fit" }),
         ];
       }
@@ -309,8 +346,17 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
           rule(PASS, "Declines the invitation.", () => true, { why: () => "bottom of the range" }),
         ];
       }
+      if (third === "4NT") {
+        const accept = (h: HandFacts) => h.hcp >= nt.max - 1 || (h.hcp >= nt.min + 1 && h.points > h.hcp);
+        return [
+          rule(bid(6, m), `Accepts in ${SYMBOL[m]}: the top of the range and 3+ trumps.`, (h) => accept(h) && h.len[m] >= 3, { why: (h) => `${hcpText(h)} and ${h.len[m]} ${SUIT_WORDS[m]}` }),
+          rule(bid(6, "NT"), "Accepts in notrump: the top of the range, two trumps.", accept, { why: (h) => `${hcpText(h)}, two ${SUIT_WORDS[m]}` }),
+          rule(PASS, "Declines the slam invitation.", () => true, { why: (h) => `${hcpText(h)}: not enough for slam` }),
+        ];
+      }
       if (third === "3NT") {
-        const support = L === 2 ? 3 : 4;
+        // Three trumps opposite partner's five is the 8-card fit, after 1NT or 2NT alike.
+        const support = 3;
         return [
           rule(bid(4, m), `Chooses 4${SYMBOL[m]} with ${support}+ trumps.`, (h) => h.len[m] >= support, { why: (h) => `${h.len[m]} ${SUIT_WORDS[m]} opposite partner's five` }),
           rule(PASS, "Chooses 3NT.", () => true, { why: (h) => `${h.len[m]} ${SUIT_WORDS[m]}: stay in notrump` }),
@@ -328,6 +374,12 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
     }
     if (first === `${L}C`) {
       const answered = after[1]!;
+      if (third === "4NT") {
+        return [
+          rule(bid(6, "NT"), "Accepts the slam invitation.", (h) => h.hcp >= nt.max - 1 || (h.hcp >= nt.min + 1 && h.points > h.hcp), { why: (h) => `${hcpText(h)}: the top of the range` }),
+          rule(PASS, "Declines the slam invitation.", () => true, { why: (h) => `${hcpText(h)}: not enough for slam` }),
+        ];
+      }
       if (third === "3NT" && answered === `${L}H`) {
         // Responder used Stayman, so holds a major; not hearts, so spades.
         return [
@@ -420,6 +472,38 @@ function twoClubRules(p: Position, codes: string[], iOpened: boolean): CallRule[
       ),
     ];
   }
+  // 2♣–2NT (a balanced positive): opener shows a five-card suit, longest first (the higher of two
+  // five-card suits). Still forcing to game; responder raises or bids notrump from there.
+  if (codes.length === 2 && iOpened && codes[1] === "2NT") {
+    return [
+      // Three of a major reads as 4+ (the first rule making a call is how partner reads it): a
+      // four-card major with an unbalanced hand (4-4-4-1, hearts first), or a longer suit below.
+      ...(["H", "S"] as Suit[]).map((s) =>
+        rule(bid(3, s), `Natural: 4+ ${SYMBOL[s]}. Forcing to game.`, (h) => !h.balanced && h.shape[0] === 4 && h.len[s] === 4, {
+          shows: { len: len(s, 4) },
+          forcing: "game",
+          why: () => `four ${SUIT_WORDS[s]} and a short suit: look for a major fit`,
+        }),
+      ),
+      ...(["S", "H", "D", "C"] as Suit[]).map((s) =>
+        rule(bid(3, s), `Natural: 5+ ${SYMBOL[s]}. Forcing to game.`, (h) => h.len[s] >= 5 && longestOf(h) === s, {
+          shows: { len: len(s, 5) },
+          forcing: "game",
+          why: (h) => `${h.len[s]} ${SUIT_WORDS[s]}: show the suit before choosing notrump`,
+        }),
+      ),
+    ];
+  }
+  // 2♣–2NT–3♥: with four spades, show them (opener may hold four too); otherwise the general rules.
+  if (codes.length === 3 && !iOpened && codes[1] === "2NT" && codes[2] === "3H") {
+    return [
+      rule(bid(3, "S"), "Natural: 4+ ♠, no heart fit. Looks for a spade fit.", (h) => h.len.S >= 4 && h.len.H < 4, {
+        shows: { len: len("S", 4) },
+        forcing: "game",
+        why: (h) => `${h.len.S} spades and only ${h.len.H} hearts: show the spades`,
+      }),
+    ];
+  }
   if (codes.length === 3 && !iOpened && codes[1] === "2D" && /^[23][SHDC]$/.test(codes[2]!)) {
     const s = codes[2]![1] as Suit;
     const level = Number(codes[2]![0]);
@@ -444,6 +528,13 @@ function preemptRules(p: Position, codes: string[], op: Bid, iOpened: boolean): 
   if (codes.length === 1 && !iOpened) {
     const weakTwo = op.level === 2;
     const rules: CallRule[] = [
+      // All four aces opposite a good weak-two suit (two of the top three honours): the suit runs
+      // with a little help, and the defence has no ace to cash.
+      ...(weakTwo && major
+        ? [rule(bid(6, s), `Small slam: all four aces, ${SYMBOL[s]} support and 19+ HCP opposite a good suit.`, (h) => h.aces === 4 && h.len[s] >= 2 && h.hcp >= 19, {
+            why: (h) => `all four aces, ${h.len[s]} ${SUIT_WORDS[s]} and ${hcpText(h)}: partner's good suit should run`,
+          })]
+        : []),
       rule(bid(game, s), `Game: a fit (3+ ${SYMBOL[s]}), either to make or to make it hard for the opponents.`, (h) => h.len[s] >= 3 && (h.hcp >= 16 || (h.len[s] >= 4 && h.hcp <= 10)) && major, {
         why: (h) => (h.hcp >= 16 ? `${hcpText(h)} and ${h.len[s]} ${SUIT_WORDS[s]}: enough for game` : `${h.len[s]} ${SUIT_WORDS[s]} but weak: raise to game to keep the opponents out`),
       }),

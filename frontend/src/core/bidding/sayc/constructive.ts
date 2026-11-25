@@ -20,6 +20,7 @@ import {
   theirActions,
 } from "../position";
 import { SUIT_WORDS, SYMBOL, cards, hcpText, len, rule, shapeText } from "./common";
+import { slamCards } from "./general";
 
 export function constructiveRules(p: Position): CallRule[] {
   if (theirActions(p).length > 0) return [];
@@ -77,7 +78,12 @@ function responses(p: Position, o: Suit): CallRule[] {
   const sp = (h: HandFacts) => supportPoints(h, o);
   const fitLen = major ? 3 : o === "D" ? 4 : 5;
 
-  rules.push(rule(PASS, "Fewer than 6 points: no game even opposite a good opening.", (h) => h.hcp < 6 && !(major && h.len[o] >= 5 && h.hcp >= 3), { shows: { hcp: [0, 5] }, why: (h) => `${hcpText(h)}: too weak to respond` }));
+  // A shapely 4–5 count (a six-card suit, or 5-4 with a singleton or void) still responds when it
+  // has a new suit at the one level: the fit and the shape can make game opposite a good opening.
+  const higher = SUITS.slice(0, SUITS.indexOf(o)); // SUITS runs spades first
+  const shapely = (h: HandFacts) =>
+    h.hcp >= 4 && (h.shape[0]! >= 6 || (h.shape[0]! >= 5 && h.shape[1]! >= 4 && h.shape[3]! <= 1)) && higher.some((x) => h.len[x] >= 4);
+  rules.push(rule(PASS, "Fewer than 6 points: no game even opposite a good opening.", (h) => h.hcp < 6 && !(major && h.len[o] >= 5 && h.hcp >= 3) && !shapely(h), { shows: { hcp: [0, 5] }, why: (h) => `${hcpText(h)}: too weak to respond` }));
 
   if (major) {
     if (s.jacoby2Nt) {
@@ -229,9 +235,12 @@ function openerRebid(p: Position, o: Suit, r: Bid, rName: string | undefined, ga
   if (rs === o && r.level === 2) {
     return [
       rule(bid(4, o), "Bids game: enough opposite a single raise.", (h) => fp(h) >= 19 && isMajor(o), { why: (h) => `${fp(h)} points: game even opposite 6` }),
-      rule(bid(3, o), "Invites game: 16–18 points.", (h) => fp(h) >= 16, { shows: { strength: { kind: "fit", suit: o, shownTrumps, range: [16, isMajor(o) ? 18 : 50] } }, why: (h) => `${fp(h)} points: game if partner is at the top of the raise` }),
-      rule(bid(3, "NT"), "Bids game in notrump.", (h) => !isMajor(o) && h.hcp >= 18 && h.balanced, { why: (h) => `${hcpText(h)} balanced` }),
-      rule(PASS, "Minimum: no game opposite a single raise.", () => true, { why: (h) => `${fp(h)} points: game is unlikely` }),
+      // A minor: 3NT with a balanced 18+, five of the minor with 19–22 points; past that, slam is in
+      // range (opposite 6–10) and the slam rules take it.
+      rule(bid(3, "NT"), "Bids game in notrump.", (h) => !isMajor(o) && h.hcp >= 18 && h.semiBalanced && fp(h) <= 22, { why: (h) => `${hcpText(h)} balanced` }),
+      rule(bid(5, o), "Bids game in the minor: 19–22 points.", (h) => !isMajor(o) && fp(h) >= 19 && fp(h) <= 22, { why: (h) => `${fp(h)} points: game opposite a single raise` }),
+      rule(bid(3, o), "Invites game: 16–18 points.", (h) => fp(h) >= 16 && fp(h) <= 18, { shows: { strength: { kind: "fit", suit: o, shownTrumps, range: [16, 18] } }, why: (h) => `${fp(h)} points: game if partner is at the top of the raise` }),
+      rule(PASS, "Minimum: no game opposite a single raise.", (h) => fp(h) < 16, { why: (h) => `${fp(h)} points: game is unlikely` }),
     ];
   }
   const slamZone = (h: HandFacts) => isMajor(o) && fp(h) + partnerPoints(p, o).likely >= 31;
@@ -286,7 +295,13 @@ function openerRebid(p: Position, o: Suit, r: Bid, rName: string | undefined, ga
     const t = rs as Suit;
     if (isMajor(t)) {
       rules.push(
-        rule(bid(4, t), `4 ${SYMBOL[t]} and 19+ points: game.`, (h) => h.len[t] >= 4 && supportPoints(h, t) >= 19, { shows: { strength: { kind: "support", suit: t, range: [19, 50] }, len: len(t, 4) }, why: (h) => `four ${SUIT_WORDS[t]} and ${supportPoints(h, t)} points` }),
+        // 22+ with a fit for partner's major: slam is likely even opposite a minimum response, so
+        // check the aces now (partner's major is trumps).
+        rule(bid(4, "NT"), `4 ${SYMBOL[t]} and 22+ points: Blackwood, ${SYMBOL[t]} agreed.`, (h) => h.len[t] >= 4 && supportPoints(h, t) >= 22, {
+          name: "Blackwood", forcing: "one round", shows: { len: len(t, 4) },
+          why: (h) => `four ${SUIT_WORDS[t]} and ${supportPoints(h, t)} points: slam is likely, so check the aces first`,
+        }),
+        rule(bid(4, t), `4 ${SYMBOL[t]} and 19–21 points: game.`, (h) => h.len[t] >= 4 && supportPoints(h, t) >= 19, { shows: { strength: { kind: "support", suit: t, range: [19, 21] }, len: len(t, 4) }, why: (h) => `four ${SUIT_WORDS[t]} and ${supportPoints(h, t)} points` }),
         rule(bid(3, t), `4 ${SYMBOL[t]} and 16–18 points: invites game.`, (h) => h.len[t] >= 4 && supportPoints(h, t) >= 16, { shows: { strength: { kind: "support", suit: t, range: [16, 18] }, len: len(t, 4) }, why: (h) => `four ${SUIT_WORDS[t]} and ${supportPoints(h, t)} points` }),
         rule(bid(2, t), `4 ${SYMBOL[t]}, minimum (12–15).`, (h) => h.len[t] >= 4, { shows: { strength: { kind: "support", suit: t, range: [0, 15] }, len: len(t, 4) }, why: () => `four ${SUIT_WORDS[t]}: support partner's major` }),
       );
@@ -486,7 +501,24 @@ function responderRebid(p: Position, o: Suit, r: Bid, rebid: Bid): CallRule[] {
   if (rebid.strain === "NT" && rebid.level === 1) {
     const mine = r.strain as Suit;
     rules.push(
-      rule(bid(4, mine), `6+ ${SYMBOL[mine]} and game values.`, (h) => isMajor(mine) && h.len[mine] >= 6 && h.hcp >= 12 && h.hcp + low[1] < 33, { why: (h) => `${h.len[mine]} ${SUIT_WORDS[mine]} and ${hcpText(h)}: game in the known fit` }),
+      // A six-card major counts its length (h.points): opposite opener's doubleton it's an 8-card fit.
+      rule(bid(4, mine), `6+ ${SYMBOL[mine]} and game values.`, (h) => isMajor(mine) && h.len[mine] >= 6 && h.points >= 25 - low[0] && h.hcp + low[1] < 33, { why: (h) => `${h.len[mine]} ${SUIT_WORDS[mine]} and ${h.points} points counting length: game in the known fit` }),
+      // Opener's 1NT rebid denies support for my major, but a 1♥/1♠ opening shows five: with three, that's the fit.
+      ...(isMajor(o)
+        ? [
+            rule(bid(4, o), `3+ ${SYMBOL[o]} and game values: game in opener's five-card major.`, (h) => h.len[o] >= 3 && supportPoints(h, o) >= 25 - low[0] && h.hcp + low[1] < 33, {
+              why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} opposite five, and ${supportPoints(h, o)} points counting shortness: game`,
+            }),
+            rule(bid(3, o), `Invites game in opener's five-card major: 3+ ${SYMBOL[o]}.`, (h) => h.len[o] >= 3 && supportPoints(h, o) >= 25 - low[1], {
+              shows: { len: len(o, 3), strength: { kind: "support", suit: o, range: [25 - low[1], 24 - low[0]] } },
+              why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} opposite five, and ${supportPoints(h, o)} points: invite`,
+            }),
+          ]
+        : []),
+      rule(bid(3, mine), `Invites game: 6+ ${SYMBOL[mine]}.`, (h) => isMajor(mine) && h.len[mine] >= 6 && h.points >= 25 - low[1], {
+        shows: { len: len(mine, 6), strength: { kind: "length", range: [25 - low[1], 24 - low[0]] } },
+        why: (h) => `${h.len[mine]} ${SUIT_WORDS[mine]} and ${h.points} points counting length: invite in the long suit`,
+      }),
       // HCP plus length (a five-card suit counts one): long suits take tricks in notrump too.
       rule(bid(3, "NT"), `${25 - low[0]}+ points: game opposite ${rangeText(low)}.`, (h) => h.points >= 25 - low[0] && h.hcp + low[1] < 33, { why: (h) => `${h.points} points + ${rangeText(low)} is enough for game` }),
       rule(bid(2, "NT"), `${25 - low[1]}–${24 - low[0]} points: invites 3NT.`, (h) => h.points >= 25 - low[1], { shows: { hcp: [25 - low[1] - 1, 24 - low[0]] }, why: (h) => `${h.points} points: game if opener has ${low[1]}` }),
@@ -501,11 +533,22 @@ function responderRebid(p: Position, o: Suit, r: Bid, rebid: Bid): CallRule[] {
     const m = r.strain as Suit;
     const level = rebid.level;
     const need = 25 - (level === 2 ? 14 : level === 3 ? 17 : 20);
+    // Opener's least, counting the raise's support points; game up to just short of slam, so
+    // opener with extras can still look for slam. Slam-range hands go to the slam rules.
+    const raiseMin = Math.max(partnerPoints(p, m).min, 12);
+    // Slam range on points, and the cards to back it (about 29 HCP and 9 controls between us).
+    const slamTry = (h: HandFacts) => {
+      const c = slamCards(p, h, m);
+      return supportPoints(h, m) + raiseMin >= 31 && c.hcp >= 29 && c.controls >= 9;
+    };
     if (level < 4) {
       rules.push(
-        rule(bid(4, m), "Bids game.", (h) => supportPoints(h, m) >= need, { why: (h) => `${supportPoints(h, m)} points: enough opposite opener's raise` }),
-        ...(level === 2 ? [rule(bid(3, m), "Invites game.", (h) => supportPoints(h, m) >= need - 2, { why: (h: HandFacts) => `${supportPoints(h, m)} points: game if opener is not minimum` })] : []),
-        rule(PASS, "Not enough for game.", () => true, { why: (h) => `${hcpText(h)}: stop here` }),
+        rule(bid(4, m), "Bids game.", (h) => supportPoints(h, m) >= need && !slamTry(h), {
+          shows: { strength: { kind: "support", suit: m, range: [need, need + 2] } },
+          why: (h) => `${supportPoints(h, m)} points: enough opposite opener's raise`,
+        }),
+        ...(level === 2 ? [rule(bid(3, m), "Invites game.", (h) => supportPoints(h, m) >= need - 2 && supportPoints(h, m) < need, { why: (h: HandFacts) => `${supportPoints(h, m)} points: game if opener is not minimum` })] : []),
+        rule(PASS, "Not enough for game.", (h) => supportPoints(h, m) < need, { why: (h) => `${hcpText(h)}: stop here` }),
       );
       return rules;
     }
@@ -529,18 +572,45 @@ function responderRebid(p: Position, o: Suit, r: Bid, rebid: Bid): CallRule[] {
   const gameValues = (h: HandFacts) => h.hcp + minOpener >= 25;
   // Slam is in range: leave it to the general rules (Blackwood, slam invitations) rather than sign off in game.
   const slamRange = (points: number) => points + minOpener >= 31;
+  // What responder's 3NT shows: game opposite opener's least, but short of slam range. Opener
+  // with extras can then look for slam (1♣–1♦–1♠–3NT with 18 opposite 15 is 33).
+  const gameNoSlam: [number, number] = [25 - minOpener, 30 - minOpener];
+  // Not when my earlier bids already showed game values (a jump shift's 19+ stands).
+  // A suit game shows less: no extras (13–15 opposite 12). Points counted for shape on both sides
+  // would otherwise reach slam on 27–28 HCP. 3NT keeps the whole range.
+  const shownBefore = p.shown[p.seat].hcp[0] < gameNoSlam[0];
+  const gameShows = { shows: shownBefore ? { hcp: gameNoSlam } : {} };
+  const gameHcp = shownBefore ? { hcp: [gameNoSlam[0], gameNoSlam[0] + 2] as [number, number] } : {};
+  const suitGameShows = { shows: gameHcp };
   const opener2 = rebid.strain !== o && rebid.strain !== r.strain && rebid.strain !== "NT" ? (rebid.strain as Suit) : null;
   const owesRebid = responderOwesRebid(p);
   if (opener2 && isMajor(opener2) && ps.len[opener2][0] >= 4) {
     rules.push(rule(bid(4, opener2), "Game in opener's second major: a known fit.",
       (h) => h.len[opener2] >= 4 && (gameValues(h) || supportPoints(h, opener2) + minOpener >= 26) && !slamRange(supportPoints(h, opener2)), {
-        shows: { len: len(opener2, 4) },
+        shows: { len: len(opener2, 4), ...gameHcp },
         why: (h) => `${h.len[opener2]} ${SUIT_WORDS[opener2]}: raise opener's second suit to game`,
       }));
   }
+  // Opener's jump rebid (2NT, or three of opener's suit) and my major: six or more is game in it;
+  // with five, 3 of the major (forcing) lets opener raise with three or choose 3NT.
+  const jumpRebid = rebid.level === 3 || (rebid.strain === "NT" && rebid.level === 2);
+  if (jumpRebid && r.strain !== "NT" && isMajor(r.strain) && rebid.strain !== r.strain) {
+    const mine = r.strain;
+    rules.push(
+      rule(bid(4, mine), `Game in my ${SYMBOL[mine]}: 6+ cards.`, (h) => h.len[mine] >= 6 && h.points + minOpener >= 25 && !slamRange(h.points), {
+        ...suitGameShows,
+        why: (h) => `${h.len[mine]} ${SUIT_WORDS[mine]} and ${h.points} points counting length, with opener's ${minOpener}+: game`,
+      }),
+      rule(bid(3, mine), `5 ${SYMBOL[mine]}, forcing: opener raises with three, or bids 3NT.`, (h) => h.len[mine] === 5 && h.points + minOpener >= 25 && !slamRange(h.hcp) && cheapest(p, mine) === 3, {
+        forcing: "one round",
+        shows: { len: len(mine, 5) },
+        why: (h) => `five ${SUIT_WORDS[mine]} and ${h.points} points counting length: look for the 5-3 fit before notrump`,
+      }),
+    );
+  }
   rules.push(
-    rule(bid(4, o), `Game in opener's ${SYMBOL[o]}.`, (h) => isMajor(o) && fitO(h) && total(h) >= 25 && !slamRange(h.hcp), { why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${hcpText(h)}: game` }),
-    rule(bid(3, "NT"), "Game in notrump.", (h) => total(h) >= 25 && !slamRange(h.hcp) && SUITS.filter((x) => x !== o && x !== r.strain && x !== opener2).every((x) => stopper(h, x)), { why: (h) => `${hcpText(h)} and stoppers in the unbid suits` }),
+    rule(bid(4, o), `Game in opener's ${SYMBOL[o]}.`, (h) => isMajor(o) && fitO(h) && total(h) >= 25 && !slamRange(h.hcp), { shows: { ...gameHcp, len: len(o, rebid.strain === o ? 2 : 3) }, why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${hcpText(h)}: game` }),
+    rule(bid(3, "NT"), "Game in notrump.", (h) => total(h) >= 25 && !slamRange(h.hcp) && SUITS.filter((x) => x !== o && x !== r.strain && x !== opener2).every((x) => stopper(h, x)), { ...gameShows, why: (h) => `${hcpText(h)} and stoppers in the unbid suits` }),
   );
   // With game values and no strain chosen, show a genuine second suit before limiting the hand.
   for (const x of SUITS.filter((s) => !named.includes(s) && cheapest(p, s) <= 3)) {
@@ -551,21 +621,32 @@ function responderRebid(p: Position, o: Suit, r: Bid, rebid: Bid): CallRule[] {
   }
   if (r.strain !== "NT" && isMajor(r.strain)) {
     const major = r.strain;
-    rules.push(rule(bid(4, major), "Game in responder's long major.", (h) => gameValues(h) && h.len[major] >= 6 && !slamRange(h.points)));
+    // A six-card suit's length counts towards game (h.points), as it would for opener.
+    rules.push(rule(bid(4, major), "Game in responder's long major.", (h) => h.points + minOpener >= 25 && h.len[major] >= 6 && !slamRange(h.points), {
+      ...suitGameShows,
+      why: (h) => `${h.len[major]} ${SUIT_WORDS[major]} and ${h.points} points counting length, with opener's ${minOpener}+: game`,
+    }));
   }
   // A suit unstopped and two cards in opener's five-card major: the 5-2 fit is the safer game.
   const unbid = SUITS.filter((x) => !named.includes(x));
   if (isMajor(o) && ps.len[o][0] >= 5) {
     rules.push(rule(bid(4, o), `Game in opener's ${SYMBOL[o]}: two-card support, and a suit unstopped for notrump.`,
       (h) => gameValues(h) && !slamRange(h.hcp) && h.len[o] >= 2 && !unbid.every((x) => stopper(h, x)),
-      { why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} opposite five, and no stopper in ${unbid.filter((x) => !stopper(h, x)).map((x) => SYMBOL[x]).join(" ")}` }));
+      { shows: { ...gameHcp, len: len(o, 2) }, why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} opposite five, and no stopper in ${unbid.filter((x) => !stopper(h, x)).map((x) => SYMBOL[x]).join(" ")}` }));
   }
   rules.push(rule(bid(3, "NT"), "Game values with no clear suit game.", (h) => gameValues(h) && !slamRange(h.hcp),
-    { why: (h) => `${hcpText(h)}: enough for game and no clear suit game` }));
+    { ...gameShows, why: (h) => `${hcpText(h)}: enough for game and no clear suit game` }));
   if (opener2 && isMajor(opener2) && ps.len[opener2][0] >= 4) {
     const raise = cheapBid(p, opener2);
+    // A jump raise invites (10–12 counting shortness); the cheapest raise is 6–9.
+    const sp2 = (h: HandFacts) => supportPoints(h, opener2);
+    if (raise && raise.level < 3) rules.push(rule(bid(raise.level + 1, opener2), `Invites game: 4+ ${SYMBOL[opener2]}, 10–12 points.`,
+      (h) => h.len[opener2] >= 4 && sp2(h) >= 10, {
+        shows: { len: len(opener2, 4), strength: { kind: "support", suit: opener2, range: [10, 12] } },
+        why: (h) => `${h.len[opener2]} ${SUIT_WORDS[opener2]} and ${sp2(h)} points counting shortness: invite`,
+      }));
     if (raise && raise.level < 4) rules.push(rule(raise, "Supports opener's second major.",
-      (h) => h.len[opener2] >= 4, { shows: { len: len(opener2, 4) } }));
+      (h) => h.len[opener2] >= 4, { shows: { len: len(opener2, 4), ...(raise.level < 3 && { strength: { kind: "support" as const, suit: opener2, range: [6, 9] as [number, number] } }) } }));
   }
   rules.push(
     // 3+ cards in opener's major and 10–12 support points: the limit raise that waited a round
@@ -579,7 +660,7 @@ function responderRebid(p: Position, o: Suit, r: Bid, rebid: Bid): CallRule[] {
         ]
       : []),
     rule(bid(3, o), `Invites game in ${SYMBOL[o]}.`, (h) => fitO(h) && total(h) >= 23 && cheapest(p, o) <= 3, { shows: { hcp: [23 - minOpener, 24 - minOpener] }, why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${hcpText(h)}: invite` }),
-    rule(bid(2, "NT"), "Invites 3NT: 11–12 HCP.", (h) => h.hcp >= 11 && h.hcp <= 12 && cheapest(p, "NT") === 2, { shows: { hcp: [11, 12] }, why: (h) => `${hcpText(h)}: invite` }),
+    rule(bid(2, "NT"), "Invites 3NT: 11–12 HCP.", (h) => h.hcp >= 11 && h.hcp <= 12 && cheapest(p, "NT") <= 2, { shows: { hcp: [11, 12] }, why: (h) => `${hcpText(h)}: invite` }),
   );
   if (opener2) {
     rules.push(

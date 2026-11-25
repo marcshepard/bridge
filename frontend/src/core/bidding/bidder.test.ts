@@ -403,8 +403,10 @@ describe("Roman Key Card (1430)", () => {
 describe("slam judgment (stage 1 harness)", () => {
   // The specific rules place games from fixed ranges; with slam values the plan's slam move wins.
   it.each([
-    // Board 790 (quick): 17 opposite 15–17 with a 4-4 fit, which used to stop in game: check the aces.
-    ["slam values after Stayman finds the fit", "AQ6.AQ92.A72.J42", "PASS 1NT PASS 2C PASS 2H PASS", "S", "4NT"],
+    // Board 790 (quick): 17 opposite 15–17 with a 4-4 fit, which used to stop in game: invite slam
+    // with 5♥ (4NT here would be quantitative, no fit), and 17 accepts.
+    ["slam values after Stayman finds the fit", "AQ6.AQ92.A72.J42", "PASS 1NT PASS 2C PASS 2H PASS", "S", "5H"],
+    ["accepting the 5♥ invitation with the top of the range", "K975.K3.KQ43.AQ7", "PASS 1NT PASS 2C PASS 2H PASS 5H PASS", "S", "6H"],
     // Board 323 (quick): 20 opposite opener's 1♣ then 1♠, no fit: slam, not 3NT.
     ["a slam in notrump after opener's rebid", "AK2.QJ762.Q.AKT4", "1C PASS 1H PASS 1S PASS", "S", "6NT"],
     // Partner's Stayman needs its answer, whatever the strength.
@@ -415,6 +417,49 @@ describe("slam judgment (stage 1 harness)", () => {
 
   it("counts controls: 2 for an ace, 1 for a king", () => {
     expect(evaluate(parseHand("AK2.KQJ62.Q.AT4")).controls).toBe(6);
+  });
+});
+
+describe("responder's rebids and strain (stage 1 harness, second round)", () => {
+  it.each([
+    // Hands from the quick set, or made up; never from holdout.
+    ["a shapely 4-count responds at the one level", "KT8432.J9542.9.3", "1C PASS", "N", "1S"],
+    ["2NT invites after opener's one-level rebid", "Q94.AK42.43.QJ92", "1D PASS 1H PASS 1S PASS", "N", "2NT"],
+    ["a jump raise of opener's second major invites", "KJ84.AQ32.7.9874", "1D PASS 1H PASS 1S PASS", "N", "3S"],
+    ["three-card support for opener's five-card major after 1NT", "KQ84.K43.A643.84", "1H PASS 1S PASS 1NT PASS", "N", "4H"],
+    ["a six-card major invites after 1NT", "KQJ875.84.K43.84", "1C PASS 1S PASS 1NT PASS", "N", "3S"],
+    ["2♣–2NT: opener shows a five-card suit", "AKQ74.AKJ65.A8.5", "2C PASS 2NT PASS", "N", "3S"],
+    ["after a 2NT transfer, three trumps choose the major", "KQ63.KJ9.AQ4.AQ5", "2NT PASS 3D PASS 3H PASS 3NT PASS", "N", "4H"],
+    // Board 21 (quick): five spades after opener's jump rebid: look for the 5-3 fit.
+    ["five cards in my major after a jump rebid", "KQ842.Q73.J4.Q73", "1D PASS 1S PASS 3D PASS", "N", "3S"],
+    // Board 323 (quick): responder's 3NT shows 13–18, so 19 opposite it is a slam.
+    ["slam opposite responder's 3NT", "AKT8.K8.AK6.Q975", "1C PASS 1H PASS 1S PASS 3NT PASS", "S", "6NT"],
+    // Board 908 (quick): a minimum opener leaves partner's 3NT alone.
+    ["no pulling partner's 3NT without slam", "A4.4.AQJ763.Q842", "PASS 1D PASS 1H PASS 2D PASS 3NT PASS", "W", "PASS"],
+    // Board 807 (quick): Stayman finds no fit; 12 opposite 20–21 invites with 4NT, and 21 accepts.
+    ["quantitative 4NT after Stayman finds no fit", "532.AK95.JT.AT62", "2NT PASS 3C PASS 3S PASS", "S", "4NT"],
+    ["accepting the quantitative 4NT after Stayman", "AQT9.J4.AKQ8.KQ3", "2NT PASS 3C PASS 3S PASS 4NT PASS", "S", "6NT"],
+    // Board 622 (quick): 21 HCP after 1♦–2♦ is past an invitation.
+    ["a strong opener doesn't invite after a minor raise", "AK84.KJT8.AQT8.A", "PASS 1D PASS 2D PASS", "E", "5D"],
+    ["3NT with a balanced 18+ after a minor raise", "AK2.K4.AQJ74.Q32", "1D PASS 2D PASS", "N", "3NT"],
+    // Board 198 (quick): all four aces opposite a good weak two.
+    ["all four aces opposite a weak two: slam", "A9862.A5.A.AKQ32", "PASS 2H PASS", "E", "6H"],
+    // Board 577 (quick): responder's 4♠ shows spade support, so the 7-card suit sees the fit.
+    ["a raise to game records the support", "AKQT543.KT3.A3.J", "1S PASS 2D PASS 3S PASS 4S PASS", "N", "5S"],
+    // Board 367 (quick): 22+ support points is past a jump to game: check the aces.
+    ["22+ with a fit for partner's major asks for aces", "KQT7.AK7.KQ984.A", "1D PASS 1S PASS", "N", "4NT"],
+    // Board 973 (quick): 15 HCP and a five-card suit count 16: invite with 4NT; 17 accepts.
+    ["a long suit counts for the quantitative 4NT", "QJ2.KQ5.AQ743.J2", "1NT PASS", "N", "4NT"],
+    // Board 450 (quick): five hearts after a transfer, 16 counting the fifth: invite with 4NT.
+    ["after a transfer, five cards and slam values invite with 4NT", "K52.AJ863.AK.T94", "PASS 1NT PASS 2D PASS 2H PASS", "E", "4NT"],
+    ["opener accepts in notrump with two trumps", "AQT.K9.QJ42.KJ63", "PASS 1NT PASS 2D PASS 2H PASS 4NT PASS", "E", "6NT"],
+    // Board 914 (quick): 4-4-1-4 after 2♣–2NT shows a major; responder shows four spades.
+    ["2♣–2NT: an unbalanced 4-4-4-1 shows a major", "Q963.AKQT.A.AKJ2", "PASS 2C PASS 2NT PASS", "E", "3H"],
+    ["2♣–2NT–3♥: four spades are shown", "AKJT.96.963.9876", "PASS 2C PASS 2NT PASS 3H PASS", "E", "3S"],
+    // Board 195 (quick): after a jump rebid in a six-card major, 3NT offers a choice.
+    ["back to a jump-rebid six-card major", "KQ9532.A97.4.AK5", "PASS PASS 1S PASS 1NT PASS 3S PASS 3NT PASS", "S", "4S"],
+  ])("%s", (_name, hand, auction, dealer, expected) => {
+    expect(bot(hand, auction, dealer as Seat)).toBe(expected);
   });
 });
 
@@ -453,13 +498,14 @@ describe("auction audit regressions", () => {
   });
 
   it.each([
-    ["Jordan 2NT", "5.7632.3.KQJ9543", "1H X", "2NT", "S", "H", 10],
-    ["opener's jump to game", "KJ84..AQ874.KJ83", "1D PASS 1S PASS", "4S", "N", "S", 19],
-  ] as const)("reads %s in support points", (_, hand, auction, expected, seat, suit, minimum) => {
+    ["Jordan 2NT", "5.7632.3.KQJ9543", "1H X", "2NT", "S", "H", 10, 50],
+    // 19–21: with 22+ opener asks for aces instead.
+    ["opener's jump to game", "KJ84..AQ874.KJ83", "1D PASS 1S PASS", "4S", "N", "S", 19, 21],
+  ] as const)("reads %s in support points", (_, hand, auction, expected, seat, suit, minimum, maximum) => {
     expect(bot(hand, auction)).toBe(expected);
     const shown = readAuction(deal, calls(`${auction} ${expected}`)).at(-1)!.position.shown[seat];
     expect(shown.hcp[0]).toBeLessThanOrEqual(evaluate(parseHand(hand)).hcp);
-    expect(shown.strength).toContainEqual({ kind: "support", suit, range: [minimum, 50] });
+    expect(shown.strength).toContainEqual({ kind: "support", suit, range: [minimum, maximum] });
   });
 });
 
