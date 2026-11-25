@@ -249,7 +249,8 @@ Baselines: after this round was committed, a run of each set on the committed co
 baseline, so the next round compares with this one. The "Before" column above (the original
 bidding) is kept here as the record of where stage 1 started.
 
-**Is stage 1 at advanced yet?** Not yet (24 November 2026). Against the definition above: fixes
+**Is stage 1 at advanced yet?** (Yes as of 25 November 2026: see "Stage 1 status" below. The
+assessment that follows is from 24 November.) Not yet (24 November 2026). Against the definition above: fixes
 are still finding real gains; Blackwood and strong 2♣ auctions lose about twice the average on
 `holdout` (6.96 and 5.91 IMPs per board against 3.41); many of the costliest boards are still
 plain errors; and the "can't do yet" list still has phase 1 items. The six biggest areas, roughly
@@ -441,9 +442,40 @@ After items 12–14: `quick` 2.59 (−0.14, −0.24 to −0.05, better); `holdou
 baseline). New overbid: board 642, 6NT on 30 HCP after 2♣–2NT–3♠, because a 2♣ opener with exactly
 22 is read as about 24.
 
-Still open (from `quick`): 1♦–1♥–1NT and 1♣–1♠–1NT with a five-card major or the other major need
-new minor forcing (area 4); minor-suit slams past 3NT; the 2♣ opener's likely point (24) may be
-high.
+**Third round: new minor forcing, and the remaining non-slam auctions** (25 November 2026).
+
+15. **New minor forcing** (on the SAYC card, not played until now): after 1♣/1♦–1♥/1♠–1NT,
+    responder's 2 of the other minor is artificial, 11+ points, with five in the major or spades and
+    four hearts. Opener shows three-card support, then four hearts (after 1♠), else notrump; at the
+    two level with a minimum, three with 14. Responder bids game or stops. `quick` −0.02 (3NT becomes
+    4♥ on 5-3 fits: boards 596, 302, 147); `holdout` about −0.01 (from the headline with it on and off).
+    Marked as built in the settings.
+16. **Removed: the light shapely response** (round two, item 7: a 4–5 count with a six-card suit,
+    or 5-4 with a singleton, responding at the one level). Measured alone, it was exactly neutral on
+    `quick`; with silent opponents its real benefit (getting in their way) can't show. Marc: leave it
+    out. A sounder version to try in stage 2: respond with 6+ points counting support points with a
+    fit, or length without one.
+
+Drill-down of the reverse, responder's-second-suit and game-invitation auctions (`quick`): about
+0.28 IMPs per board together; no bugs of the kind the slam rounds found. What's there: minor-suit
+and fit slams on 28–30 HCP, and judgment (3NT against a 4-3 fit, invitations at 22–24 HCP).
+
+After this round: `quick` 2.57, `holdout` 3.17 (the baselines after round two: 2.59 and 3.15).
+
+**Stage 1 status (25 November 2026): done for phase 1; uncontested bidding at advanced.** From the
+start: `quick` 3.23 → 2.57, `holdout` 3.75 → 3.17. Slams with 33+ HCP: all 41 on the two sets
+(were 29 of 41 before the slam rounds). Notrump openings are the strongest area (1.4–1.9 IMPs per
+board against 2.57). Game or part score is calibrated: missed and overbid games, mostly at 22–25
+HCP, roughly balance. Left for stage 6 (judgment, or more machinery than phase 1 needs):
+- Minor-suit slams past 3NT: an agreed minor and control bids above 3NT, or counting a running
+  suit's tricks for 6NT.
+- Fit slams on 30 HCP or fewer (double fits, no wasted values): rarely found by any bidding;
+  candidates for double-dummy simulation of "hard" calls.
+- Strain in part scores and 4-3 fits, partly double dummy's preference.
+- Conventions not on the card: Texas, Smolen, splinters, inverted minors; Roman Key Card is level
+  with plain Blackwood (try again with void answers and 5NT for kings).
+- Playing tricks for a strong 2♣ (area 2) and valuation refinements (area 5).
+- The 2♣ opener's likely point (24) may be high (board 642).
 
 ### Stage 2: competitive bidding
 
@@ -712,7 +744,7 @@ towards advanced; the hard problems are in stage 6 above.
    `run`, `baseline`, `compare`, `show`, and the terminal summary. No HTML, no targeted generators
    yet. **Done** (November 2026).
 2. Use it on the next few bidding fixes. Keep going only if it shows things worth fixing or catches
-   side effects.
+   side effects. **Done:** three rounds of stage 1 fixes, stage 1 at advanced (25 November 2026).
 3. Targeted generators and the full and held-out sets, as stage 1's breakdowns show where they're
    needed.
 4. Stage 2 (needs two engines at once), then 3, 4 and 5, each to advanced standard.

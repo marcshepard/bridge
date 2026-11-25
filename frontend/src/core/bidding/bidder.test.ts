@@ -364,8 +364,9 @@ describe("stage 1 harness fixes (boards from the quick set, docs/HARNESS.md)", (
     ["2♣ forces to game", "8643.972.8643.92", "2C PASS 2D PASS 2H PASS", "not PASS"],
     // ...except after 2♣–2♦–2NT, which a bust passes.
     ["2♣–2♦–2NT isn't forcing", "8643.972.8643.92", "2C PASS 2D PASS 2NT PASS", "PASS"],
-    // Board 391: 10 HCP with a five-card suit invites after opener's 1NT rebid.
-    ["a five-card suit counts after a 1NT rebid", "74.KQT83.K32.Q54", "1D PASS 1H PASS 1NT PASS", "2NT"],
+    // Board 391: 10 HCP with a five-card suit is worth an invitation after opener's 1NT rebid; with
+    // five hearts, new minor forcing looks for three-card support first.
+    ["a five-card suit counts after a 1NT rebid", "74.KQT83.K32.Q54", "1D PASS 1H PASS 1NT PASS", "2C"],
   ])("%s", (_, hand, auction, expected) => {
     const call = bot(hand, auction);
     if (expected === "not PASS") expect(call).not.toBe("PASS");
@@ -423,7 +424,14 @@ describe("slam judgment (stage 1 harness)", () => {
 describe("responder's rebids and strain (stage 1 harness, second round)", () => {
   it.each([
     // Hands from the quick set, or made up; never from holdout.
-    ["a shapely 4-count responds at the one level", "KT8432.J9542.9.3", "1C PASS", "N", "1S"],
+    // Responding light with shape tested neutral on the harness (no opponents to get in the way of).
+    ["a 4-count passes, however shapely", "KT8432.J9542.9.3", "1C PASS", "N", "PASS"],
+    // New minor forcing: five hearts and 12 after 1NT; opener shows three hearts; responder bids game.
+    ["new minor forcing with five in my major", "K4.AQ853.K72.J63", "1C PASS 1H PASS 1NT PASS", "N", "2D"],
+    ["opener shows three-card support, minimum", "A72.K94.Q5.KJ942", "1C PASS 1H PASS 1NT PASS 2D PASS", "N", "2H"],
+    ["opener shows four hearts after 1♠", "A7.KJ94.Q53.QJ94", "1C PASS 1S PASS 1NT PASS 2D PASS", "N", "2H"],
+    ["opener with no fit and a maximum bids 3NT", "A72.K9.QJ53.KJ94", "1D PASS 1H PASS 1NT PASS 2C PASS", "N", "3NT"],
+    ["responder bids game in the fit", "K4.AQ853.K72.J63", "1C PASS 1H PASS 1NT PASS 2D PASS 2H PASS", "N", "4H"],
     ["2NT invites after opener's one-level rebid", "Q94.AK42.43.QJ92", "1D PASS 1H PASS 1S PASS", "N", "2NT"],
     ["a jump raise of opener's second major invites", "KJ84.AQ32.7.9874", "1D PASS 1H PASS 1S PASS", "N", "3S"],
     ["three-card support for opener's five-card major after 1NT", "KQ84.K43.A643.84", "1H PASS 1S PASS 1NT PASS", "N", "4H"],

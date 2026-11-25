@@ -330,7 +330,7 @@ export const SETTING_FIELDS: SettingField[] = [
   },
   toggle("splinters", "Responses", "Splinters", "A double jump in a new suit shows a fit for partner's major and a singleton or void in that suit.", false, false),
   toggle("invertedMinors", "Responses", "Inverted minors", "1♦–2♦ would be strong and 1♦–3♦ weak. Off in SAYC: 1♦–2♦ is 6–10 points.", false, false),
-  toggle("newMinorForcing", "Responses", "New minor forcing", "After opener rebids 1NT, responder's 2 of the unbid minor asks about the majors.", false, false),
+  toggle("newMinorForcing", "Responses", "New minor forcing", "After opener rebids 1NT, responder's 2 of the unbid minor asks about the majors.", true, false),
   toggle("fourthSuitForcing", "Responses", "Fourth suit forcing", "Responder bidding the fourth suit at the two level or higher is artificial and forcing: it asks opener to describe further.", false, false),
 
   {

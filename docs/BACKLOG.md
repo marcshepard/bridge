@@ -79,7 +79,7 @@ than being built in advance. Each fix the usual way: the board, a rule change, a
 that deal; `npm run bidding-report` to check nothing else got worse.
 
 - **On the card, not used yet** (shown as "Not used by the bots yet"): splinters, inverted minors,
-  new minor forcing, fourth suit forcing (from the two level).
+  fourth suit forcing (from the two level).
 - **Roman Key Card extras:** answers that show a void, and 5NT asking for kings.
 - **Other systems and conventions:** 2/1 game forcing as a second system (the design allows for
   it), Lebensohl, a lead-directing double of an artificial bid, Drury.

@@ -34,6 +34,12 @@ export function constructiveRules(p: Position): CallRule[] {
   if (ours.length === 3 && !iOpened && isBid(ours[1]!.call) && isBid(ours[2]!.call)) {
     return responderRebid(p, o, ours[1]!.call, ours[2]!.call);
   }
+  if (ours.length === 4 && iOpened && ours[3]!.rule?.name === "New minor forcing" && isBid(ours[1]!.call)) {
+    return newMinorAnswers(p, ours[1]!.call.strain as Suit);
+  }
+  if (ours.length === 5 && !iOpened && ours[3]!.rule?.name === "New minor forcing" && isBid(ours[1]!.call) && isBid(ours[4]!.call)) {
+    return afterNewMinor(p, ours[1]!.call.strain as Suit, ours[4]!.call);
+  }
   if (ours.length === 4 && iOpened && ours[3]!.rule?.name === "Minimum preference") {
     const ps = partnerShown(p);
     return [rule(PASS, "Stops in a partscore opposite a minimum preference.", (h) =>
@@ -78,12 +84,7 @@ function responses(p: Position, o: Suit): CallRule[] {
   const sp = (h: HandFacts) => supportPoints(h, o);
   const fitLen = major ? 3 : o === "D" ? 4 : 5;
 
-  // A shapely 4–5 count (a six-card suit, or 5-4 with a singleton or void) still responds when it
-  // has a new suit at the one level: the fit and the shape can make game opposite a good opening.
-  const higher = SUITS.slice(0, SUITS.indexOf(o)); // SUITS runs spades first
-  const shapely = (h: HandFacts) =>
-    h.hcp >= 4 && (h.shape[0]! >= 6 || (h.shape[0]! >= 5 && h.shape[1]! >= 4 && h.shape[3]! <= 1)) && higher.some((x) => h.len[x] >= 4);
-  rules.push(rule(PASS, "Fewer than 6 points: no game even opposite a good opening.", (h) => h.hcp < 6 && !(major && h.len[o] >= 5 && h.hcp >= 3) && !shapely(h), { shows: { hcp: [0, 5] }, why: (h) => `${hcpText(h)}: too weak to respond` }));
+  rules.push(rule(PASS, "Fewer than 6 points: no game even opposite a good opening.", (h) => h.hcp < 6 && !(major && h.len[o] >= 5 && h.hcp >= 3), { shows: { hcp: [0, 5] }, why: (h) => `${hcpText(h)}: too weak to respond` }));
 
   if (major) {
     if (s.jacoby2Nt) {
@@ -480,6 +481,47 @@ function afterOpenerOverTwoNotrump(p: Position, o: Suit, rebid: Bid): CallRule[]
   ];
 }
 
+/**
+ * Opener answers new minor forcing (12–14 after the 1NT rebid): three cards in responder's major
+ * first, then four hearts (after 1♠), else notrump; at the two level with a minimum, three with 14.
+ */
+function newMinorAnswers(p: Position, m: Suit): CallRule[] {
+  const low = rebidLow(p.s);
+  const max = (h: HandFacts) => h.hcp >= low[1];
+  const level = (h: HandFacts) => (max(h) ? 3 : 2);
+  const out: CallRule[] = [];
+  for (const top of [true, false]) {
+    const lv = top ? 3 : 2;
+    const range = top ? "a maximum" : "a minimum";
+    out.push(
+      rule(bid(lv, m), `Three ${SYMBOL[m]}, ${range}.`, (h) => level(h) === lv && h.len[m] >= 3, { shows: { len: len(m, 3), hcp: top ? [low[1], low[1]] : [low[0], low[1] - 1] }, why: (h) => `three ${SUIT_WORDS[m]} and ${hcpText(h)}` }),
+      ...(m === "S" ? [rule(bid(lv, "H"), `Four ♥ (fewer than three ♠), ${range}.`, (h) => level(h) === lv && h.len.H >= 4, { shows: { len: len("H", 4), hcp: top ? [low[1], low[1]] : [low[0], low[1] - 1] }, why: (h) => `four hearts and ${hcpText(h)}` })] : []),
+      rule(bid(lv, "NT"), `No major fit, ${range}.`, (h) => level(h) === lv, { shows: { len: len(m, 0, 2), hcp: top ? [low[1], low[1]] : [low[0], low[1] - 1] }, why: (h) => `${h.len[m]} ${SUIT_WORDS[m]} and ${hcpText(h)}` }),
+    );
+  }
+  return out;
+}
+
+/** Responder places the contract after opener's answer to new minor forcing. */
+function afterNewMinor(p: Position, m: Suit, answer: Bid): CallRule[] {
+  const opener = Math.max(partnerPoints(p).min, 12);
+  const fit: Suit | null = answer.strain === m ? m : answer.strain === "H" && m === "S" ? "H" : null;
+  if (fit) {
+    const value = (h: HandFacts) => (fit === m ? h.points : supportPoints(h, fit));
+    return [
+      rule(bid(4, fit), `Game in the ${SUIT_WORDS[fit].slice(0, -1)} fit.`, (h) => value(h) + opener >= 25, { why: (h) => `${value(h)} points with opener's ${opener}+: game in the fit` }),
+      rule(PASS, "Stops: no game opposite a minimum.", () => answer.level === 2, { why: (h) => `${value(h)} points: not enough opposite a minimum` }),
+    ];
+  }
+  if (answer.strain === "NT" && answer.level === 2) {
+    return [
+      rule(bid(3, "NT"), "Game in notrump.", (h) => h.points + opener >= 25, { why: (h) => `${h.points} points with opener's ${opener}+: game` }),
+      rule(PASS, "Stops in 2NT: no game opposite a minimum.", () => true, { why: (h) => `${h.points} points: not enough opposite a minimum` }),
+    ];
+  }
+  return [rule(PASS, "Opener has placed the contract.", () => answer.strain === "NT" && answer.level === 3, { why: () => "opener chose 3NT with a maximum and no fit" })];
+}
+
 function responderRebid(p: Position, o: Suit, r: Bid, rebid: Bid): CallRule[] {
   if (r.strain === "NT" && r.level === 2 && !isMajor(o)) return afterOpenerOverTwoNotrump(p, o, rebid);
   const ps = partnerShown(p);
@@ -500,6 +542,21 @@ function responderRebid(p: Position, o: Suit, r: Bid, rebid: Bid): CallRule[] {
   const low = rebidLow(p.s);
   if (rebid.strain === "NT" && rebid.level === 1) {
     const mine = r.strain as Suit;
+    // New minor forcing (1♣–1♥–1NT–2♦, 1♦–1♠–1NT–2♣): artificial, invitational or better, asks for
+    // three-card support for my major or (after 1♠) four hearts. For five in my major, or spades
+    // with four hearts; six or more bid the major themselves.
+    const newMinor: Suit = o === "C" ? "D" : "C";
+    if (p.s.newMinorForcing && !isMajor(o) && isMajor(mine) && cheapest(p, newMinor) === 2) {
+      rules.push(
+        rule(bid(2, newMinor), `New minor forcing: artificial, ${25 - low[1]}+ points. Asks for three ${SYMBOL[mine]}${mine === "S" ? " or four ♥" : ""}.`,
+          (h) => h.points >= 25 - low[1] && h.hcp + low[1] < 31 && (h.len[mine] === 5 || (mine === "S" && h.len.S >= 4 && h.len.H >= 4)), {
+            name: "New minor forcing",
+            forcing: "one round",
+            shows: { hcp: [25 - low[1] - 1, 37] },
+            why: (h) => `${h.len[mine]} ${SUIT_WORDS[mine]}${mine === "S" && h.len.H >= 4 ? ` and ${h.len.H} hearts` : ""}, ${h.points} points: look for a major fit before notrump`,
+          }),
+      );
+    }
     rules.push(
       // A six-card major counts its length (h.points): opposite opener's doubleton it's an 8-card fit.
       rule(bid(4, mine), `6+ ${SYMBOL[mine]} and game values.`, (h) => isMajor(mine) && h.len[mine] >= 6 && h.points >= 25 - low[0] && h.hcp + low[1] < 33, { why: (h) => `${h.len[mine]} ${SUIT_WORDS[mine]} and ${h.points} points counting length: game in the known fit` }),
