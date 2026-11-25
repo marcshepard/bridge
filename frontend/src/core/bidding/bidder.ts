@@ -4,10 +4,10 @@
 
 import { type Call, isAuctionOver } from "../auction";
 import { nextSeat } from "../play";
-import type { Hand, Seat, Suit, Vulnerability } from "../types";
+import { type Hand, type Seat, type Suit, type Vulnerability, SUITS } from "../types";
 import { evaluate } from "./evaluate";
 import { type CallRule, type ReadCall, type Shown, type ShowsPatch, applyShows, unknownHand } from "./model";
-import { type Position, PASS, gameForced, gameLevel, isBid } from "./position";
+import { type Position, DOUBLE, PASS, canMake, cheapBid, forced, gameForced, gameLevel, isBid, isOurs, lastBid, ourActions, ourSuits, theirActions } from "./position";
 import { NO_RULE } from "./sayc/general";
 import { saycRules } from "./sayc";
 import { callName } from "./sayc/common";
@@ -208,32 +208,79 @@ export function botAuction(hands: Record<Seat, Hand>, deal: Deal, settings: Syst
 // ---- With simulation ------------------------------------------------------------------------------
 
 /**
+ * How the bots simulate, at the table, in the hints and in the review alike: candidates compared in
+ * IMPs, late competitive calls simulated as well as the ones the rules flag (judgment), and the rest
+ * of the auction replayed by the rules on each sampled deal. Measured on the harness's weak-opening
+ * sets (docs/HARNESS.md, stage 2): +0.2 to +0.5 IMPs a board against the opponents' preempts.
+ */
+export const BOT_SIMULATION: SimulationOptions = { scoring: "imps", judgment: true, continueAuction: true };
+
+/** Will the bot simulate this call (with BOT_SIMULATION)? A call the rules flag, or a judgment call. */
+export function simulatesCall(p: Position, hand: Hand, decision: Decision, options: SimulationOptions = BOT_SIMULATION): boolean {
+  return !!decision.hard || (!!options.judgment && judgmentCandidates(p, hand, decision.call) !== null);
+}
+
+/**
  * The bot's call, with any hard call decided by simulation (double dummy over deals that fit the
  * auction). Without a solver, or when too few deals fit, the rule of thumb stands. On a tie the rule
  * of thumb's choice stands too.
  */
-export async function decideWithSimulation(p: Position, hand: Hand, solver: DoubleDummySolver | null, options?: SimulationOptions, settings: Systems = p.s): Promise<Decision> {
-  const d = decide(p, hand);
+export async function decideWithSimulation(p: Position, hand: Hand, solver: DoubleDummySolver | null, options: SimulationOptions = BOT_SIMULATION, settings: Systems = p.s): Promise<Decision> {
+  let d = decide(p, hand);
+  if (!d.hard && options?.judgment) {
+    const candidates = judgmentCandidates(p, hand, d.call);
+    if (candidates) d = { ...d, hard: { candidates, rule: "competitive judgment: pass, double, or bid on" } };
+  }
   if (!d.hard || !solver) return d;
   const continueFrom = options?.continueAuction ? (call: Call, hands: Record<Seat, Hand>) =>
     continueWithRules(p, call, hands, settings) : undefined;
   const sim = await simulateHardCall(p, hand, d.hard.candidates, solver, options, continueFrom);
   if (!sim) return d;
+  const byImps = options?.scoring === "imps";
+  const metric = (r: (typeof sim.results)[number]) => (byImps ? r.imps : r.share);
   const rule = sim.results.find((r) => sameCall(r.call, d.call));
-  const best = rule && rule.share >= sim.results[0]!.share ? rule.call : sim.best;
+  const best = rule && metric(rule) >= metric(sim.results[0]!) ? rule.call : sim.best;
   const chosen = sim.results.find((r) => sameCall(r.call, best))!;
   const meaning = sameCall(best, d.call) ? d.meaning : (saycRules(p).find((r) => sameCall(r.call, best))?.meaning ?? d.meaning);
+  const show = (r: (typeof sim.results)[number]) => (byImps ? `${r.imps >= 0 ? "+" : "−"}${Math.abs(r.imps).toFixed(1)} IMPs` : `${Math.round(r.share * 100)}%`);
   const others = sim.results
     .filter((r) => !sameCall(r.call, best))
-    .map((r) => `${callName(r.call)} ${Math.round(r.share * 100)}%`)
+    .map((r) => `${callName(r.call)} ${show(r)}`)
     .join(", ");
   return {
     ...d,
     call: best,
     meaning,
-    reason: `In ${sim.deals} deals that fit the bidding${sim.relaxed ? " with some leeway" : ""}, ${callName(best)} scored best: ${Math.round(chosen.share * 100)}% of the matchpoints against the other choices (${others})`,
+    reason: byImps
+      ? `In ${sim.deals} deals that fit the bidding${sim.relaxed ? " with some leeway" : ""}, ${callName(best)} scored best: ${show(chosen)} a deal against the other choices (${others})`
+      : `In ${sim.deals} deals that fit the bidding${sim.relaxed ? " with some leeway" : ""}, ${callName(best)} scored best: ${Math.round(chosen.share * 100)}% of the matchpoints against the other choices (${others})`,
     simulation: sim,
   };
+}
+
+/**
+ * Competitive judgment the rules don't flag: pass, double, or bid on in our side's suits (or a long
+ * suit of my own). Only where the call is close to the end of the auction, so treating it as the last
+ * call is fair: in the balancing seat (my pass ends it), or over their bid at the three level or
+ * higher once both sides have bid. Not when partner's last call forces me, and not over our own bid.
+ */
+export function judgmentCandidates(p: Position, hand: Hand, ruleCall: Call): Call[] | null {
+  const lb = lastBid(p);
+  if (!lb || isOurs(p, lb.seat) || forced(p)) return null;
+  const n = p.read.length;
+  const balancing = n >= 3 && p.read[n - 1]!.call.kind === "pass" && p.read[n - 2]!.call.kind === "pass";
+  const bothBid = ourActions(p).some((r) => r.call.kind === "bid") && theirActions(p).some((r) => r.call.kind === "bid");
+  if (!balancing && !(lb.call.level >= 3 && bothBid)) return null;
+  const h = evaluate(hand);
+  const suits = new Set<Suit>(ourSuits(p));
+  for (const s of SUITS) if (h.len[s] >= 6 || (h.len[s] >= 5 && h.hcp >= 8)) suits.add(s);
+  const candidates: Call[] = [ruleCall, PASS, DOUBLE];
+  for (const s of suits) {
+    const b = cheapBid(p, s);
+    if (b && b.level <= 5) candidates.push(b);
+  }
+  const legal = candidates.filter((c, i) => canMake(p, c) && candidates.findIndex((x) => sameCall(x, c)) === i);
+  return legal.length >= 2 ? legal : null;
 }
 
 /** Follow a candidate with the ordinary bidder, using only each new caller's own hand. */

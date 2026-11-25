@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type Call, auctionResult, parseCall } from "../auction";
 import { hcp, parseHand, parsePbnDeal } from "../deal";
 import { SyncSolver } from "../../dds/syncSolver";
-import { continueWithRules, decideWithSimulation, positionAt } from "./bidder";
+import { BOT_SIMULATION, continueWithRules, decide, decideWithSimulation, judgmentCandidates, positionAt, simulatesCall } from "./bidder";
 import { seeded } from "../random";
 import { dealsFittingAuction, simulateHardCall } from "./simulate";
 
@@ -83,5 +83,35 @@ describe("simulating hard calls", () => {
     expect(auctionResult(deal.dealer, played)?.contract).toMatchObject({ level: 4, strain: "S" });
     const closing = [...prefix, pass, pass];
     expect(continueWithRules(positionAt(deal, closing), pass, hands)).toEqual([...closing, pass]);
+  });
+});
+
+describe("simulation scored in IMPs, and competitive judgment", () => {
+  const p = positionAt(deal, auction);
+  const three = () => [calls("PASS")[0]!, calls("X")[0]!, calls("5S")[0]!];
+
+  it("scores IMPs against the other candidates, and picks by them when asked", async () => {
+    const sim = await simulateHardCall(p, north, three(), solver, { scoring: "imps" });
+    expect(sim).not.toBeNull();
+    // Each pair of candidates is IMPed both ways, so the IMPs sum to zero.
+    expect(sim!.results.reduce((a, r) => a + r.imps, 0)).toBeCloseTo(0, 5);
+    expect(sim!.results[0]!.imps).toBe(Math.max(...sim!.results.map((r) => r.imps)));
+  });
+
+  it("the bots simulate in IMPs, with judgment and the auction continued, by default", async () => {
+    expect(BOT_SIMULATION).toEqual({ scoring: "imps", judgment: true, continueAuction: true });
+    // A judgment position (over their 5♥) is simulated even though no rule flags it.
+    const d = decide(p, north);
+    expect(simulatesCall(p, north, d)).toBe(true);
+    const sim = await decideWithSimulation(p, north, solver);
+    expect(sim.simulation?.scoring).toBe("imps");
+  });
+
+  it("offers judgment candidates only near the end of a competitive auction", () => {
+    // Over their 5♥, with both sides having bid: pass, double, or our spades.
+    const c = judgmentCandidates(p, north, calls("PASS")[0]!)!.map((x) => (x.kind === "bid" ? `${x.level}${x.strain}` : x.kind));
+    expect(c).toEqual(expect.arrayContaining(["pass", "double", "5S"]));
+    // Partner's opening, nothing from them: no judgment.
+    expect(judgmentCandidates(positionAt(deal, calls("1S PASS")), parseHand("Q96.K32.A954.Q32"), calls("2S")[0]!)).toBeNull();
   });
 });

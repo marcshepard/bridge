@@ -4,8 +4,27 @@
     {
       "name": "dds-timing",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["frontend/node_modules/vite/bin/vite.js", "prototypes/dds/page", "--host", "--port", "5186", "--strictPort"],
+      "runtimeArgs": [
+        "frontend/node_modules/vite/bin/vite.js",
+        "prototypes/dds/page",
+        "--host",
+        "--port",
+        "5186",
+        "--strictPort"
+      ],
       "port": 5186
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "frontend/node_modules/vite/bin/vite.js",
+        "frontend",
+        "--port",
+        "5185",
+        "--strictPort"
+      ],
+      "port": 5185
     }
   ]
 }

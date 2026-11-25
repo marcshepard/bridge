@@ -9,7 +9,9 @@
 // it only with a new version number, which makes a new set.
 
 import { type Call, auctionResult, callCode, isAuctionOver } from "../core/auction";
-import { type Decision, decide, positionAt } from "../core/bidding/bidder";
+import { type Decision, decide, decideWithSimulation, positionAt } from "../core/bidding/bidder";
+import type { SimulationOptions } from "../core/bidding/simulate";
+import type { DoubleDummySolver } from "../core/doubleDummy";
 import type { SystemSettings } from "../core/bidding/system";
 import { contractCode } from "../core/contract";
 import { boardDealer, boardVulnerability, randomDeal } from "../core/deal";
@@ -301,13 +303,60 @@ export interface DefenceBoard {
   imps: number;
   tags: string[];
   reasons: string[];
+  /** With simulation: our hard calls, and how many simulation changed from the rule of thumb. */
+  hard?: number;
+  overturned?: number;
+}
+
+/** Bid a deal with our side's hard calls decided by simulation; the other side bids by its rules. */
+async function simulatedAuction(
+  hands: Record<Seat, Hand>,
+  deal: Pick<BenchDeal, "dealer" | "vul">,
+  cards: { NS: SystemSettings; EW: SystemSettings },
+  ours: "NS" | "EW",
+  solver: DoubleDummySolver,
+  options: SimulationOptions,
+): Promise<{ decisions: Decision[]; hard: number; overturned: number }> {
+  const decisions: Decision[] = [];
+  const calls: Call[] = [];
+  let hard = 0;
+  let overturned = 0;
+  for (let i = 0; i < 80 && !isAuctionOver(calls); i++) {
+    const seat = SEATS[(SEATS.indexOf(deal.dealer) + calls.length) % 4]!;
+    const p = positionAt(deal, calls, cards);
+    const rules = decide(p, hands[seat]);
+    let d = rules;
+    if (sideOf(seat) === ours) {
+      d = await decideWithSimulation(p, hands[seat], solver, options, cards);
+      if (d.hard) hard++;
+      if (callCode(d.call) !== callCode(rules.call)) overturned++;
+    }
+    decisions.push(d);
+    calls.push(d.call);
+  }
+  return { decisions, hard, overturned };
+}
+
+/** The defence board with our hard calls decided by simulation (scored in IMPs by default). */
+export async function runDefenceBoardSimulated(deal: WeakDeal, code: string, preemptors: SystemSettings, defenders: SystemSettings, solver: DoubleDummySolver, options: SimulationOptions = { scoring: "imps" }): Promise<DefenceBoard> {
+  const side = sideOf(deal.preemptor);
+  const ours = side === "NS" ? "EW" : "NS";
+  const cards = side === "NS" ? { NS: preemptors, EW: defenders } : { NS: defenders, EW: preemptors };
+  const sim = await simulatedAuction(handsOf(deal), deal, cards, ours, solver, options);
+  return { ...scoreDefence(deal, code, sim.decisions), hard: sim.hard, overturned: sim.overturned };
 }
 
 export function runDefenceBoard(deal: WeakDeal, code: string, preemptors: SystemSettings, defenders: SystemSettings): DefenceBoard {
-  const hands = handsOf(deal);
   const side = sideOf(deal.preemptor);
   const cards = side === "NS" ? { NS: preemptors, EW: defenders } : { NS: defenders, EW: preemptors };
-  const t = table(deal, code, sidedAuction(hands, deal, cards));
+  return scoreDefence(deal, code, sidedAuction(handsOf(deal), deal, cards));
+}
+
+/** Score one auction for our side (the side facing the weak hand) against par. */
+function scoreDefence(deal: WeakDeal, code: string, decisions: Decision[]): DefenceBoard {
+  const hands = handsOf(deal);
+  const side = sideOf(deal.preemptor);
+  const t = table(deal, code, decisions);
   const parNs = parScore(code, deal.vul, deal.dealer);
   const par = side === "NS" ? -parNs : parNs;
   const score = -t.score;
@@ -366,6 +415,10 @@ export function defenceSummary(run: DefenceRunFile, base: DefenceRunFile | null,
   } else {
     const ci = bootstrapCi(all);
     lines.push(`  All boards   ${signed(mean(all))}  (${signed(ci[0])} to ${signed(ci[1])})`);
+  }
+  const hard = run.boards.reduce((n, b) => n + (b.hard ?? 0), 0);
+  if (run.boards.some((b) => b.hard !== undefined)) {
+    lines.push(`  Hard calls simulated: ${hard}, of which simulation changed ${run.boards.reduce((n, b) => n + (b.overturned ?? 0), 0)} from the rule of thumb`);
   }
   lines.push("");
   const tagSet = [...new Set(run.boards.flatMap((b) => b.tags))].sort();

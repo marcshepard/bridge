@@ -16,7 +16,7 @@ import MailOutlineIcon from "@mui/icons-material/MailOutlined";
 import { Alert, Box, Button, Chip, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import type { Call } from "../../core/auction";
-import { type Decision, type ReviewedCall, decideWithSimulation, reviewAuction } from "../../core/bidding/bidder";
+import { type Decision, type ReviewedCall, decideWithSimulation, reviewAuction, simulatesCall } from "../../core/bidding/bidder";
 import { doubleDummy } from "../../services";
 import { type Shown, rangeWords } from "../../core/bidding/model";
 import { callName } from "../../core/bidding/sayc/common";
@@ -61,7 +61,8 @@ export function useReviewedAuction(board: Board, calls: Call[], systems: TableSy
   const [simulating, setSimulating] = useState(false);
   useEffect(() => {
     setSimulated({});
-    const hard = plain.map((r, i) => (r.bot.hard ? i : -1)).filter((i) => i >= 0);
+    // The calls the bot simulates at the table: the ones the rules flag, and late competitive ones.
+    const hard = plain.map((r, i) => (simulatesCall(r.position, board.hands[r.seat], r.bot) ? i : -1)).filter((i) => i >= 0);
     if (!simulate || !doubleDummy || hard.length === 0) return;
     let cancelled = false;
     setSimulating(true);
@@ -324,12 +325,17 @@ export function BotVerdict({ r, isBot, isMine }: { r: ReviewedCall; isBot: boole
         <Alert severity="info">
           {r.bot.simulation ? (
             <>
-              A hard call, settled by simulation: {r.bot.simulation.deals} deals that fit the bidding, each candidate scored with
-              perfect play (double dummy) and compared at matchpoints.
+              A hard call, settled by simulation: {r.bot.simulation.deals} deals that fit the bidding, the rest of the auction
+              bid out on each, and each candidate scored with perfect play (double dummy) and compared{" "}
+              {r.bot.simulation.scoring === "imps" ? "in IMPs" : "at matchpoints"}.
               <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
                 {r.bot.simulation.results.map((x) => (
                   <li key={callName(x.call)}>
-                    <strong>{callName(x.call)}</strong>: {Math.round(x.share * 100)}% of the matchpoints, {x.average >= 0 ? "+" : ""}
+                    <strong>{callName(x.call)}</strong>:{" "}
+                    {r.bot.simulation!.scoring === "imps"
+                      ? `${x.imps >= 0 ? "+" : "−"}${Math.abs(x.imps).toFixed(1)} IMPs a deal against the other choices`
+                      : `${Math.round(x.share * 100)}% of the matchpoints`}
+                    , {x.average >= 0 ? "+" : ""}
                     {Math.round(x.average)} on average
                   </li>
                 ))}

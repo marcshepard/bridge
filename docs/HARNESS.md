@@ -600,6 +600,38 @@ make. The first group is mostly games and slams missed after a takeout double (t
 items 1–3; item 1 alone about +0.03). Still to do in step 2: the competing, sacrifice and penalty
 decisions (simulation, scored in IMPs first), entering with shape, and the 3NT overcall's range.
 
+**Step 2, second round: simulation for the competitive decisions** (25 November 2026).
+- **IMP scoring:** simulation can now compare candidates in IMPs (each candidate IMPed against the
+  others, deal by deal) as well as matchpoints (`SimulationOptions.scoring`; the default stays
+  matchpoints, so the frontend is unchanged).
+- **Judgment mode** (`SimulationOptions.judgment`, off by default): calls the rules don't flag as
+  hard become hard calls when they're near the end of a competitive auction (the balancing seat, or
+  over their bid at the three level or higher once both sides have bid), with candidates pass,
+  double, and our suits (or a long suit of mine) at the cheapest level (`judgmentCandidates` in
+  `bidder.ts`).
+- **Harness:** `weak-defence --simulate` decides our side's hard calls by simulation (spread over
+  the worker threads; about a minute for a set with judgment); `--judgment`, `--continue` (replay
+  the rest of the auction with the rules on each sampled deal, the existing `continueAuction`) and
+  `--scoring matchpoints`.
+
+| Our side's hard calls (`weak-dev`, change against the round 1 baseline) | Against 3+ HCP | Against "good" |
+|---|---|---|
+| Simulation as today (only "outbid" calls, 75 of them), IMPs | +0.03 (no clear difference) | |
+| Judgment mode, each candidate the last call (1,122 calls, 592 changed) | −0.08 (−0.27 to +0.12) | |
+| Judgment mode, the auction continued by the rules, IMPs | **+0.24** (+0.06 to +0.41, better) | **+0.21** (better) |
+| The same, matchpoints | +0.21 (better) | |
+| `weak-holdout`, judgment and continued, IMPs | **+0.35** (+0.17 to +0.53, better) | **+0.47** (+0.29 to +0.66, better) |
+
+So simulation pays for the competitive decisions, but only when it sees how the auction goes on:
+treating each candidate as the final call loses, mostly on doubles the opponents run from or make.
+IMPs against matchpoints made little difference here. Not yet measured: the same mode in other
+competitive auctions (it fires in any contested auction, not only after a preempt).
+
+Speed in the frontend (25 November 2026): 20 judgment positions from `weak-dev`, timed in the browser
+with the app's four-worker solver pool: median 0.6 s, mean 0.66 s, slowest 1.6 s on a desktop; likely
+1.5–2 s on a phone. **Switched on** (Marc): the bots now simulate with `BOT_SIMULATION` (IMPs,
+judgment, the auction continued) at the table, in the hints and in the review.
+
 **Decision (for now):** keep SAYC's "good" suits as the default. The experiment says our defence to
 preempts is the bigger weakness. Next: improve the bots' bidding over the opponents' preempts and
 weak twos (stage 2), using these sets with the opponents' standard loosened (`--base

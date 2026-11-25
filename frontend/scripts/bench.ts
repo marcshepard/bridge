@@ -16,6 +16,7 @@
 //   npm run bench -- weak-show <run> --board <n>                        one board in full, both auctions
 //   npm run bench -- weak-defence <set> [--card k=v]                    our bidding against their weak openings (3+ HCP suits), against par
 //   npm run bench -- weak-defence-baseline <set> [<run>]                make a defence run (default: the latest) the set's baseline
+//   npm run bench -- weak-defence <set> --simulate [--scoring matchpoints]   our hard calls by simulation (IMPs by default; slow)
 //
 // A run can be named by its id, or as "latest" or "baseline" (with --set when there's more than
 // one set). Options for run and compare: --top <n> boards to list (10), --changed (list every
@@ -38,7 +39,7 @@ import { type RunFile, boardText, summary } from "../src/bench/report";
 import { type BoardResult, runBoard } from "../src/bench/stage1";
 import { SyncSolver } from "../src/dds/syncSolver";
 import { SAYC_DEFAULTS, type SystemSettings } from "../src/core/bidding/system";
-import { type DefenceRunFile, type WeakDeal, type WeakRunFile, type WeakSetDefinition, DEFAULT_WEAK_SET, defenceSummary, encodeTable, runDefenceBoard, runWeakBoard, weakBoardText, weakDealSet, weakSummary } from "../src/bench/weak";
+import { type DefenceRunFile, type WeakDeal, type WeakRunFile, type WeakSetDefinition, DEFAULT_WEAK_SET, defenceSummary, encodeTable, runDefenceBoard, runDefenceBoardSimulated, runWeakBoard, weakBoardText, weakDealSet, weakSummary } from "../src/bench/weak";
 
 interface Cache {
   definition: SetDefinition;
@@ -66,6 +67,11 @@ interface WeakCache {
 
 interface TableJob {
   table: WeakDeal;
+}
+
+/** A defence board with our hard calls decided by simulation (slow, so spread over the workers). */
+interface DefenceJob {
+  defence: { deal: WeakDeal; code: string; preemptors: SystemSettings; defenders: SystemSettings; scoring: "imps" | "matchpoints"; judgment: boolean; continueAuction: boolean };
 }
 
 // ---- Files ------------------------------------------------------------------------------------
@@ -176,6 +182,7 @@ The weak-opening experiment (stage 2): a variant card for the side with a weak t
   npm run bench -- weak-show <run> --board <n>                        one board in full, both auctions
   npm run bench -- weak-defence <set> [--card k=v]                    our bidding against their weak openings (3+ HCP suits), against par
   npm run bench -- weak-defence-baseline <set> [<run>]                make a defence run (default: the latest) the set's baseline
+  npm run bench -- weak-defence <set> --simulate [--scoring matchpoints]   our hard calls by simulation (IMPs by default; slow)
 
 A run is named by its id, or "latest" or "baseline" (add --set <name> when there's more than one set).
 For run and compare: --top <n> boards to list (10), --changed to list every changed board,
@@ -500,7 +507,11 @@ async function weakDefence(set: string, args: Args) {
   const defenderCard = parseCard(args.str("card"));
   const preemptors = { ...SAYC_DEFAULTS, ...preemptorCard } as SystemSettings;
   const defenders = { ...SAYC_DEFAULTS, ...defenderCard } as SystemSettings;
-  const boards = cache.deals.map((d, i) => runDefenceBoard(d, cache.tables[i]!, preemptors, defenders));
+  const simulate = args.flags.has("simulate");
+  const scoring = args.str("scoring") === "matchpoints" ? "matchpoints" : "imps";
+  const boards = simulate
+    ? await simulateDefence(cache, preemptors, defenders, scoring, args)
+    : cache.deals.map((d, i) => runDefenceBoard(d, cache.tables[i]!, preemptors, defenders));
   const now = new Date();
   const result: DefenceRunFile = {
     id: `defence-${set}-${stamp(now)}`,
@@ -511,11 +522,45 @@ async function weakDefence(set: string, args: Args) {
     createdAt: now.toISOString(),
     ms: Date.now() - started,
     preemptors: preemptorCard,
-    defenders: defenderCard,
+    defenders: { ...defenderCard, ...(simulate && { simulation: scoring + (args.flags.has("judgment") ? " with judgment" : "") + (args.flags.has("continue") ? ", auction continued" : "") }) },
     boards,
   };
   writeJson(runPath(result.id), result, true);
   console.log(defenceSummary(result, readWeakBaselines()[defenceKey(set, preemptorCard)] ?? null, args.num("top", 10)));
+}
+
+/** Our side's hard calls by simulation: each board on a worker with its own solver. */
+async function simulateDefence(cache: WeakCache, preemptors: SystemSettings, defenders: SystemSettings, scoring: "imps" | "matchpoints", args: Args) {
+  const threads = Math.max(1, Math.min(args.num("threads", availableParallelism() - 2), cache.deals.length));
+  const started = Date.now();
+  const out = new Map<number, ReturnType<typeof runDefenceBoard>>();
+  await new Promise<void>((done, fail) => {
+    let next = 0;
+    const workers = Array.from({ length: threads }, () => new Worker(new URL(import.meta.url)));
+    const send = (w: Worker) => {
+      if (next < cache.deals.length) {
+        const i = next++;
+        w.postMessage({ defence: { deal: cache.deals[i]!, code: cache.tables[i]!, preemptors, defenders, scoring, judgment: args.flags.has("judgment"), continueAuction: args.flags.has("continue") } } satisfies DefenceJob);
+      }
+    };
+    for (const w of workers) {
+      w.on("error", fail);
+      w.on("message", (m: { board: ReturnType<typeof runDefenceBoard> }) => {
+        out.set(m.board.id, m.board);
+        const n = out.size;
+        if (n % 25 === 0 || n === cache.deals.length) {
+          const secs = (Date.now() - started) / 1000;
+          process.stdout.write(`\r  ${n} of ${cache.deals.length} boards, about ${Math.round((secs / n) * (cache.deals.length - n))} s to go   `);
+        }
+        if (n === cache.deals.length) {
+          process.stdout.write("\n");
+          void Promise.all(workers.map((x) => x.terminate())).then(() => done());
+        } else send(w);
+      });
+      send(w);
+    }
+  });
+  return cache.deals.map((d) => out.get(d.id)!);
 }
 
 /** The latest defence run on a set (or the one named) becomes the baseline for its preempting side's card. */
@@ -539,7 +584,12 @@ function weakDefenceBaseline(set: string, ref?: string) {
 if (!isMainThread) {
   // A worker: solve every layout of each deal it's sent.
   const solver = new SyncSolver();
-  parentPort!.on("message", async (job: LayoutJob | TableJob) => {
+  parentPort!.on("message", async (job: LayoutJob | TableJob | DefenceJob) => {
+    if ("defence" in job) {
+      const { deal, code, preemptors, defenders, scoring, judgment, continueAuction } = job.defence;
+      parentPort!.postMessage({ board: await runDefenceBoardSimulated(deal, code, preemptors, defenders, solver, { scoring, judgment, continueAuction }) });
+      return;
+    }
     if ("table" in job) {
       parentPort!.postMessage({ id: job.table.id, table: encodeTable(await solver.table(handsOf(job.table))) });
       return;

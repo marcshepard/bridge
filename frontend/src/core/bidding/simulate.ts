@@ -11,6 +11,7 @@
 
 import { type Call, auctionResult, canCall, isAuctionOver } from "../auction";
 import type { DoubleDummyJob, DoubleDummySolver } from "../doubleDummy";
+import { imps } from "../imps";
 import { scoreFor, scoreResult } from "../scoring";
 import { type Hand, type Seat, type TableResult, RANKS, SEATS, SUITS, directionOf } from "../types";
 import type { Shown } from "./model";
@@ -22,6 +23,8 @@ export interface SimulationResult {
   call: Call;
   /** Share of the matchpoints among the candidates, 0–1, over all deals. */
   share: number;
+  /** Average IMPs against the other candidates, deal by deal. */
+  imps: number;
   /** Average score for our side. */
   average: number;
 }
@@ -34,6 +37,8 @@ export interface Simulation {
   best: Call;
   /** Some auction evidence was softened to find enough deals. */
   relaxed?: boolean;
+  /** How the candidates were compared. */
+  scoring: "matchpoints" | "imps";
 }
 
 export interface SimulationOptions {
@@ -44,6 +49,17 @@ export interface SimulationOptions {
   /** Fewer deals than this that fit the auction: no simulation, the rule of thumb stands. */
   minDeals?: number;
   continueAuction?: boolean;
+  /**
+   * How candidates are compared: matchpoints (how often each beats the others) or IMPs (by how
+   * much, which is what matters for sacrifices and penalty doubles at teams). Default matchpoints.
+   */
+  scoring?: "matchpoints" | "imps";
+  /**
+   * Also simulate competitive judgment the rules don't flag as hard: in the balancing seat, and over
+   * their bid at the three level or higher once both sides have bid (see judgmentCandidates in
+   * bidder.ts). Off by default; the harness uses it to test simulation against the rules.
+   */
+  judgment?: boolean;
 }
 
 const HCP: Record<string, number> = { A: 4, K: 3, Q: 2, J: 1 };
@@ -178,17 +194,24 @@ export async function simulateHardCall(
     }),
   );
 
-  // Matchpoints among the candidates on each deal: 1 for each candidate beaten, ½ for each tie.
+  // Matchpoints among the candidates on each deal: 1 for each candidate beaten, ½ for each tie. IMPs:
+  // the score difference against each other candidate, converted to IMPs.
   const k = legal.length;
   const results: SimulationResult[] = legal.map((call, i) => {
     let mp = 0;
+    let imp = 0;
     let total = 0;
     for (const row of scores) {
       total += row[i]!;
-      for (let j = 0; j < k; j++) if (j !== i) mp += row[i]! > row[j]! ? 1 : row[i] === row[j] ? 0.5 : 0;
+      for (let j = 0; j < k; j++) {
+        if (j === i) continue;
+        mp += row[i]! > row[j]! ? 1 : row[i] === row[j] ? 0.5 : 0;
+        imp += imps(row[i]! - row[j]!);
+      }
     }
-    return { call, share: mp / (deals.length * (k - 1)), average: total / deals.length };
+    return { call, share: mp / (deals.length * (k - 1)), imps: imp / (deals.length * (k - 1)), average: total / deals.length };
   });
-  const order = [...results].sort((a, b) => b.share - a.share);
-  return { deals: deals.length, results: order, best: order[0]!.call, ...(relaxed && { relaxed }) };
+  const metric = (r: SimulationResult) => (options.scoring === "imps" ? r.imps : r.share);
+  const order = [...results].sort((a, b) => metric(b) - metric(a));
+  return { deals: deals.length, results: order, best: order[0]!.call, scoring: options.scoring ?? "matchpoints", ...(relaxed && { relaxed }) };
 }

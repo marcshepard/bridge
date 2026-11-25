@@ -214,14 +214,18 @@ core/bidding/      pure, no I/O, used by the devices (to bid for bots, and for r
      device solves the contract and saves the result, as an owner enters one with real cards.
    - **Simulation for hard calls** (`core/bidding/simulate.ts`): deal hands that fit what the auction
      has shown for the other three seats (HCP, points with a fit or length, suit lengths and shape), solve each candidate's
-     contract on each deal, and score the candidates against each other at matchpoints; the best
-     wins. If too few deals fit, the sampler gives the auction evidence some leeway. The rule of
-     thumb stands on a tie or when fewer than 16 deals still fit. 60 deals take about
-     0.6 s on one thread in Node, less with the workers. Seeded from the hand and the auction, so the
-     review runs it again and gets the bot's answer; the review shows each candidate's share.
-   - **The simplification:** each candidate is treated as the last call of the auction (everyone
-     passes after it). That suits the calls marked hard (compete, double or pass, late in a
-     contested auction), not early constructive ones.
+     contract on each deal, and score the candidates against each other in IMPs; the best wins. If
+     too few deals fit, the sampler gives the auction evidence some leeway. The rule of thumb stands
+     on a tie or when fewer than 16 deals still fit. Seeded from the hand and the auction, so the
+     review runs it again and gets the bot's answer; the review shows each candidate's IMPs.
+   - **How the bots simulate** (`BOT_SIMULATION` in `bidder.ts`, the same at the table, in the hints
+     and in the review): in IMPs; with judgment (late competitive calls the rules don't flag: the
+     balancing seat, or over their bid at the three level or higher once both sides have bid, with
+     candidates pass, double, or our suits at the cheapest level); and with the rest of the auction
+     bid out by the rules on each sampled deal. Measured on the harness's weak-opening sets
+     (HARNESS.md, stage 2): +0.2 to +0.5 IMPs a board against the opponents' preempts; treating each
+     candidate as the last call instead lost. A judgment call takes about 0.6 s in the browser on a
+     desktop with the four-worker pool (1.6 s at worst), likely 1.5–2 s on a phone.
    - `npm run bidding-report -- --simulate` runs the bots with simulation, and scores boards whose
      file has no double dummy.
    - `npm run bidding-report -- --continue-auction` tries following each candidate with ordinary

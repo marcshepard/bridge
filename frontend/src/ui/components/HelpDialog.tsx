@@ -189,9 +189,11 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         Some bids carry a small mark: <strong>≠</strong> for a bid of yours the bot would have made differently,{" "}
         <strong>?</strong> for a hard call, and <strong>!</strong> for a position no rule covers yet. A hard call is
         one the rules don't settle, typically whether to compete, double or pass late in a contested auction. The
-        bot settles it by simulation: it deals many hands that fit what the bidding has shown, works out how each
-        choice would score with perfect play, and picks the one that does best at matchpoints. Tap the bid to see
-        the figures, for example <strong>Double: 58% of the matchpoints, Pass: 42%</strong> over 60 deals. Use <strong>Previous bid</strong>{" "}
+        bot settles it by simulation: it deals many hands that fit what the bidding has shown, bids the rest of the
+        auction out on each, works out how each choice would score with perfect play, and picks the one that does
+        best in IMPs (by how much it beats the other choices, not just how often). Tap the bid to see the figures,
+        for example <strong>Double: +1.4 IMPs a deal, Pass: −1.4 IMPs</strong> over 60 deals. These calls can take
+        the bot a second or two. Use <strong>Previous bid</strong>{" "}
         and <strong>Next bid</strong> to step through the auction. In a game with other people, only your own bids
         are compared with the bot's. Tap <strong>bot's evaluation</strong> above the auction to see the card each side bid by in this game.
       </Typography>
