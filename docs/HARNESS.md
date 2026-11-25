@@ -287,6 +287,64 @@ Card is level with plain Blackwood (holdout 3.41 both; quick 2.82 against 2.79):
 are about whether to bid slam, not about counting aces. Plain Blackwood stays the default; try
 Roman Key Card again once slam judgment (area 1) improves.
 
+**Slam judgment, first round** (area 1, 24 November 2026). Marc's yardstick: with 33+ HCP between
+the hands a partnership should reach slam nearly every time; with 28 or fewer almost never (those
+slams exist double dummy but are nearly impossible to find); in between, sometimes, and more often
+with a good fit (33 points counting shape on about 30 HCP should find a decent share). Measured
+that way, before this round: of the missed slams (the ideal a slam, the bots below it), only about
+4% had 33+ HCP, 16% had 31–32, a third 29–30 and nearly half 28 or fewer. Every missed slam with
+33+ HCP stopped in 3NT (or 2NT) from a specific rule placing the game.
+
+| Combined HCP | quick: slam bid before → after | holdout: before → after |
+|---|---|---|
+| 33+ | 71% → 81% (15 → 17 of 21) | 70% → 90% (14 → 18 of 20) |
+| 31–32 | 46% → 54% | 43% → 51% |
+| 29–30 | 14% → 18% | 15% → 19% |
+| 26–28 | 2% → 3% | 4% → 4% |
+| 25 or less | none | almost none |
+
+Loss: quick 2.79 → 2.73 (−0.06, −0.13 to 0.01), holdout 3.41 → 3.34 (−0.07, −0.14 to −0.00,
+better). Gains are at 29+ HCP; 28 or fewer is level.
+
+Kept:
+1. **The plan's slam move takes over from a rule placing game** (`slamTakeover` in
+   `sayc/index.ts`). The specific rules (Stayman and transfer continuations, opener's and
+   responder's rebids) place games from fixed ranges and never looked for slam: 1NT–2♣–2♥ with 17
+   bid 4♥, 1♣–1♥–1♠ with 20 bid 3NT. Now, when that rule's call is natural, not forcing and no
+   higher than game, and the placement plan sees a slam, the plan's move comes first (4NT, a slam
+   invitation, a control bid or the slam). Not when partner's last call was a forcing convention,
+   and not for a call a specific rule gives another meaning. On its own this was level overall
+   (slams −0.85 a slam board, games +0.30): the point counts, with shape counted in both hands,
+   reached 33 on 29–30 HCP. So:
+2. **The cards must back the takeover** (`slamCards` in `sayc/general.ts`): about 31 HCP between
+   us for notrump; 30 HCP and 9 controls (ace 2, king 1; partner's estimated at 0.3 a point) for a
+   suit; Blackwood from 28 HCP, since with a fit the aces often decide it (Marc) and the answer
+   stops at five with two missing. The same gates inside the plan itself were worse: they cut slams
+   the baseline already found (the Jacoby 2NT fit slams). Controls are a good guide double dummy:
+   with an 8-card fit, slam is the ideal on 70–88% of boards with 10+ controls, 29% with 9, 7% with 8.
+3. **Control bids past game only when slam is the target.** An invitation-strength control bid at
+   the five level (5♣ over 4♥) left us too high when partner had nothing to add.
+
+Tried and dropped:
+- **4NT quantitative unless a suit is agreed** (both partners bid it). It found 1♣–1♥–1♠–4NT
+  slams, but SAYC's rule is that 4NT is quantitative only directly over partner's natural notrump;
+  it broke 2♣–3♦–4NT and 1♠–2♣–3♠–4NT, which are key-card asks.
+- **Gating every suit slam on estimated controls** (10, 9 or 8) or HCP (30, 29), in the plan: level
+  at best; the estimate from partner's HCP is too rough to overrule auctions that were working.
+
+Still open:
+- **Hands whose strength the bidding never shows:** 1♣–1♦–1♠–3NT (16 opposite 17) and similar
+  stop in game because opener's 1-level rebid covers 12–18 (boards 240 and 372 on `holdout`).
+  Needs forcing bids that show extras (fourth suit forcing, area 4).
+- **Quantitative invitations declined at 32 HCP** (20 opposite 12 after 2NT): the 33 rule says
+  decline; the double-dummy ideal says bid. Left as is.
+- **Fit slams on fewer HCP** (a double fit, no wasted values): conventional bidding rarely finds
+  them. Candidates for double-dummy simulation (Marc): the bidder already decides "hard" calls by
+  simulation (`decideWithSimulation`); marking low-HCP slam decisions with a known double fit as
+  hard would let simulation weigh them.
+- **Controls aren't shown or tracked** (area 6): the takeover estimates partner's from points.
+  Control bids and 5NT for kings would replace the estimate.
+
 ### Stage 2: competitive bidding
 
 - **Deals.** Random deals, no filter. Opponents bid.

@@ -32,6 +32,8 @@ export interface HandFacts {
   tricks: number;
   aces: number;
   kings: number;
+  /** Controls: 2 for an ace, 1 for a king (12 in the pack). */
+  controls: number;
 }
 
 const HONOURS = "AKQJT";
@@ -56,6 +58,7 @@ export function evaluate(hand: Hand): HandFacts {
     points: hcp + lengthPoints,
     aces: SUITS.filter((s) => hand[s].includes("A")).length,
     kings: SUITS.filter((s) => hand[s].includes("K")).length,
+    controls: SUITS.reduce((n, s) => n + (hand[s].includes("A") ? 2 : 0) + (hand[s].includes("K") ? 1 : 0), 0),
   };
 }
 

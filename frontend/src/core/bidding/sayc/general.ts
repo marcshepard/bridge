@@ -5,7 +5,7 @@ import type { Call } from "../../auction";
 import { type Contract, type Strain, type Suit, STRAINS, SUITS } from "../../types";
 import { contractTrickPoints } from "../../scoring";
 import { type HandFacts, fitPoints, holding, isMajor, supportPoints } from "../evaluate";
-import type { CallRule } from "../model";
+import type { CallRule, Shown } from "../model";
 import {
   type Bid,
   type Position,
@@ -43,6 +43,22 @@ import { stopper } from "../evaluate";
 /** Points for a small slam between the hands, and where an invitation starts. */
 const SLAM_POINTS = 33;
 const SLAM_INVITE_FROM = 31;
+/**
+ * The cards between the hands, as far as my hand and partner's bidding show: HCP (partner's likely
+ * point of what they've shown) and controls (ace 2, king 1; partner's estimated at 0.3 a point, the
+ * pack's average). Points counted for shape on both sides add up past what the cards are worth, so
+ * these check a slam the point count suggests.
+ */
+export function slamCards(p: Position, h: HandFacts): { hcp: number; controls: number } {
+  const partnerHcp = likelyHcp(partnerShown(p));
+  return { hcp: h.hcp + partnerHcp, controls: h.controls + 0.3 * partnerHcp };
+}
+
+/** The likely HCP of what a hand has shown (the same measure as shownPoints). */
+function likelyHcp(shown: Shown): number {
+  const [min, max] = shown.hcp;
+  return min + Math.min(2, Math.floor((max - min) / 2));
+}
 
 const ANSWER_NAMES = new Set(["Blackwood answer", "Roman Key Card answer", "Queen answer"]);
 
@@ -486,6 +502,9 @@ function plan(p: Position, h: HandFacts): Plan {
     why = `${why}, ${h.tricks} playing tricks by itself`;
   }
 
+  // Controls (ace 2, king 1; 12 in the pack): a small slam in a suit wants about 10 of them between
+  // the hands, whatever the points say, since points counted for shape don't stop the defence
+  // cashing two tricks. Partner's are estimated from their HCP (0.3 a point, the pack's average).
   // They've doubled our part score, and doubled it's already a game (3♥× is 180 trick points): pass.
   // Bidding game instead can never score more, since we'd only bid it expecting to make it, and the
   // doubled contract then scores more with a trick to spare. Only a slam is worth bidding on for.
@@ -510,7 +529,9 @@ function plan(p: Position, h: HandFacts): Plan {
   const voidSuit = SUITS.find((s) => s !== strain && h.len[s] === 0) ?? null;
   // Control bids, only where Blackwood can't settle it: a suit with two quick losers, or a void.
   const controlBid = (problem: string): Plan | null => {
-    const cb = agreed === strain && !asked && !byTricks ? myControlBid(p, h, strain as Suit) : null;
+    const found = agreed === strain && !asked && !byTricks ? myControlBid(p, h, strain as Suit) : null;
+    // Only inviting: a control bid past game would leave us too high when partner has nothing more.
+    const cb = found && (target >= 6 || rank(found) < rank(bid(gameLevel(strain), strain))) ? found : null;
     return cb ? { call: cb, why: `${why}, ${points}: slam is possible, but ${problem}: show controls with ${callName(cb)}` } : null;
   };
   if (target >= 6 && voidSuit && strain !== "NT" && isMajor(strain as Suit)) {

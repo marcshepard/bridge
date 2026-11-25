@@ -400,6 +400,24 @@ describe("Roman Key Card (1430)", () => {
   });
 });
 
+describe("slam judgment (stage 1 harness)", () => {
+  // The specific rules place games from fixed ranges; with slam values the plan's slam move wins.
+  it.each([
+    // Board 790 (quick): 17 opposite 15–17 with a 4-4 fit, which used to stop in game: check the aces.
+    ["slam values after Stayman finds the fit", "AQ6.AQ92.A72.J42", "PASS 1NT PASS 2C PASS 2H PASS", "S", "4NT"],
+    // Board 323 (quick): 20 opposite opener's 1♣ then 1♠, no fit: slam, not 3NT.
+    ["a slam in notrump after opener's rebid", "AK2.QJ762.Q.AKT4", "1C PASS 1H PASS 1S PASS", "S", "6NT"],
+    // Partner's Stayman needs its answer, whatever the strength.
+    ["a forcing convention still gets its answer", "AQ6.AQ92.A72.KJ2", "1NT PASS 2C PASS", "N", "2H"],
+  ])("%s", (_name, hand, auction, dealer, expected) => {
+    expect(bot(hand, auction, dealer as Seat)).toBe(expected);
+  });
+
+  it("counts controls: 2 for an ace, 1 for a king", () => {
+    expect(evaluate(parseHand("AK2.KQJ62.Q.AT4")).controls).toBe(6);
+  });
+});
+
 describe("auction audit regressions", () => {
   const deal = { dealer: "N", vul: "None" } as const;
   it.each([
