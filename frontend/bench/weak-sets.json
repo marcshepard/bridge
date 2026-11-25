@@ -1,0 +1,14 @@
+{
+  "weak-dev": {
+    "stage": "weak",
+    "deals": 1500,
+    "seed": 101,
+    "filter": 1
+  },
+  "weak-holdout": {
+    "stage": "weak",
+    "deals": 1500,
+    "seed": 202,
+    "filter": 1
+  }
+}

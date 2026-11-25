@@ -1,7 +1,7 @@
 // Opening bids: the first bid of the auction.
 
 import { type Suit } from "../../types";
-import { type HandFacts, goodSuit, holding, isMajor, ruleOf15, ruleOf20, stopper, suitHcp, topHonours } from "../evaluate";
+import { type HandFacts, STANDARD_WORDS, goodSuit, holding, isMajor, meetsStandard, ruleOf15, ruleOf20, stopper, suitHcp, topHonours } from "../evaluate";
 import type { CallRule } from "../model";
 import { type Position, PASS, bid, openingSeat } from "../position";
 import { SUIT_WORDS, SYMBOL, cards, hcpText, len, rule, shapeText } from "./common";
@@ -161,18 +161,18 @@ export function openingRules(p: Position): CallRule[] {
       rules.push(
         rule(
           bid(2, suit),
-          `Weak two: ${s.weakTwoMin}–${s.weakTwoMax} HCP and a good 6-card ${SUIT_WORDS[suit].slice(0, -1)} suit (two of the top three honours, or three of the top five).`,
+          `Weak two: ${s.weakTwoMin}–${s.weakTwoMax} HCP and six ${SUIT_WORDS[suit]}: ${STANDARD_WORDS[s.weakTwoSuit]}.`,
           (h) =>
             h.len[suit] === 6 &&
             h.hcp >= s.weakTwoMin &&
             h.hcp <= s.weakTwoMax &&
-            goodSuit(h, suit) &&
+            meetsStandard(h, suit, s.weakTwoSuit) &&
             // A side four-card major makes a weak two a poor description.
             (["S", "H"] as Suit[]).every((m) => m === suit || h.len[m] < 4),
           {
             name: "Weak two",
             shows: { hcp: [s.weakTwoMin, s.weakTwoMax], len: len(suit, 6, 6) },
-            why: (h) => `${hcpText(h)}, too few to open at the one level, and six good ${SUIT_WORDS[suit]} (${holding(h, suit)})`,
+            why: (h) => `${hcpText(h)}, too few to open at the one level, and six ${SUIT_WORDS[suit]} (${holding(h, suit)})`,
           },
         ),
       );
@@ -181,7 +181,7 @@ export function openingRules(p: Position): CallRule[] {
   if (seat <= 3) {
     for (const suit of ["S", "H", "D", "C"] as Suit[]) {
       rules.push(
-        rule(bid(3, suit), `Preempt: a good 7-card ${SUIT_WORDS[suit].slice(0, -1)} suit (two of the top three honours, or three of the top five) and fewer than opening values.`, (h) => h.len[suit] === 7 && h.hcp >= 5 && h.hcp <= 10 && goodSuit(h, suit), {
+        rule(bid(3, suit), `Preempt: seven ${SUIT_WORDS[suit]} (${STANDARD_WORDS[s.preemptSuit]}) and fewer than opening values.`, (h) => h.len[suit] === 7 && h.hcp >= 5 && h.hcp <= 10 && meetsStandard(h, suit, s.preemptSuit), {
           name: "Preempt",
           shows: { hcp: [5, 10], len: len(suit, 7, 7) },
           why: (h) => `${hcpText(h)} and seven ${SUIT_WORDS[suit]} (${holding(h, suit)}): take away the opponents' room`,

@@ -7,6 +7,8 @@
 // person on their side bid SAYC as it comes (SAYC_DEFAULTS). Fields with `built: false` are on the
 // card but the rules don't act on them yet; fields with `editable: false` can't be changed (yet).
 
+import { STANDARD_WORDS, type SuitStandard } from "./evaluate";
+
 export type BlackwoodStyle = "plain" | "rkc1430" | "rkc3014";
 export type NegativeDoublesThrough = "2S" | "3S" | "4S";
 /** A 3NT opening: balanced 25–27, or gambling (a solid seven-card minor and little else). */
@@ -73,6 +75,10 @@ export interface SystemSettings {
   newMinorForcing: boolean;
   /** The fourth suit bid by responder is artificial and forcing. */
   fourthSuitForcing: boolean;
+  /** How good a weak two's six-card suit must be. SAYC: good. */
+  weakTwoSuit: SuitStandard;
+  /** How good a three-level preempt's seven-card suit must be. SAYC: good. */
+  preemptSuit: SuitStandard;
 }
 
 export const SAYC_DEFAULTS: SystemSettings = {
@@ -109,6 +115,8 @@ export const SAYC_DEFAULTS: SystemSettings = {
   gerber: true,
   newMinorForcing: true,
   fourthSuitForcing: true,
+  weakTwoSuit: "good",
+  preemptSuit: "good",
 };
 
 /** The card each side of the table bids by. */
@@ -286,6 +294,26 @@ export const SETTING_FIELDS: SettingField[] = [
   toggle("ruleOf15", "Suit openings", "Rule of 15", "After three passes, open only when HCP plus the number of spades make 15; otherwise pass the board out."),
   toggle("strongTwoClubs", "Suit openings", "Strong 2♣", "2♣ is artificial: 22+ HCP, or 18+ HCP with about nine playing tricks. Forcing to game, unless opener rebids 2NT. Partner bids 2♦ to wait.", true, false),
   toggle("weakTwos", "Suit openings", "Weak twos", "2♦, 2♥ and 2♠ show a good six-card suit: two of the top three honours, or three of the top five."),
+  {
+    kind: "fixed",
+    id: "weakTwoSuit",
+    group: "Suit openings",
+    label: "Weak two suit",
+    value: (s) => STANDARD_WORDS[s.weakTwoSuit],
+    help: () => "How good the six-card suit of a weak two must be.",
+    built: true,
+    editable: false,
+  },
+  {
+    kind: "fixed",
+    id: "preemptSuit",
+    group: "Suit openings",
+    label: "Three-level preempt suit",
+    value: (s) => STANDARD_WORDS[s.preemptSuit],
+    help: () => "How good the seven-card suit of a three-level preempt must be.",
+    built: true,
+    editable: false,
+  },
   {
     kind: "choice",
     id: "weakTwoRange",

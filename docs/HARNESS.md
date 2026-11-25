@@ -491,6 +491,96 @@ HCP, roughly balance. Left for stage 6 (judgment, or more machinery than phase 1
 - **Self-play bias** is largest here: the bots compete against copies of themselves. Cross-check
   with field results from Marc's Common Game sessions, kept outside the repo.
 
+**First experiment: how strict should weak openings be?** (25 November 2026, Marc's question.)
+Rather than the full teams match first, a targeted test of one rule:
+
+- **Sets:** `weak-dev` (seed 101, for looking at boards) and `weak-holdout` (seed 202, headline only),
+  1,500 deals each, in `bench/weak-sets.json`. A deal is kept when the first player in seats one to
+  three who doesn't pass holds a weak-two hand (six cards in ♠ ♥ ♦, 5–11 HCP, no side four-card
+  major) or a three-level preempt hand (seven cards, 5–10 HCP), whatever the suit's quality. The
+  filter is frozen and doesn't use the bidder (`src/bench/weak.ts`). Each deal's full double-dummy
+  table is solved once (13 s for a set).
+- **Comparison:** each deal is bid twice, the opponents bidding normally on the base card both
+  times, the preempting side once on the base card and once on the variant. Both contracts are
+  scored on the deal's own double-dummy tricks (doubles included), and the difference is in IMPs for
+  the preempting side. Same deal and opponents, so only the rule shows; a variant equal to the base
+  scores exactly zero.
+- **Settings tested:** `weakTwoSuit` and `preemptSuit` (`any`, `decent`: one of the top three and
+  two of the top five, or `good`: two of the top three or three of the top five, SAYC's standard
+  and the default). Shown on the settings page as fixed parts of the card.
+
+(These first results were taken before each side read the other's calls by the other's card: the
+defenders read a loose weak two as showing a good suit. Rerun under the plan below.)
+
+| Variant (preempting side only) | `weak-dev` IMPs per board | Boards changed | `weak-holdout` |
+|---|---|---|---|
+| Weak twos: decent | +0.24 (+0.09 to +0.38) | 350 of 1,500 | +0.37 (+0.22 to +0.54) |
+| Weak twos: any | +0.57 (+0.35 to +0.78) | 681 | +0.61 (+0.41 to +0.82) |
+| Preempts: decent | +0.09 (+0.03 to +0.16) | 87 | +0.13 (+0.05 to +0.21) |
+| Preempts: any | +0.17 (+0.08 to +0.27) | 136 | +0.18 (+0.08 to +0.28) |
+
+Every loosening gains on both sets: the base passes those hands, and against these opponents
+opening them pays. Read with care, though: looking at the biggest swings on `weak-dev`, much of
+the gain is the opponent bots handling preempts badly, or bugs in their competitive auctions, not
+the weak opening itself:
+- Board 828: over 2♦–3♦, the opponent with 22 HCP and ♣AKQJ854 doubles, then lets 4♦ play
+  (without the preempt they bid 6♣).
+- Board 1223: in the base auction, North bids 3♥ holding four spades and a doubleton heart, and is
+  doubled for −1700 (a competitive-bidding bug unrelated to weak twos).
+- Board 845 goes the other way: the weak two helps the opponents find 6♥.
+
+Also: double dummy's defenders always lead right, so the lead-directing value of a good suit
+doesn't count (that favours looser suits), and self-play means the result is "against our bots".
+
+**Plan for weak openings and the defence to them (Marc, 25 November 2026).** Tune the two against
+each other until neither changes:
+1. **Baseline:** weak twos and three-level preempts with 3+ HCP in the suit (`hcp3`: a king,
+   queen-jack or better), as the preempting side's card in these runs (the bots' default in the
+   frontend stays SAYC's "good" until step 3).
+2. **Tune the defence** against it, one change at a time, keeping a change only if it helps
+   against 3+ HCP preempts and doesn't hurt against SAYC's "good" ones (so the defence isn't
+   tuned to one style). Evaluate on `weak-holdout`, then make it the new baseline.
+3. **Choose the suit standard** for weak twos and preempts against the improved defence; the best
+   becomes the final baseline (and the bots' default).
+4. **One more pass at the defence** (expected to change little).
+
+Who decides what, by case (Marc and Claude, 25 November 2026):
+
+| Case | Decided by |
+|---|---|
+| The preemptor's later calls | A rule: the preemptor doesn't bid again unless partner forces (a new suit, the 2NT ask), and then only answers |
+| Raising partner's preempt | Rules: the Law of Total Tricks (six shown: raise to 3 with three, to 4 with four; seven: raise to 4 with two or three), one level more at favourable vulnerability, less at unfavourable; game to make with opening values and a fit, the 2NT ask when it depends on a maximum; 3NT with stoppers and a way to run the suit |
+| Coming in over their preempt, and our next round, **when we may have game** | Rules: act as if partner holds 7–8 useful points; the action by shape (double when short in their suit with support for the rest, overcall with a good suit, 2NT/3NT balanced with a stopper, jump to game with a self-sufficient suit); advancer's jumps and Lebensohl |
+| The same **when it's only a part score** (marginal hands) | Double-dummy simulation, as a "hard" call with a few candidates |
+| Competing, sacrifices, penalty doubles | Simulation, scored in IMPs (it scores share of deals today: fix first) |
+
+Groundwork done for step 1: the `hcp3` standard; each side reads the other's calls by the other's
+card (the bidder already supported a card per side; the experiment now passes both); par from the
+double-dummy table (`parScore` in `src/bench/weak.ts`: over each contract the other side lets it
+stand, doubled if it fails, or outbids it; the dealer's side acts first); and the defence run
+(`weak-defence`): each deal bid once, the weak hand's side on 3+ HCP preempts, ours on the code
+under test, scored for us in IMPs against par, compared board by board with a committed baseline
+(`bench/weak-baselines.json`).
+
+**Step 1 baseline** (code at `20b11de` plus the groundwork): our side against 3+ HCP weak openings,
+IMPs per board against par: `weak-dev` −1.40 (−1.79 to −1.01), `weak-holdout` −1.89. On `weak-dev`:
+after their three-level preempt −2.23, after their weak two −1.53, with the weak hand in third seat
+−4.79 (133 boards). Par includes perfect sacrifices, so 0 isn't reachable; it's a yardstick for
+change. For reference, 3+ HCP weak openings against SAYC's "good" suits (each side reading the
+other's card): +0.32 IMPs per board on `weak-dev` (+0.16 to +0.49), +0.53 on `weak-holdout`.
+
+**Decision (for now):** keep SAYC's "good" suits as the default. The experiment says our defence to
+preempts is the bigger weakness. Next: improve the bots' bidding over the opponents' preempts and
+weak twos (stage 2), using these sets with the opponents' standard loosened (`--base
+weakTwoSuit=any,preemptSuit=any`) to measure it; then rerun this experiment.
+
+Commands:
+```
+npm run bench -- weak-build weak-dev                       # once (and weak-holdout --seed 202)
+npm run bench -- weak-run weak-dev --card weakTwoSuit=decent
+npm run bench -- weak-show latest --board 828
+```
+
 ### Stage 3: opening lead
 
 - **Deals.** Random deals, bid by the bots (or the stage 1 and 2 sets with their auctions).

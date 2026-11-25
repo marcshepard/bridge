@@ -9,6 +9,14 @@
 //   npm run bench -- show <run> --board <n>                             one board in full
 //   npm run bench -- list                                               sets, baselines and runs
 //
+// The weak-opening experiment (stage 2): a variant card for the side with a weak two or preempt hand.
+//   npm run bench -- weak-build <set> [--deals 1500 --seed 101]         deal a set and solve each deal (once)
+//   npm run bench -- weak-run <set> --card weakTwoSuit=decent           IMPs for the variant against the base
+//   npm run bench -- weak-run <set> --base k=v --card k=v               a base other than SAYC
+//   npm run bench -- weak-show <run> --board <n>                        one board in full, both auctions
+//   npm run bench -- weak-defence <set> [--card k=v]                    our bidding against their weak openings (3+ HCP suits), against par
+//   npm run bench -- weak-defence-baseline <set> [<run>]                make a defence run (default: the latest) the set's baseline
+//
 // A run can be named by its id, or as "latest" or "baseline" (with --set when there's more than
 // one set). Options for run and compare: --top <n> boards to list (10), --changed (list every
 // changed board), --min-boards <n> for a situation to be listed (15).
@@ -24,12 +32,13 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { availableParallelism } from "node:os";
 import { resolve } from "node:path";
 import { Worker, isMainThread, parentPort } from "node:worker_threads";
-import { type BenchDeal, type SetDefinition, DEFAULT_SET, dealSet, ewLayouts } from "../src/bench/deals";
+import { type BenchDeal, type SetDefinition, DEFAULT_SET, dealSet, ewLayouts, handsOf } from "../src/bench/deals";
 import { encodeTricks } from "../src/bench/ideal";
 import { type RunFile, boardText, summary } from "../src/bench/report";
 import { type BoardResult, runBoard } from "../src/bench/stage1";
 import { SyncSolver } from "../src/dds/syncSolver";
 import { SAYC_DEFAULTS, type SystemSettings } from "../src/core/bidding/system";
+import { type DefenceRunFile, type WeakDeal, type WeakRunFile, type WeakSetDefinition, DEFAULT_WEAK_SET, defenceSummary, encodeTable, runDefenceBoard, runWeakBoard, weakBoardText, weakDealSet, weakSummary } from "../src/bench/weak";
 
 interface Cache {
   definition: SetDefinition;
@@ -48,6 +57,17 @@ interface LayoutDone {
   layouts: string[];
 }
 
+/** The weak-opening experiment: its deals and each deal's double-dummy table (see weak.ts). */
+interface WeakCache {
+  definition: WeakSetDefinition;
+  deals: WeakDeal[];
+  tables: string[];
+}
+
+interface TableJob {
+  table: WeakDeal;
+}
+
 // ---- Files ------------------------------------------------------------------------------------
 
 const BENCH = resolve("bench");
@@ -62,6 +82,8 @@ const writeJson = (path: string, value: unknown, compact = false) => {
   writeFileSync(path, (compact ? JSON.stringify(value) : JSON.stringify(value, null, 2)) + "\n");
 };
 const readSets = () => readJson<Record<string, SetDefinition>>(SETS_FILE, {});
+const WEAK_SETS_FILE = resolve(BENCH, "weak-sets.json");
+const readWeakSets = () => readJson<Record<string, WeakSetDefinition>>(WEAK_SETS_FILE, {});
 const readBaselines = () => readJson<Record<string, RunFile>>(BASELINES_FILE, {});
 const cachePath = (set: string) => resolve(CACHE, `${set}.json`);
 const runPath = (id: string) => resolve(RUNS, `${id}.json`);
@@ -122,6 +144,16 @@ async function main() {
       return show(need(rest[0], "a run"), args);
     case "list":
       return list();
+    case "weak-build":
+      return void (await weakBuild(need(rest[0], "the set's name"), args));
+    case "weak-run":
+      return weakRun(need(rest[0], "the set's name"), args);
+    case "weak-show":
+      return weakShow(need(rest[0], "a run"), args);
+    case "weak-defence":
+      return weakDefence(need(rest[0], "the set's name"), args);
+    case "weak-defence-baseline":
+      return weakDefenceBaseline(need(rest[0], "the set's name"), rest[1]);
     default:
       console.log(USAGE);
   }
@@ -136,6 +168,14 @@ const USAGE = `The bots' evaluation harness (docs/HARNESS.md), stage 1: bidding 
   npm run bench -- compare <run> [<other run>]                        compare two runs (default: with the baseline)
   npm run bench -- show <run> --board <n>                             one board in full
   npm run bench -- list                                               sets, baselines and runs
+
+The weak-opening experiment (stage 2): a variant card for the side with a weak two or preempt hand.
+  npm run bench -- weak-build <set> [--deals 1500 --seed 101]         deal a set and solve each deal (once)
+  npm run bench -- weak-run <set> --card weakTwoSuit=decent           IMPs for the variant against the base
+  npm run bench -- weak-run <set> --base k=v --card k=v               a base other than SAYC
+  npm run bench -- weak-show <run> --board <n>                        one board in full, both auctions
+  npm run bench -- weak-defence <set> [--card k=v]                    our bidding against their weak openings (3+ HCP suits), against par
+  npm run bench -- weak-defence-baseline <set> [<run>]                make a defence run (default: the latest) the set's baseline
 
 A run is named by its id, or "latest" or "baseline" (add --set <name> when there's more than one set).
 For run and compare: --top <n> boards to list (10), --changed to list every changed board,
@@ -353,12 +393,151 @@ function list() {
   }
 }
 
+// ---- The weak-opening experiment ----------------------------------------------------------------
+
+const weakCachePath = (set: string) => resolve(CACHE, `weak-${set}.json`);
+
+async function weakBuild(set: string, args: Args): Promise<WeakCache> {
+  const sets = readWeakSets();
+  const asked: WeakSetDefinition = {
+    ...DEFAULT_WEAK_SET,
+    deals: args.num("deals", sets[set]?.deals ?? DEFAULT_WEAK_SET.deals),
+    seed: args.num("seed", sets[set]?.seed ?? DEFAULT_WEAK_SET.seed),
+  };
+  const def = sets[set];
+  if (def && JSON.stringify(def) !== JSON.stringify(asked)) {
+    throw new Error(`Weak set "${set}" already exists as ${JSON.stringify(def)}. Use a new name for a different set.`);
+  }
+  if (!def) {
+    writeJson(WEAK_SETS_FILE, { ...sets, [set]: asked });
+    console.log(`New weak set "${set}": ${JSON.stringify(asked)}`);
+  }
+  const cached = readJson<WeakCache | null>(weakCachePath(set), null);
+  if (cached && JSON.stringify(cached.definition) === JSON.stringify(asked)) return cached;
+
+  const deals = weakDealSet(asked);
+  const threads = Math.max(1, Math.min(args.num("threads", availableParallelism() - 2), deals.length));
+  console.log(`Building weak set "${set}": ${deals.length} deals, on ${threads} threads…`);
+  const started = Date.now();
+  const tables = new Map<number, string>();
+  await new Promise<void>((done, fail) => {
+    let next = 0;
+    const workers = Array.from({ length: threads }, () => new Worker(new URL(import.meta.url)));
+    const send = (w: Worker) => {
+      if (next < deals.length) w.postMessage({ table: deals[next++]! } satisfies TableJob);
+    };
+    for (const w of workers) {
+      w.on("error", fail);
+      w.on("message", (m: { id: number; table: string }) => {
+        tables.set(m.id, m.table);
+        if (tables.size % 50 === 0 || tables.size === deals.length) process.stdout.write(`\r  ${tables.size} of ${deals.length} deals   `);
+        if (tables.size === deals.length) {
+          process.stdout.write("\n");
+          void Promise.all(workers.map((x) => x.terminate())).then(() => done());
+        } else send(w);
+      });
+      send(w);
+    }
+  });
+  const cache: WeakCache = { definition: asked, deals, tables: deals.map((d) => tables.get(d.id)!) };
+  writeJson(weakCachePath(set), cache, true);
+  console.log(`Built in ${Math.round((Date.now() - started) / 1000)} s.`);
+  return cache;
+}
+
+async function weakRun(set: string, args: Args) {
+  const cache = await weakBuild(set, args);
+  const started = Date.now();
+  const baseCard = parseCard(args.str("base"));
+  const variantCard = parseCard(args.str("card"));
+  if (Object.keys(variantCard).length === 0) throw new Error("Give the variant with --card (for example --card weakTwoSuit=decent).");
+  const base = { ...SAYC_DEFAULTS, ...baseCard } as SystemSettings;
+  const variant = { ...base, ...variantCard } as SystemSettings;
+  const boards = cache.deals.map((d, i) => runWeakBoard(d, cache.tables[i]!, base, variant));
+  const now = new Date();
+  const result: WeakRunFile = {
+    id: `weak-${set}-${stamp(now)}`,
+    set,
+    label: args.str("label") ?? "",
+    commit: git("rev-parse", "--short", "HEAD") || "unknown",
+    dirty: git("status", "--porcelain", "--", ":/", ":(exclude,top)frontend/bench").length > 0,
+    createdAt: now.toISOString(),
+    ms: Date.now() - started,
+    base: baseCard,
+    variant: variantCard,
+    boards,
+  };
+  writeJson(runPath(result.id), result, true);
+  console.log(weakSummary(result, args.num("top", 10)));
+}
+
+function weakShow(ref: string, args: Args) {
+  const id = ref === "latest" ? runIds("weak").at(-1) : ref;
+  if (!id || !existsSync(runPath(id))) throw new Error(`No weak run called "${ref}".`);
+  const r = readJson<WeakRunFile>(runPath(id), null as never);
+  const cache = readJson<WeakCache | null>(weakCachePath(r.set), null);
+  const n = args.num("board", 0);
+  const deal = cache?.deals.find((d) => d.id === n);
+  const board = r.boards.find((b) => b.id === n);
+  if (!deal || !board) throw new Error(`Give a board of set "${r.set}" with --board.`);
+  console.log(weakBoardText(deal, board));
+}
+
+/** The preempting side's card for the defence runs: weak twos and preempts with 3+ HCP in the suit. */
+const DEFENCE_PREEMPTORS = { weakTwoSuit: "hcp3", preemptSuit: "hcp3" } as const;
+const WEAK_BASELINES_FILE = resolve(BENCH, "weak-baselines.json");
+const readWeakBaselines = () => readJson<Record<string, DefenceRunFile>>(WEAK_BASELINES_FILE, {});
+
+async function weakDefence(set: string, args: Args) {
+  const cache = await weakBuild(set, args);
+  const started = Date.now();
+  const preemptorCard = { ...DEFENCE_PREEMPTORS, ...parseCard(args.str("base")) };
+  const defenderCard = parseCard(args.str("card"));
+  const preemptors = { ...SAYC_DEFAULTS, ...preemptorCard } as SystemSettings;
+  const defenders = { ...SAYC_DEFAULTS, ...defenderCard } as SystemSettings;
+  const boards = cache.deals.map((d, i) => runDefenceBoard(d, cache.tables[i]!, preemptors, defenders));
+  const now = new Date();
+  const result: DefenceRunFile = {
+    id: `defence-${set}-${stamp(now)}`,
+    set,
+    label: args.str("label") ?? "",
+    commit: git("rev-parse", "--short", "HEAD") || "unknown",
+    dirty: git("status", "--porcelain", "--", ":/", ":(exclude,top)frontend/bench").length > 0,
+    createdAt: now.toISOString(),
+    ms: Date.now() - started,
+    preemptors: preemptorCard,
+    defenders: defenderCard,
+    boards,
+  };
+  writeJson(runPath(result.id), result, true);
+  console.log(defenceSummary(result, readWeakBaselines()[set] ?? null, args.num("top", 10)));
+}
+
+function weakDefenceBaseline(set: string, ref?: string) {
+  const id = ref ?? runIds(`defence-${set}`).at(-1);
+  if (!id || !existsSync(runPath(id))) throw new Error(`No defence run for "${set}" yet.`);
+  const r = readJson<DefenceRunFile>(runPath(id), null as never);
+  const boards = r.boards.map(({ reasons: _, ...b }) => ({ ...b, reasons: [] }));
+  const all = { ...readWeakBaselines(), [set]: { ...r, boards } };
+  const sets = Object.entries(all).map(([name, { boards: bs, ...info }]) => {
+    const head = JSON.stringify(info, null, 2).slice(0, -2).replace(/\n/g, "\n  ");
+    return `  ${JSON.stringify(name)}: ${head},\n    "boards": [\n${bs.map((b) => `      ${JSON.stringify(b)}`).join(",\n")}\n    ]\n  }`;
+  });
+  writeFileSync(WEAK_BASELINES_FILE, `{\n${sets.join(",\n")}\n}\n`);
+  console.log(`Defence baseline for "${set}" is now ${r.id} (${r.commit}${r.dirty ? ", with uncommitted changes" : ""}). Commit bench/weak-baselines.json to share it.`);
+}
+
 // ---- Entry point (last, so everything above is defined) ----------------------------------------
 
 if (!isMainThread) {
   // A worker: solve every layout of each deal it's sent.
   const solver = new SyncSolver();
-  parentPort!.on("message", async ({ deal, def }: LayoutJob) => {
+  parentPort!.on("message", async (job: LayoutJob | TableJob) => {
+    if ("table" in job) {
+      parentPort!.postMessage({ id: job.table.id, table: encodeTable(await solver.table(handsOf(job.table))) });
+      return;
+    }
+    const { deal, def } = job;
     const layouts: string[] = [];
     for (const hands of ewLayouts(deal, def)) layouts.push(encodeTricks(await solver.table(hands)));
     parentPort!.postMessage({ id: deal.id, layouts } satisfies LayoutDone);

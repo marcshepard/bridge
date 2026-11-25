@@ -97,6 +97,23 @@ export function decentSuit(h: HandFacts, suit: Suit): boolean {
   return meetsQuality(h.hand[suit], "decent");
 }
 
+/** A suit-quality standard a setting can ask for: any length will do, 3+ HCP in it, decent, or good. */
+export type SuitStandard = "any" | "hcp3" | "decent" | "good";
+
+export function meetsStandard(h: HandFacts, suit: Suit, standard: SuitStandard): boolean {
+  if (standard === "any") return true;
+  if (standard === "hcp3") return suitHcp(h, suit) >= 3;
+  return meetsQuality(h.hand[suit], standard);
+}
+
+/** The standard in a learner's words, for rule meanings and the settings page. */
+export const STANDARD_WORDS: Record<SuitStandard, string> = {
+  any: "any suit of that length",
+  hcp3: "3+ HCP in the suit (a king, queen-jack or better)",
+  decent: "a decent suit (one of the top three honours and two of the top five)",
+  good: "a good suit (two of the top three honours, or three of the top five)",
+};
+
 /** A stopper for notrump: A, Kx, Qxx or Jxxx. */
 export function stopper(h: HandFacts, suit: Suit): boolean {
   const s = h.hand[suit];

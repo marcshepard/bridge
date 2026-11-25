@@ -5,6 +5,10 @@ import { type SetDefinition, dealSet, ewLayouts, handsOf, hasClearBid } from "./
 import { type ContractOption, contractClass, contractOptions, encodeTricks, expectedLoss, missKind, optionFor, tricksOf } from "./ideal";
 import { type RunFile, bootstrapCi, compareLosses, slamsByHcp } from "./report";
 import { type BoardResult, silentAuction, situationTags } from "./stage1";
+import { DEFAULT_WEAK_SET, encodeTable, parScore, preemptorOf, runWeakBoard, tableTricks, weakDealSet, weakKind } from "./weak";
+import { SAYC_DEFAULTS } from "../core/bidding/system";
+import { evaluate, meetsStandard } from "../core/bidding/evaluate";
+import type { DoubleDummyTable } from "../core/doubleDummy";
 
 const def: SetDefinition = { stage: 1, deals: 8, seed: 3, layouts: 12, filter: 1 };
 
@@ -175,5 +179,66 @@ describe("slams by combined HCP", () => {
 
   it("is left out for runs recorded before HCP were", () => {
     expect(slamsByHcp(run([board(1, undefined, "3NT", "6NT", 11)]), null)).toEqual([]);
+  });
+});
+
+describe("the weak-opening experiment", () => {
+  it("recognises weak-two and preempt hands whatever the suit", () => {
+    expect(weakKind(parseHand("KT9852.J3.A64.93"))).toEqual({ kind: "two", suit: "S" });
+    expect(weakKind(parseHand("9876543.J3.A6.93"))).toEqual({ kind: "three", suit: "S" });
+    // A side four-card major isn't a weak two; nor is a strong hand.
+    expect(weakKind(parseHand("KT9852.J932.A6.9"))).toBeNull();
+    expect(weakKind(parseHand("AK9852.KJ3.A6.93"))).toBeNull();
+  });
+
+  it("keeps deals whose first opener in seats one to three has the weak hand", () => {
+    const deals = weakDealSet({ ...DEFAULT_WEAK_SET, deals: 20 });
+    expect(deals).toHaveLength(20);
+    for (const d of deals) expect(preemptorOf(handsOf(d), d.dealer)).toBe(d.preemptor);
+  });
+
+  it("encodes a double-dummy table and reads it back", () => {
+    const t = Object.fromEntries(["N", "E", "S", "W"].map((s, i) => [s, { C: i, D: i + 1, H: i + 2, S: i + 3, NT: 13 - i }])) as DoubleDummyTable;
+    const code = encodeTable(t);
+    expect(code).toHaveLength(20);
+    expect(tableTricks(code, "E", "S")).toBe(4);
+    expect(tableTricks(code, "W", "NT")).toBe(10);
+  });
+
+  it("scores the same card both ways as no difference", () => {
+    const deal = weakDealSet({ ...DEFAULT_WEAK_SET, deals: 3 })[2]!;
+    const b = runWeakBoard(deal, "7".repeat(20), SAYC_DEFAULTS, SAYC_DEFAULTS);
+    expect(b.base.auction).toBe(b.variant.auction);
+    expect(b.imps).toBe(0);
+  });
+
+  // A table where North–South take `ns` tricks and East–West `ew`, in every strain.
+  const flat = (ns: number, ew: number) =>
+    encodeTable(Object.fromEntries(["N", "E", "S", "W"].map((s) => [s, Object.fromEntries(["C", "D", "H", "S", "NT"].map((x) => [x, s === "N" || s === "S" ? ns : ew]))])) as DoubleDummyTable);
+
+  it("works out par from the table", () => {
+    // Nobody makes anything: passed out.
+    expect(parScore(flat(6, 6), "None", "N")).toBe(0);
+    // North–South take all thirteen: 7NT, not vulnerable.
+    expect(parScore(flat(13, 0), "None", "N")).toBe(1520);
+    // North–South make 4♠ (ten tricks) vulnerable; East–West, not vulnerable, take 8: sacrificing in
+    // 5♣ doubled costs 500 (three down), less than the 620 game, so par is the sacrifice.
+    const t = encodeTable({
+      N: { C: 3, D: 3, H: 8, S: 10, NT: 8 }, S: { C: 3, D: 3, H: 8, S: 10, NT: 8 },
+      E: { C: 8, D: 8, H: 3, S: 3, NT: 3 }, W: { C: 8, D: 8, H: 3, S: 3, NT: 3 },
+    });
+    expect(parScore(t, "NS", "N")).toBe(500);
+  });
+
+  it("applies the suit standards", () => {
+    const h = evaluate(parseHand("KT9852.J3.A64.93"));
+    expect(meetsStandard(h, "S", "any")).toBe(true);
+    expect(meetsStandard(h, "S", "decent")).toBe(true);
+    expect(meetsStandard(h, "S", "good")).toBe(false);
+    expect(meetsStandard(evaluate(parseHand("985432.J3.A64.93")), "S", "decent")).toBe(false);
+    // 3+ HCP in the suit: a king, queen-jack or better.
+    expect(meetsStandard(evaluate(parseHand("K85432.J3.A64.93")), "S", "hcp3")).toBe(true);
+    expect(meetsStandard(evaluate(parseHand("Q85432.J3.A64.93")), "S", "hcp3")).toBe(false);
+    expect(meetsStandard(evaluate(parseHand("QJ5432.J3.A64.93")), "S", "hcp3")).toBe(true);
   });
 });
