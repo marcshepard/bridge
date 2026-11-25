@@ -107,7 +107,12 @@ export function responderOwesRebid(p: Position): boolean {
 }
 
 /** Has our side made a game-forcing call? */
-export const gameForced = (p: Position) => ourActions(p).some((r) => r.forcing === "game");
+export function gameForced(p: Position): boolean {
+  const ours = ourActions(p);
+  const last = ours.map((r) => r.forcing).lastIndexOf("game");
+  // A strong 2♣ forces to game unless opener rebids 2NT over the waiting 2♦ (22–24 balanced).
+  return last >= 0 && !ours.slice(last + 1).some((r) => r.rule?.name === "2♣ then 2NT");
+}
 
 /** Is the last bid ours, at game level or higher? */
 export function atGame(p: Position): boolean {
@@ -133,7 +138,9 @@ export const partnerShown = (p: Position) => p.shown[partner(p)];
  * show. So the bottom plus at most 2 (the middle of a narrow range like 15–17).
  */
 export function shownPoints(shown: Shown, trump?: Suit): { min: number; likely: number; max: number } {
-  const fit = trump && shown.strength?.filter((e) => e.kind !== "length" && e.suit === trump).at(-1);
+  // Points shown with length (a jump rebid, a reverse, a strong 2♣) count in any strain; points
+  // shown with a fit only when that suit is trumps.
+  const fit = shown.strength?.filter((e) => e.kind === "length" || (trump && e.suit === trump)).at(-1);
   const [min, max] = fit ? [Math.max(shown.hcp[0], fit.range[0]), Math.max(shown.hcp[0], fit.range[1])] : shown.hcp;
   return { min, likely: min + Math.min(2, Math.floor((max - min) / 2)), max };
 }

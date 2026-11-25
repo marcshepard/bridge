@@ -284,7 +284,7 @@ export const SETTING_FIELDS: SettingField[] = [
   toggle("ruleOf20", "Suit openings", "Rule of 20", "In first or second seat, open a hand with fewer than 12 HCP when HCP plus the lengths of the two longest suits make 20."),
   toggle("lightThirdSeat", "Suit openings", "Light third-seat openings", "After two passes, open with 10–11 HCP and a good suit, to suggest a lead and get in the way."),
   toggle("ruleOf15", "Suit openings", "Rule of 15", "After three passes, open only when HCP plus the number of spades make 15; otherwise pass the board out."),
-  toggle("strongTwoClubs", "Suit openings", "Strong 2♣", "2♣ is artificial: the strongest hands, or a hand that can take nine tricks. Partner bids 2♦ to wait.", true, false),
+  toggle("strongTwoClubs", "Suit openings", "Strong 2♣", "2♣ is artificial: 22+ HCP, or a hand that can take nine tricks. Forcing to game, unless opener rebids 2NT. Partner bids 2♦ to wait.", true, false),
   toggle("weakTwos", "Suit openings", "Weak twos", "2♦, 2♥ and 2♠ show a good six-card suit: two of the top three honours, or three of the top five."),
   {
     kind: "choice",

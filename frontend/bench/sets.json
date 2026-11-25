@@ -5,5 +5,12 @@
     "seed": 1,
     "layouts": 50,
     "filter": 1
+  },
+  "holdout": {
+    "stage": 1,
+    "deals": 1000,
+    "seed": 2,
+    "layouts": 50,
+    "filter": 1
   }
 }

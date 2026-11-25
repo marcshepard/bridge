@@ -122,16 +122,16 @@ export function slamRules(p: Position): CallRule[] {
   // I asked with plain Blackwood: bid the slam unless two aces are missing.
   if (me?.rule?.name === "Blackwood" && pl?.rule?.name === "Blackwood answer" && isBid(pl.call)) {
     const answer = pl.call.strain;
-    const trump = trumpSuit(p);
     const partnerAces = (h: HandFacts) => (answer === "C" ? (h.aces === 0 ? 4 : 0) : answer === "D" ? 1 : answer === "H" ? 2 : 3);
     const missing = (h: HandFacts) => 4 - h.aces - partnerAces(h);
     const out: CallRule[] = [];
-    if (trump) {
-      const five = bid(5, trump);
+    // The asker knows its own hand: trumps are the fit it can see, not only what both have shown.
+    for (const trump of trumpCandidates(p)) {
+      const mine = (h: HandFacts) => askerTrump(p, h) === trump;
       out.push(
-        rule(bid(7, trump), "Grand slam: no ace missing and plenty to spare.", (h) => missing(h) === 0 && h.hcp + partnerPoints(p).min >= 36, { why: () => "all four aces between us and enough strength for thirteen tricks" }),
-        rule(bid(6, trump), "Small slam: at most one ace missing.", (h) => missing(h) <= 1, { why: (h) => `${missing(h) === 0 ? "no ace" : "one ace"} missing` }),
-        ...(cheapest(p, trump) === 5 ? [rule(five, "Signs off: two aces missing.", () => true, { why: () => "two aces missing: stop at the five level" })] : []),
+        rule(bid(7, trump), "Grand slam: no ace missing and plenty to spare.", (h) => mine(h) && missing(h) === 0 && h.hcp + partnerPoints(p).min >= 36, { why: () => "all four aces between us and enough strength for thirteen tricks" }),
+        rule(bid(6, trump), "Small slam: at most one ace missing.", (h) => mine(h) && missing(h) <= 1, { why: (h) => `${missing(h) === 0 ? "no ace" : "one ace"} missing` }),
+        ...(cheapest(p, trump) === 5 ? [rule(bid(5, trump), "Signs off: two aces missing.", mine, { why: () => "two aces missing: stop at the five level" })] : []),
       );
     }
     out.push(rule(PASS, "Two aces missing: stops here.", () => true, { why: () => "two aces missing" }));
@@ -345,6 +345,23 @@ function trumpSuit(p: Position): Suit | null {
   return fits.at(-1) ?? suits.at(-1) ?? null;
 }
 
+/** Suits the Blackwood asker might name as trumps: our suits, the shown fit first. */
+function trumpCandidates(p: Position): Suit[] {
+  const t = trumpSuit(p);
+  return [...new Set([...(t ? [t] : []), ...ourSuits(p)])];
+}
+
+/**
+ * The trump suit from the asker's seat: its own length plus what partner has shown, an 8+ card fit,
+ * a major before a minor, then the longest; else the suit both have shown.
+ */
+function askerTrump(p: Position, h: HandFacts): Suit | null {
+  const pp = partnerShown(p);
+  const fits = ourSuits(p).filter((s) => h.len[s] + pp.len[s][0] >= 8);
+  fits.sort((a, b) => Number(isMajor(b)) - Number(isMajor(a)) || h.len[b] + pp.len[b][0] - (h.len[a] + pp.len[a][0]));
+  return fits[0] ?? trumpSuit(p);
+}
+
 /** Doubles that ask partner to bid: the doubled contract won't be played, so it isn't worth anything to us. */
 const BIDDING_DOUBLES = new Set(["Takeout double", "Negative double"]);
 
@@ -417,7 +434,7 @@ function plan(p: Position, h: HandFacts): Plan {
   if (fit && isMajor(fit)) {
     strain = fit;
     why = fitWords(fit);
-  } else if (ntOk && (!fit || (likelyFit >= GAME_POINTS.NT && likelyFit < GAME_POINTS.minor))) {
+  } else if (ntOk && (!fit || (likelyFit >= GAME_POINTS.NT && likelyFit < SLAM_INVITE_FROM))) {
     strain = "NT";
     why = "no major fit, a balanced hand";
   } else if (fit) {
@@ -441,7 +458,8 @@ function plan(p: Position, h: HandFacts): Plan {
   const kindOf = strain === "NT" ? "NT" : isMajor(strain as Suit) ? "major" : "minor";
   const needed = GAME_POINTS[kindOf];
   const possible = ownPoints + pp.max >= needed;
-  let target = likely >= 37 && least >= 35 ? 7 : likely >= 33 && least >= 31 ? 6 : likely >= needed ? game : likely >= INVITE_FROM[kindOf] && possible ? game - 1 : 0;
+  // A grand slam on points needs the 37 even if partner is at the bottom of what they've shown.
+  let target = least >= 37 ? 7 : likely >= 33 && least >= 31 ? 6 : likely >= needed ? game : likely >= INVITE_FROM[kindOf] && possible ? game - 1 : 0;
   const mustBid = forced(p);
 
   // Our own long suit: the tricks it takes by itself can go higher than the points say (a long
@@ -470,7 +488,8 @@ function plan(p: Position, h: HandFacts): Plan {
   // Slam is possible but not sure (likely 31–32, and partner's maximum would reach 33): invite it,
   // with 5 of our major or a quantitative 4NT. Not with two quick losers in a suit neither of us
   // has bid: partner would accept on points alone, and the defence could cash two tricks there.
-  const suitAgreed = ourSuits(p).length > 0 && ourContract(p)?.strain !== "NT";
+  // After 3NT, 4NT asks for aces only when a major is agreed (as after Jacoby 2NT).
+  const suitAgreed = (ourSuits(p).length > 0 && ourContract(p)?.strain !== "NT") || agreedMajor(p) !== null;
   const asked = ourActions(p).some((r) => r.rule?.name === "Slam invitation" || r.rule?.name === "Blackwood" || r.rule?.name === "Control bid");
   const agreed = agreedMajor(p);
   const voidSuit = SUITS.find((s) => s !== strain && h.len[s] === 0) ?? null;
@@ -500,7 +519,9 @@ function plan(p: Position, h: HandFacts): Plan {
   }
 
   // Slam: ask for aces first, if there's a trump suit and room.
-  if (!byTricks && target >= 6 && strain !== "NT" && cheapest(p, "NT") <= 4 && !ourActions(p).some((r) => r.rule?.name === "Blackwood")) {
+  // Only where partner will read 4NT as Blackwood: a suit agreed and our contract not in notrump
+  // (after 3NT, 4NT is quantitative). Otherwise bid the slam.
+  if (!byTricks && target >= 6 && strain !== "NT" && suitAgreed && cheapest(p, "NT") <= 4 && !ourActions(p).some((r) => r.rule?.name === "Blackwood")) {
     return { call: bid(4, "NT"), why: `${why}, ${points}: slam is likely, so check the aces first` };
   }
   if (target === 0) {
@@ -565,7 +586,8 @@ function outbid(p: Position, h: HandFacts, strain: Strain, mine: number, points:
 
 export function placementRules(p: Position): CallRule[] {
   const candidates: { call: Call; meaning: string; name?: string }[] = [{ call: PASS, meaning: "Happy with the contract as it is." }];
-  const suitAgreed = ourSuits(p).length > 0 && ourContract(p)?.strain !== "NT";
+  // After 3NT, 4NT asks for aces only when a major is agreed (as after Jacoby 2NT).
+  const suitAgreed = (ourSuits(p).length > 0 && ourContract(p)?.strain !== "NT") || agreedMajor(p) !== null;
   const askWords = blackwoodWords(p);
   // With a major agreed, a new suit at the four level or higher is a control bid: read it first.
   const agreed = agreedMajor(p);

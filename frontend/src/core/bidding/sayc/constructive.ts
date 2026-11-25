@@ -240,8 +240,9 @@ function openerRebid(p: Position, o: Suit, r: Bid, rName: string | undefined, ga
       // A major game needs 26: 15 opposite the limit raise's likely 11 (the general rule's numbers).
       // With a major and slam possible (31+ with partner's likely), neither rule here applies, and
       // the general rules explore slam (an invitation, control bids or Blackwood).
+      // In a minor, 3NT first: nine tricks are easier than eleven with a balanced hand.
+      rule(bid(3, "NT"), "Accepts in notrump.", (h) => !isMajor(o) && h.hcp >= 13 && h.semiBalanced, { why: () => "a balanced hand with extras: 3NT is easier than 5 of a minor" }),
       rule(bid(isMajor(o) ? 4 : 5, o), "Accepts the invitation.", (h) => fp(h) >= (isMajor(o) ? 15 : 14) && !slamZone(h), { why: (h) => `${fp(h)} points: more than a minimum` }),
-      rule(bid(3, "NT"), "Accepts in notrump.", (h) => !isMajor(o) && h.hcp >= 14 && h.balanced, { why: () => "stoppers and extras: 3NT is easier than 5 of a minor" }),
       rule(PASS, "Declines: minimum.", (h) => fp(h) < (isMajor(o) ? 15 : 14) || !isMajor(o), { why: (h) => `${fp(h)} points: a minimum` }),
     ];
   }
@@ -468,18 +469,30 @@ function responderRebid(p: Position, o: Suit, r: Bid, rebid: Bid): CallRule[] {
   if (r.strain === "NT" && r.level === 2 && !isMajor(o)) return afterOpenerOverTwoNotrump(p, o, rebid);
   const ps = partnerShown(p);
   const rules: CallRule[] = [];
-  const minOpener = Math.max(ps.hcp[0], 12);
+  // After Jacoby 2NT the major is agreed and opener's answer only describes the hand (3NT included):
+  // sign off in game, or leave a slam-range hand to the slam rules.
+  if (r.strain === "NT" && r.level === 2 && isMajor(o) && rebid.level < 4) {
+    const fp = partnerPoints(p, o);
+    return [
+      rule(bid(4, o), `Signs off in 4${SYMBOL[o]}: no slam interest.`, (h) => supportPoints(h, o) + fp.likely < 31, {
+        why: (h) => `${supportPoints(h, o)} points with opener's ${fp.likely} or so: game, not slam`,
+      }),
+    ];
+  }
+  // Opener's least, counting what the rebid showed (a jump rebid or a reverse shows points with length).
+  const minOpener = Math.max(partnerPoints(p).min, 12);
   // Opener rebid 1NT (below the 1NT opening range: 12–14 with 15–17) after a one-level response.
   const low = rebidLow(p.s);
   if (rebid.strain === "NT" && rebid.level === 1) {
     const mine = r.strain as Suit;
     rules.push(
       rule(bid(4, mine), `6+ ${SYMBOL[mine]} and game values.`, (h) => isMajor(mine) && h.len[mine] >= 6 && h.hcp >= 12 && h.hcp + low[1] < 33, { why: (h) => `${h.len[mine]} ${SUIT_WORDS[mine]} and ${hcpText(h)}: game in the known fit` }),
-      rule(bid(3, "NT"), `${25 - low[0]}+ HCP: game opposite ${rangeText(low)}.`, (h) => h.hcp >= 25 - low[0] && h.hcp + low[1] < 33, { why: (h) => `${hcpText(h)} + ${rangeText(low)} is enough for game` }),
-      rule(bid(2, "NT"), `${25 - low[1]}–${24 - low[0]} HCP: invites 3NT.`, (h) => h.hcp >= 25 - low[1], { shows: { hcp: [25 - low[1], 24 - low[0]] }, why: (h) => `${hcpText(h)}: game if opener has ${low[1]}` }),
+      // HCP plus length (a five-card suit counts one): long suits take tricks in notrump too.
+      rule(bid(3, "NT"), `${25 - low[0]}+ points: game opposite ${rangeText(low)}.`, (h) => h.points >= 25 - low[0] && h.hcp + low[1] < 33, { why: (h) => `${h.points} points + ${rangeText(low)} is enough for game` }),
+      rule(bid(2, "NT"), `${25 - low[1]}–${24 - low[0]} points: invites 3NT.`, (h) => h.points >= 25 - low[1], { shows: { hcp: [25 - low[1] - 1, 24 - low[0]] }, why: (h) => `${h.points} points: game if opener has ${low[1]}` }),
       rule(bid(2, mine), `6+ ${SYMBOL[mine]}, weak: to play.`, (h) => h.len[mine] >= 6 && h.hcp <= 10, { shows: { hcp: [6, 10], len: len(mine, 6) }, why: (h) => `${h.len[mine]} ${SUIT_WORDS[mine]}: play in the long suit` }),
       rule(bid(2, o), `Back to opener's suit: weak, with ${SYMBOL[o]} support and an unbalanced hand.`, (h) => h.len[o] >= 4 && !h.semiBalanced && cheapest(p, o) === 2, { why: (h) => `${h.len[o]} ${SUIT_WORDS[o]}: the safer part score` }),
-      rule(PASS, "Weak: 1NT is high enough.", (h) => h.hcp < 25 - low[1], { why: (h) => `${hcpText(h)}: no game opposite ${rangeText(low)}` }),
+      rule(PASS, "Weak: 1NT is high enough.", (h) => h.points < 25 - low[1], { why: (h) => `${h.points} points: no game opposite ${rangeText(low)}` }),
     );
     return rules;
   }
@@ -513,19 +526,21 @@ function responderRebid(p: Position, o: Suit, r: Bid, rebid: Bid): CallRule[] {
   // Opener rebid their own suit, or showed a second suit (not forcing): place the contract.
   const fitO = (h: HandFacts) => h.len[o] >= (isMajor(o) ? 3 : 4) || (rebid.strain === o && h.len[o] >= 2);
   const total = (h: HandFacts) => h.hcp + minOpener;
-  const gameValues = (h: HandFacts) => h.hcp + ps.hcp[0] >= 25;
+  const gameValues = (h: HandFacts) => h.hcp + minOpener >= 25;
+  // Slam is in range: leave it to the general rules (Blackwood, slam invitations) rather than sign off in game.
+  const slamRange = (points: number) => points + minOpener >= 31;
   const opener2 = rebid.strain !== o && rebid.strain !== r.strain && rebid.strain !== "NT" ? (rebid.strain as Suit) : null;
   const owesRebid = responderOwesRebid(p);
   if (opener2 && isMajor(opener2) && ps.len[opener2][0] >= 4) {
     rules.push(rule(bid(4, opener2), "Game in opener's second major: a known fit.",
-      (h) => h.len[opener2] >= 4 && (gameValues(h) || supportPoints(h, opener2) + minOpener >= 26), {
+      (h) => h.len[opener2] >= 4 && (gameValues(h) || supportPoints(h, opener2) + minOpener >= 26) && !slamRange(supportPoints(h, opener2)), {
         shows: { len: len(opener2, 4) },
         why: (h) => `${h.len[opener2]} ${SUIT_WORDS[opener2]}: raise opener's second suit to game`,
       }));
   }
   rules.push(
-    rule(bid(4, o), `Game in opener's ${SYMBOL[o]}.`, (h) => isMajor(o) && fitO(h) && total(h) >= 25, { why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${hcpText(h)}: game` }),
-    rule(bid(3, "NT"), "Game in notrump.", (h) => total(h) >= 25 && SUITS.filter((x) => x !== o && x !== r.strain && x !== opener2).every((x) => stopper(h, x)), { why: (h) => `${hcpText(h)} and stoppers in the unbid suits` }),
+    rule(bid(4, o), `Game in opener's ${SYMBOL[o]}.`, (h) => isMajor(o) && fitO(h) && total(h) >= 25 && !slamRange(h.hcp), { why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${hcpText(h)}: game` }),
+    rule(bid(3, "NT"), "Game in notrump.", (h) => total(h) >= 25 && !slamRange(h.hcp) && SUITS.filter((x) => x !== o && x !== r.strain && x !== opener2).every((x) => stopper(h, x)), { why: (h) => `${hcpText(h)} and stoppers in the unbid suits` }),
   );
   // With game values and no strain chosen, show a genuine second suit before limiting the hand.
   for (const x of SUITS.filter((s) => !named.includes(s) && cheapest(p, s) <= 3)) {
@@ -536,9 +551,16 @@ function responderRebid(p: Position, o: Suit, r: Bid, rebid: Bid): CallRule[] {
   }
   if (r.strain !== "NT" && isMajor(r.strain)) {
     const major = r.strain;
-    rules.push(rule(bid(4, major), "Game in responder's long major.", (h) => gameValues(h) && h.len[major] >= 6));
+    rules.push(rule(bid(4, major), "Game in responder's long major.", (h) => gameValues(h) && h.len[major] >= 6 && !slamRange(h.points)));
   }
-  rules.push(rule(bid(3, "NT"), "Game values with no clear suit game.", gameValues,
+  // A suit unstopped and two cards in opener's five-card major: the 5-2 fit is the safer game.
+  const unbid = SUITS.filter((x) => !named.includes(x));
+  if (isMajor(o) && ps.len[o][0] >= 5) {
+    rules.push(rule(bid(4, o), `Game in opener's ${SYMBOL[o]}: two-card support, and a suit unstopped for notrump.`,
+      (h) => gameValues(h) && !slamRange(h.hcp) && h.len[o] >= 2 && !unbid.every((x) => stopper(h, x)),
+      { why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} opposite five, and no stopper in ${unbid.filter((x) => !stopper(h, x)).map((x) => SYMBOL[x]).join(" ")}` }));
+  }
+  rules.push(rule(bid(3, "NT"), "Game values with no clear suit game.", (h) => gameValues(h) && !slamRange(h.hcp),
     { why: (h) => `${hcpText(h)}: enough for game and no clear suit game` }));
   if (opener2 && isMajor(opener2) && ps.len[opener2][0] >= 4) {
     const raise = cheapBid(p, opener2);
@@ -556,7 +578,7 @@ function responderRebid(p: Position, o: Suit, r: Bid, rebid: Bid): CallRule[] {
           }),
         ]
       : []),
-    rule(bid(3, o), `Invites game in ${SYMBOL[o]}.`, (h) => fitO(h) && total(h) >= 23 && cheapest(p, o) <= 3, { why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${hcpText(h)}: invite` }),
+    rule(bid(3, o), `Invites game in ${SYMBOL[o]}.`, (h) => fitO(h) && total(h) >= 23 && cheapest(p, o) <= 3, { shows: { hcp: [23 - minOpener, 24 - minOpener] }, why: (h) => `${h.len[o]} ${SUIT_WORDS[o]} and ${hcpText(h)}: invite` }),
     rule(bid(2, "NT"), "Invites 3NT: 11–12 HCP.", (h) => h.hcp >= 11 && h.hcp <= 12 && cheapest(p, "NT") === 2, { shows: { hcp: [11, 12] }, why: (h) => `${hcpText(h)}: invite` }),
   );
   if (opener2) {

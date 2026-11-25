@@ -5,7 +5,7 @@
 // 2♣ overcall answered by a double for Stayman ("stolen bid").
 
 import { type Suit, SUITS } from "../../types";
-import { type HandFacts, goodSuit, holding, stopper, SUIT_WORDS } from "../evaluate";
+import { type HandFacts, fitPoints, goodSuit, holding, stopper, SUIT_WORDS } from "../evaluate";
 import type { CallRule } from "../model";
 import {
   type Bid,
@@ -260,6 +260,10 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
         ];
       }
       const five = (h: HandFacts) => h.len[m] === 5;
+      // With 6+ trumps there's an 8-card fit, so count shortness and the extra trumps (as a raise
+      // does); with exactly five, HCP plus length in another suit.
+      const value = (h: HandFacts) => (five(h) ? h.hcp + h.lengthPoints - (h.len[m] - 4) : fitPoints(h, m, 5));
+      const valueText = (h: HandFacts) => (value(h) === h.hcp ? hcpText(h) : `${value(h)} points counting shape`);
       if (L === 2) {
         return [
           ...SUITS.filter((x) => x !== m).map((x) => rule(bid(3, x), `Natural: 5+ ${SYMBOL[x]} and game values.`,
@@ -267,11 +271,11 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
               name: "New suit after transfer", forcing: "game", shows: { len: len(x, 5), hcp: [gameMin, 37] },
               why: () => `five or more ${SUIT_WORDS[x]} alongside the ${SUIT_WORDS[m]}: show both suits`,
             })),
-          rule(bid(4, m), `Game: 6+ ${SYMBOL[m]} and ${gameMin}+ HCP.`, (h) => !five(h) && h.hcp >= gameMin && h.hcp < slamMin, { shows: { hcp: [gameMin, slamMin - 1], len: len(m, 6) }, why: (h) => `${h.len[m]} ${SUIT_WORDS[m]} and ${hcpText(h)}: game in the 8+ card fit` }),
-          rule(bid(3, "NT"), `Choice of games: exactly 5 ${SYMBOL[m]}, ${gameMin}+ HCP. Opener picks 3NT or 4${SYMBOL[m]}.`, (h) => five(h) && h.hcp >= gameMin && h.hcp < slamMin, { shows: { hcp: [gameMin, slamMin - 1], len: len(m, 5, 5) }, why: (h) => `five ${SUIT_WORDS[m]} and ${hcpText(h)}: let opener choose between the games` }),
-          rule(bid(3, m), `Invites game: 6+ ${SYMBOL[m]}, ${inviteAt}–${gameMin - 1} HCP.`, (h) => !five(h) && h.hcp >= inviteAt && h.hcp < gameMin, { shows: { hcp: [inviteAt, gameMin - 1], len: len(m, 6) }, why: (h) => `${h.len[m]} ${SUIT_WORDS[m]} and ${hcpText(h)}: invite` }),
-          rule(bid(2, "NT"), `Invites game: exactly 5 ${SYMBOL[m]}, ${inviteAt}–${gameMin - 1} HCP.`, (h) => five(h) && h.hcp >= inviteAt && h.hcp < gameMin, { shows: { hcp: [inviteAt, gameMin - 1], len: len(m, 5, 5) }, why: (h) => `five ${SUIT_WORDS[m]} and ${hcpText(h)}: invite, showing exactly five` }),
-          rule(PASS, `Weak: stops in 2${SYMBOL[m]}.`, (h) => h.hcp < inviteAt, { shows: { hcp: [0, inviteAt - 1] }, why: (h) => `${hcpText(h)}: 2${SYMBOL[m]} is high enough` }),
+          rule(bid(4, m), `Game: 6+ ${SYMBOL[m]} and ${gameMin}+ points.`, (h) => !five(h) && value(h) >= gameMin && h.hcp < slamMin, { shows: { strength: { kind: "fit", suit: m, shownTrumps: 5, range: [gameMin, slamMin - 1] }, len: len(m, 6) }, why: (h) => `${h.len[m]} ${SUIT_WORDS[m]} and ${valueText(h)}: game in the 8+ card fit` }),
+          rule(bid(3, "NT"), `Choice of games: exactly 5 ${SYMBOL[m]}, ${gameMin}+ points. Opener picks 3NT or 4${SYMBOL[m]}.`, (h) => five(h) && value(h) >= gameMin && h.hcp < slamMin, { shows: { strength: { kind: "length", range: [gameMin, slamMin - 1] }, len: len(m, 5, 5) }, why: (h) => `five ${SUIT_WORDS[m]} and ${valueText(h)}: let opener choose between the games` }),
+          rule(bid(3, m), `Invites game: 6+ ${SYMBOL[m]}, ${inviteAt}–${gameMin - 1} points.`, (h) => !five(h) && value(h) >= inviteAt && value(h) < gameMin, { shows: { strength: { kind: "fit", suit: m, shownTrumps: 5, range: [inviteAt, gameMin - 1] }, len: len(m, 6) }, why: (h) => `${h.len[m]} ${SUIT_WORDS[m]} and ${valueText(h)}: invite` }),
+          rule(bid(2, "NT"), `Invites game: exactly 5 ${SYMBOL[m]}, ${inviteAt}–${gameMin - 1} points.`, (h) => five(h) && value(h) >= inviteAt && value(h) < gameMin, { shows: { strength: { kind: "length", range: [inviteAt, gameMin - 1] }, len: len(m, 5, 5) }, why: (h) => `five ${SUIT_WORDS[m]} and ${valueText(h)}: invite, showing exactly five` }),
+          rule(PASS, `Weak: stops in 2${SYMBOL[m]}.`, (h) => value(h) < inviteAt, { shows: { hcp: [0, inviteAt - 1] }, why: (h) => `${valueText(h)}: 2${SYMBOL[m]} is high enough` }),
         ];
       }
       return [
@@ -340,8 +344,12 @@ function notrumpRules(p: Position, after: string[], nt: NtBase, iOpened: boolean
       }
       if (/^3[HS]$/.test(third)) {
         const m: Suit = third === "3H" ? "H" : "S";
+        // With the fit found, a fifth trump or a doubleton for ruffing adds to the HCP.
+        const value = (h: HandFacts) => fitPoints(h, m, 4);
         return [
-          rule(bid(4, m), "Accepts the invitation.", (h) => top(h), { why: () => "top of the range" }),
+          rule(bid(4, m), "Accepts the invitation.", (h) => top(h) || value(h) >= nt.max - (nt.max - nt.min >= 2 ? 1 : 0), {
+            why: (h) => (top(h) ? "top of the range" : `${value(h)} points counting the fit: as good as the top of the range`),
+          }),
           rule(PASS, "Declines the invitation.", () => true, { why: () => "bottom of the range" }),
         ];
       }
@@ -374,6 +382,9 @@ function gerberAsker(p: Position, partnerHcp: [number, number]): CallRule[] {
 
 // ---- Strong 2♣ ----------------------------------------------------------------------------------
 
+/** 2♣–2♦–2NT: the one rebid that isn't forcing to game (see gameForced in position.ts). */
+export const TWO_CLUBS_TWO_NT = "2♣ then 2NT";
+
 function twoClubRules(p: Position, codes: string[], iOpened: boolean): CallRule[] {
   const twoMax = p.s.twoNtMax;
   if (codes.length === 1 && !iOpened) {
@@ -399,7 +410,7 @@ function twoClubRules(p: Position, codes: string[], iOpened: boolean): CallRule[
           }),
         ),
       ),
-      rule(bid(2, "NT"), `${twoMax + 1}–${twoMax + 3} HCP, balanced. Not forcing.`, (h) => h.balanced && h.hcp <= twoMax + 3, { shows: { hcp: [twoMax + 1, twoMax + 3], balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
+      rule(bid(2, "NT"), `${twoMax + 1}–${twoMax + 3} HCP, balanced. Not forcing: the one rebid that releases the game force.`, (h) => h.balanced && h.hcp <= twoMax + 3, { name: TWO_CLUBS_TWO_NT, shows: { hcp: [twoMax + 1, twoMax + 3], balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
       rule(bid(3, "NT"), `${twoMax + 4}–${twoMax + 6} HCP, balanced.`, (h) => h.balanced, { shows: { hcp: [twoMax + 4, twoMax + 6], balanced: true }, why: (h) => `${hcpText(h)}, balanced` }),
       ...(["S", "H"] as Suit[]).map((s) =>
         rule(bid(2, s), `Natural: 5+ ${SYMBOL[s]}. Forcing to game.`, (h) => longestOf(h) === s, { shows: { len: len(s, 5) }, forcing: "game", why: (h) => `${h.len[s]} ${SUIT_WORDS[s]}, the longest suit` }),

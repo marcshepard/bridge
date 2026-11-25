@@ -192,7 +192,62 @@ baseline.
   (4.15).
 - To check first: a sample of the costly slam boards with `show`, to see how many are real bidding
   errors and how many are double dummy's flattering slams (see the caveats). That decides how far
-  to trust the slam numbers, and whether the filter or the ideal needs adjusting.
+  to trust the slam numbers, and whether the filter or the ideal needs adjusting. **Checked:** most
+  were real errors (below); a few notrump slams with 30–32 HCP were double dummy's flattery.
+
+**First round of fixes** (24 November 2026, committed; not yet tested by hand: Marc tests once every stage is done). Each change was
+tried on `quick`, kept only if it helped, then the whole set was checked on `holdout`, a second
+1,000-deal set (seed 2) not used for tuning.
+
+| Set | Before | After | Change (95% interval) |
+|---|---|---|---|
+| quick (tuned on) | 3.23 | 2.82 | −0.42 (−0.55 to −0.30) |
+| holdout (not tuned on) | 3.75 | 3.39 | −0.37 (−0.50 to −0.24) |
+
+Kept, roughly in order of what they gained on `quick`:
+1. **Responder counts what opener's rebid showed** (`responderRebid` in `sayc/constructive.ts`).
+   Responder judged game on opener's HCP floor from the opening, ignoring a jump rebid's or a
+   reverse's extra strength, so it passed 1♦–1♠–3♦ with 13 HCP. About −0.17.
+2. **Points shown with length count in any strain** (`shownPoints` in `position.ts`). Since the
+   bots branch, a jump rebid's or reverse's strength was only counted when that suit was trumps;
+   in notrump and general planning partner looked weaker than shown.
+3. **Strong 2♣:** 22+ HCP or about nine playing tricks (Marc's agreement), forcing to game except
+   when opener rebids 2NT over 2♦. It records 16+ HCP (nine-trick hands rarely have fewer; 10+
+   tested about the same), and "fast arrival" no longer narrows the 2♣ opener's range to its
+   bottom. The old 10+ floor and fast arrival made opener's 3NT read as 10–11 HCP, so responder
+   passed with slam values.
+4. **Responder leaves slam-range hands to the slam rules** (31+ with opener's least): the game
+   signoffs in `responderRebid` step aside so Blackwood or a slam invitation can follow.
+5. **After a minor limit raise, 3NT before five of the minor** with a balanced hand and 13+ HCP.
+6. **Transfers count shape:** with 6+ trumps, responder counts shortness and extra trumps (as a
+   raise does); with five, length in another suit. Six trumps and a void now bid game.
+7. **After opener's 1NT rebid, responder counts a five-card suit** for 2NT and 3NT; 2NT shows 10–12.
+   Responder's delayed invitation (1♦–1♥–2♦–3♦) now shows its HCP range.
+8. **4NT is Blackwood when a major is agreed**, even after 3NT (as after Jacoby 2NT), and the bidder
+   only uses 4NT for aces where partner will read it that way (after 3NT with no agreed major it
+   bids the slam instead).
+9. **The Blackwood asker names the fit it holds**, not only suits both partners have shown.
+10. **Jacoby 2NT:** responder no longer passes opener's 3NT answer; it bids game or explores slam.
+11. **Two-card support for opener's five-card major is the game** when a suit is unstopped for
+    the "game values, no clear suit game" 3NT.
+12. **Grand slams on points need 37 at the bottom of partner's range** (was 37 likely, 35 least).
+13. Stayman: opener accepts a 3♥/3♠ invitation counting a fifth trump or a doubleton.
+
+Tried and dropped (they made `quick` worse): counting notrump slams in HCP only (sound bridge, but
+the double-dummy ideal likes notrump slams; see the caveats), and capping a misfit's own suit at game.
+
+Not fixed, for the next round:
+- Opener after a strong 2♣ and a positive response still jumps to slam in notrump on points; slam
+  bidding after 2♣ is the worst situation on `holdout`.
+- Wrong strain grew a little (+97 IMPs on `holdout`): more games reached, some in the wrong one.
+- 1♣–1♠–1NT with five spades and four hearts: no way to look for the heart fit (no new minor
+  forcing yet).
+- The competitive rules still read partner's HCP floor (`sayc/competition.ts`), as the constructive
+  ones did; for stage 2.
+
+Baselines: after this round was committed, a run of each set on the committed code became the new
+baseline, so the next round compares with this one. The "Before" column above (the original
+bidding) is kept here as the record of where stage 1 started.
 
 ### Stage 2: competitive bidding
 

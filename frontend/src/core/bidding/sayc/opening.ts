@@ -114,10 +114,11 @@ export function openingRules(p: Position): CallRule[] {
 
   if (s.strongTwoClubs) {
     rules.push(
-      rule(bid(2, "C"), `Strong and artificial: ${s.twoNtMax + 1}+ HCP, or a hand that can take about nine tricks by itself. Forcing.`, (h) => h.hcp > s.twoNtMax || nineTricks(h), {
+      rule(bid(2, "C"), `Strong and artificial: ${s.twoNtMax + 1}+ HCP, or a hand that can take about nine tricks by itself. Forcing to game, except when opener rebids 2NT after 2♦.`, (h) => h.hcp > s.twoNtMax || nineTricks(h), {
         name: "Strong 2♣",
-        shows: { hcp: [10, 37] },
-        forcing: "one round",
+        // Either kind: 22+ HCP, or nine tricks, which usually come with 16+ HCP (fewer is rare).
+        shows: { hcp: [16, 37] },
+        forcing: "game",
         why: (h) =>
           h.hcp > s.twoNtMax
             ? `${hcpText(h)}: too strong for any other opening`

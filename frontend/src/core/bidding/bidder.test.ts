@@ -4,7 +4,8 @@ import { type Call, auctionResult, callCode, canCall, isAuctionOver, parseCall }
 import { parseHand } from "../deal";
 import type { Seat, Vulnerability } from "../types";
 import { parseGameFile } from "../../providers/gameFile";
-import { botAuction, chooseCall, readAuction, reviewAuction } from "./bidder";
+import { botAuction, chooseCall, positionAt, readAuction, reviewAuction } from "./bidder";
+import { partnerPoints } from "./position";
 import { type SystemSettings, describeSettings, isDefault, parseSystemSettings, SAYC_DEFAULTS } from "./system";
 import { evaluate, fitPoints, suitTricks } from "./evaluate";
 
@@ -341,6 +342,43 @@ describe("responder's second bid", () => {
     expect(shown.hcp).toEqual([10, 37]);
     expect(shown.strength).toContainEqual({ kind: "support", suit: "S", range: [10, 12] });
     expect(shown.len.S[0]).toBe(3);
+  });
+});
+
+describe("stage 1 harness fixes (boards from the quick set, docs/HARNESS.md)", () => {
+  it.each([
+    // Board 557: opener's 3NT after a strong 2♣ isn't a minimum: responder goes on.
+    ["after 2♣ and 3NT, slam values go on", "J8..K83.AQJ97543", "2C PASS 3C PASS 3NT PASS", "not PASS"],
+    // Board 743: 13 HCP opposite a jump rebid is game.
+    ["game opposite a jump rebid", "AKJ863.J62.K9.J7", "1D PASS 1S PASS 3D PASS", "not PASS"],
+    // Board 845: after Jacoby 2NT, opener's 3NT describes the hand; responder places the game.
+    ["Jacoby 2NT: back to the major over 3NT", "KJ83.QT752.KJ8.6", "1H PASS 2NT PASS 3NT PASS", "4H"],
+    // Board 5: six trumps and a void opposite 1NT count as game values.
+    ["a transfer with shape bids game", "KT43.JT6542..Q84", "1NT PASS 2D PASS 2H PASS", "4H"],
+    // Board 445: the Blackwood asker names the fit it can see in its own hand.
+    ["Blackwood asker bids the slam in the fit it holds", "A.KQ4.KJ9863.K62", "1H PASS 2D PASS 3H PASS 4NT PASS 5H PASS", "6H"],
+    // Board 50: after a minor limit raise, a balanced hand with extras prefers 3NT.
+    ["3NT rather than five of a minor", "A986.AQJT.754.Q6", "1D PASS 3D PASS", "3NT"],
+    // A strong 2♣ forces to game: a bust can't pass opener's 2♥...
+    ["2♣ forces to game", "8643.972.8643.92", "2C PASS 2D PASS 2H PASS", "not PASS"],
+    // ...except after 2♣–2♦–2NT, which a bust passes.
+    ["2♣–2♦–2NT isn't forcing", "8643.972.8643.92", "2C PASS 2D PASS 2NT PASS", "PASS"],
+    // Board 391: 10 HCP with a five-card suit invites after opener's 1NT rebid.
+    ["a five-card suit counts after a 1NT rebid", "74.KQT83.K32.Q54", "1D PASS 1H PASS 1NT PASS", "2NT"],
+  ])("%s", (_, hand, auction, expected) => {
+    const call = bot(hand, auction);
+    if (expected === "not PASS") expect(call).not.toBe("PASS");
+    else expect(call).toBe(expected);
+  });
+
+  it("reads a strong 2♣ as 16+ HCP, and opener's 3NT after it as no minimum", () => {
+    const shown = readAuction({ dealer: "N", vul: "None" }, calls("2C PASS 3C PASS 3NT")).at(-1)!.position.shown.N;
+    expect(shown.hcp).toEqual([16, 37]);
+  });
+
+  it("counts points shown with length in any strain", () => {
+    const p = positionAt({ dealer: "N", vul: "None" }, calls("1D PASS 1S PASS 3D PASS"));
+    expect(partnerPoints(p).min).toBeGreaterThanOrEqual(16);
   });
 });
 

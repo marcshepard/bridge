@@ -109,6 +109,8 @@ function advancePosition(position: Position, read: ReadCall, settings: Systems):
  */
 function fastArrival(p: Position, call: Call, read: ReadCall): boolean {
   if (!isBid(call) || !gameForced(p) || call.level !== gameLevel(call.strain)) return false;
+  // A strong 2♣ covers too wide a range (16 to 30-odd) for "nothing more to show" to mean a minimum.
+  if (p.read.find((r) => r.seat === p.seat)?.rule?.name === "Strong 2♣") return false;
   return !read.rule?.name;
 }
 
