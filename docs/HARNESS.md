@@ -569,6 +569,37 @@ after their three-level preempt −2.23, after their weak two −1.53, with the 
 change. For reference, 3+ HCP weak openings against SAYC's "good" suits (each side reading the
 other's card): +0.32 IMPs per board on `weak-dev` (+0.16 to +0.49), +0.53 on `weak-holdout`.
 
+Baselines are kept per set and per preempting side's card (`bench/weak-baselines.json`): against
+3+ HCP preempts (the default for `weak-defence`) and against SAYC's "good" ones (`--base
+weakTwoSuit=good,preemptSuit=good`): −1.12 on `weak-dev`, −1.42 on `weak-holdout`.
+
+Where the defence lost against par at the step 1 baseline (`weak-dev`, against 3+ HCP preempts, IMPs
+per board over the set): we play it and make it below par (missed game or slam, wrong strain) −1.25;
+they play it when we had a plus available −1.17; we play it and go down −1.01. Boards at or near
+par add +2.14, because par assumes the preempting side's perfect sacrifices, which the bots don't
+make. The first group is mostly games and slams missed after a takeout double (the doubler with
+17–23 passing partner's minimum answer); the other two are competing and doubling decisions.
+
+**Step 2, first round** (rules for "may have game"):
+1. **Game with a self-sufficient suit** over a two- or three-level bid: a good six-card or longer
+   suit and the game's tricks less two (8 for a major, 9 for a minor), acting as if partner holds
+   7–8 points. Advancer then passes partner's game (it used to "support" it to slam).
+2. **Advancer's minimum answer to a takeout double shows 0–8 points** (0–10 at the three level), so
+   the doubler can count; advancer's 3NT needs 10+ and a stopper (was 13+); over a three-level bid,
+   four cards in an unbid major and 10+ bid game (was five).
+3. **The doubler bids again** after partner's minimum answer: game in partner's suit with four
+   trumps and 19+ (16+ when the cheapest raise is game), a raise with 16–18, 3NT with 18+ and a
+   stopper, its own good suit with 17+ (game with a good six-card suit and 20+); otherwise pass.
+
+| | `weak-dev` against 3+ HCP | against "good" | `weak-holdout` against 3+ HCP | against "good" |
+|---|---|---|---|---|
+| Step 1 baseline | −1.40 | −1.12 | −1.89 | −1.42 |
+| After the first round | −1.16 (+0.23, better) | −0.96 (+0.16, better) | −1.70 (+0.19, better) | −1.28 (+0.14, better) |
+
+`quick` (silent opponents) unchanged. Most of the gain is item 3 (+0.21 and +0.13 on `weak-dev` with
+items 1–3; item 1 alone about +0.03). Still to do in step 2: the competing, sacrifice and penalty
+decisions (simulation, scored in IMPs first), entering with shape, and the 3NT overcall's range.
+
 **Decision (for now):** keep SAYC's "good" suits as the default. The experiment says our defence to
 preempts is the bigger weakness. Next: improve the bots' bidding over the opponents' preempts and
 weak twos (stage 2), using these sets with the opponents' standard loosened (`--base

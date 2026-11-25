@@ -471,6 +471,28 @@ describe("responder's rebids and strain (stage 1 harness, second round)", () => 
   });
 });
 
+describe("bidding over their weak openings (stage 2, step 2)", () => {
+  it.each([
+    // A self-sufficient suit over their weak two: game opposite partner's likely 7–8 points.
+    ["game with a long, strong suit over a weak two", "9.AKQ9653.AQ.K63", "2S", "N", "4H"],
+    ["partner's game overcall is left alone", "T542.Q7.K8643.J5", "2S 4H PASS", "N", "PASS"],
+    // Board 1321 (weak-dev): the doubler with five spades opposite partner's 3♠: no room to invite.
+    ["the doubler raises to game when there's no room to invite", "KQJ72.KQ7.QJ65.K", "PASS PASS 3C X PASS 3S PASS", "N", "4S"],
+    ["the doubler raises with four trumps and extras", "AQ74.KJ82.5.AQJ4", "2D X PASS 2H PASS", "N", "4H"],
+    ["the doubler shows a good suit of its own", "AKQ86.A4.72.AJ53", "2D X PASS 2H PASS", "N", "2S"],
+    ["the doubler passes a minimum answer without extras", "AQ74.KJ82.5.Q864", "2D X PASS 2H PASS", "N", "PASS"],
+    // The same doubler's suit, but with their suit stopped and 18+: 3NT comes first.
+    ["the doubler with a stopper and 18+ bids 3NT", "AKQ86.A4.K72.AJ5", "2D X PASS 2H PASS", "N", "3NT"],
+    // Advancer with 12+ cuebids before choosing a game.
+    ["advancer with 12+ cuebids their suit", "Q74.A85.KJ9.Q852", "3D X PASS", "N", "4D"],
+    // Over a three-level preempt, four in the major and 10+ is game.
+    ["advancer bids game with four over a three-level bid", "KQ74.A85.932.Q85", "3D X PASS", "N", "4S"],
+    ["advancer's 3NT with a stopper and 10+", "Q74.A85.KJ9.J852", "3D X PASS", "N", "3NT"],
+  ])("%s", (_name, hand, auction, dealer, expected) => {
+    expect(bot(hand, auction, dealer as Seat)).toBe(expected);
+  });
+});
+
 describe("auction audit regressions", () => {
   const deal = { dealer: "N", vul: "None" } as const;
   it.each([

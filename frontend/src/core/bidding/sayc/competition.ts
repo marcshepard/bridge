@@ -13,6 +13,7 @@ import {
   actionsBy,
   bid,
   bids,
+  canMake,
   cheapBid,
   cheapest,
   gameLevel,
@@ -45,6 +46,10 @@ export function competitiveRules(p: Position): CallRule[] {
   if (!weOpened) {
     if (ours.length === 0 && lastBid(p)!.call.level <= 3) return overcalls(p);
     if (mine.length === 0 && partners.length === 1 && justActed) return advances(p, partners[0]!);
+    if (mine.length === 1 && mine[0]!.rule?.name === "Takeout double" && partners.length === 1 && partners[0]!.rule?.name === "Answer to a takeout double") {
+      const rules = doublerRebid(p, partners[0]!);
+      if (rules.length) return rules;
+    }
     if (mine.length === 1 && mine[0]!.rule?.name === "Michaels" && partners.length === 1 && partners[0]!.call.kind === "bid" && partners[0]!.call.strain === "NT") {
       return michaelsMinor();
     }
@@ -61,6 +66,45 @@ export function competitiveRules(p: Position): CallRule[] {
     }
   }
   return contested(p);
+}
+
+/**
+ * I made a takeout double and partner answered at the cheapest level (0–8, or 0–10 at the three
+ * level): with extras, bid again. A double of a preempt with 17+ is often a strong hand that
+ * couldn't overcall; partner's forced answer may hold the few points game needs.
+ */
+function doublerRebid(p: Position, answer: ReadCall): CallRule[] {
+  if (!isBid(answer.call) || answer.call.strain === "NT") return [];
+  const x = answer.call.strain as Suit;
+  const t = theirSuit(p);
+  const game = bid(gameLevel(x), x);
+  const raise = cheapBid(p, x);
+  const rules: CallRule[] = [];
+  if (raise && raise.level === game.level) {
+    // No room to invite: game with the values for an invitation or more.
+    rules.push(rule(game, `Game in partner's ${SYMBOL[x]}: 4+ trumps and 16+ points.`, (h) => h.len[x] >= 4 && supportPoints(h, x) >= 16, { why: (h) => `${h.len[x]} ${SUIT_WORDS[x]} and ${supportPoints(h, x)} points: no room to invite, so game` }));
+  }
+  if (raise && raise.level < game.level) {
+    rules.push(
+      rule(game, `Game in partner's ${SYMBOL[x]}: 4+ trumps and 19+ points.`, (h) => h.len[x] >= 4 && supportPoints(h, x) >= 19 && canMake(p, game), { why: (h) => `${h.len[x]} ${SUIT_WORDS[x]} and ${supportPoints(h, x)} points: game even opposite a weak answer` }),
+      rule(raise, `Raises partner's ${SYMBOL[x]}: 4+ trumps and 16–18 points. Invites game.`, (h) => h.len[x] >= 4 && supportPoints(h, x) >= 16, { shows: { len: len(x, 4), hcp: [15, 18] }, why: (h) => `${h.len[x]} ${SUIT_WORDS[x]} and ${supportPoints(h, x)} points: invite` }),
+    );
+  }
+  if (t) {
+    const nt = bid(3, "NT");
+    rules.push(rule(nt, `18+ HCP with ${SYMBOL[t]} stopped: game in notrump.`, (h) => h.hcp >= 18 && stopper(h, t) && canMake(p, nt) && h.len[x] < 4, { shows: { hcp: [18, 37] }, why: (h) => `${hcpText(h)} and ${holding(h, t)}: game opposite partner's few points` }));
+  }
+  for (const y of SUITS.filter((s) => s !== x && s !== t)) {
+    const b = cheapBid(p, y);
+    if (!b) continue;
+    const g = bid(gameLevel(y), y);
+    rules.push(
+      rule(g, `Game in my own ${SYMBOL[y]}: a good 6+ card suit and 20+ points.`, (h) => h.len[y] >= 6 && goodSuit(h, y) && h.points >= 20 && canMake(p, g) && g.level > b.level - 1, { why: (h) => `${holding(h, y)} and ${h.points} points: game` }),
+      rule(b, `My own ${SYMBOL[y]}: a good 5+ card suit, too strong to overcall (17+).`, (h) => h.len[y] >= 5 && goodSuit(h, y) && h.hcp >= 17 && b.level <= 3, { shows: { len: len(y, 5), hcp: [17, 37] }, why: (h) => `${holding(h, y)} and ${hcpText(h)}: the strong hand behind the double` }),
+    );
+  }
+  rules.push(rule(PASS, "Nothing more to show: partner's answer is the contract.", () => true, { why: (h) => `${hcpText(h)}: no extras to bid again with` }));
+  return rules;
 }
 
 /** The opponents' suit to act over: the last suit they bid naturally. */
@@ -186,6 +230,21 @@ function overcalls(p: Position): CallRule[] {
     }
   }
 
+  // Over a two- or three-level bid (a weak two, a preempt): with a long, good suit of my own that
+  // takes nearly a game's tricks, bid the game. Act as if partner holds 7–8 useful points, about two
+  // tricks: eight playing tricks for a major game, nine for a minor.
+  if (level >= 2) {
+    for (const x of unbid) {
+      const g = bid(isMajor(x) ? 4 : 5, x);
+      if (!canMake(p, g)) continue;
+      rules.push(
+        rule(g, `Game: a long, strong ${SYMBOL[x]} suit and about ${isMajor(x) ? 8 : 9} playing tricks.`, (h) => h.len[x] >= 6 && goodSuit(h, x) && h.tricks >= (isMajor(x) ? 8 : 9) && SUITS.every((y) => y === x || h.len[y] <= h.len[x]), {
+          shows: { hcp: [12, 37], len: len(x, 6), quality: quality(x, "good") },
+          why: (h) => `${holding(h, x)} and ${h.tricks} playing tricks: game opposite the 7–8 points partner is likely to hold`,
+        }),
+      );
+    }
+  }
   const takeout = (h: HandFacts) =>
     h.hcp >= 17 || (h.hcp >= 12 - adj + (level >= 2 ? 1 : 0) && h.len[t] <= 2 && unbid.every((x) => h.len[x] >= 3) && unbid.filter(isMajor).every((x) => h.len[x] >= 3));
   rules.push(
@@ -291,10 +350,13 @@ function advances(p: Position, pa: ReadCall): CallRule[] {
       if (cue) rules.push(rule(cue, "Cuebid: 12+ points, forcing. Asks partner to describe their hand further.", (h) => h.hcp >= 12, { name: "Cuebid", shows: { hcp: [12, 37] }, forcing: "one round", why: (h) => `${hcpText(h)}: game is likely; find the best one` }));
       for (const m of unbid.filter(isMajor)) {
         const g = bid(4, m);
-        rules.push(rule(g, `Game: 5+ ${SYMBOL[m]} and 10+ points.`, (h) => h.len[m] >= 5 && h.hcp >= 10 && best(h) === m, { why: (h) => `${h.len[m]} ${SUIT_WORDS[m]} and ${hcpText(h)} opposite a takeout double` }));
+        // Five cards with 10+; four will do when there's no room to jump below game (their bid is at
+        // the three level), since the double promises support.
+        rules.push(rule(g, `Game: 5+ ${SYMBOL[m]} (or 4 over a three-level bid) and 10+ points.`, (h) => (h.len[m] >= 5 || (h.len[m] >= 4 && cheapest(p, m) >= 3)) && h.hcp >= 10 && best(h) === m, { shows: { len: len(m, 4), hcp: [10, 37] }, why: (h) => `${h.len[m]} ${SUIT_WORDS[m]} and ${hcpText(h)} opposite a takeout double` }));
       }
       rules.push(
-        rule(bid(3, "NT"), `13+ HCP, ${SYMBOL[t]} well stopped.`, (h) => h.hcp >= 13 && stopper(h, t) && h.semiBalanced, { why: (h) => `${hcpText(h)} and ${holding(h, t)}` }),
+        // Partner's double promises opening values, so 10+ with their suit stopped is game.
+        rule(bid(3, "NT"), `10+ HCP, ${SYMBOL[t]} well stopped.`, (h) => h.hcp >= 10 && stopper(h, t) && h.semiBalanced, { shows: { hcp: [10, 37] }, why: (h) => `${hcpText(h)} and ${holding(h, t)}` }),
         rule(PASS, `Converts to penalties: long, strong ${SYMBOL[t]}.`, (h) => h.len[t] >= 5 && topHonours(h, t) >= 2 && lastBid(p)!.call.level <= 2, { name: "Penalty pass", why: (h) => `${holding(h, t)}: defend their contract doubled` }),
       );
       for (const x of unbid) {
@@ -308,7 +370,9 @@ function advances(p: Position, pa: ReadCall): CallRule[] {
       for (const x of unbid) {
         const b = cheapBid(p, x);
         if (!b) continue;
-        rules.push(rule(b, `Answers the double: 4+ ${SYMBOL[x]} (or the best suit available), 0–8 points.`, (h) => best(h) === x, { shows: { len: len(x, 3) }, why: (h) => `partner asked me to bid: ${h.len[x]} ${SUIT_WORDS[x]} is my best suit` }));
+        // 0–8, or 0–10 when there's no room to jump below game (their preempt at the three level).
+        const top = b.level >= 3 ? 10 : 8;
+        rules.push(rule(b, `Answers the double: 4+ ${SYMBOL[x]} (or the best suit available), 0–${top} points.`, (h) => best(h) === x, { name: "Answer to a takeout double", shows: { len: len(x, 3), hcp: [0, top] }, why: (h) => `partner asked me to bid: ${h.len[x]} ${SUIT_WORDS[x]} is my best suit` }));
       }
       return rules;
     }
@@ -368,6 +432,10 @@ function advances(p: Position, pa: ReadCall): CallRule[] {
   // Partner's natural overcall in a suit (not a conventional bid such as Michaels).
   if (isBid(pa.call) && pa.call.strain !== "NT" && isNatural(pa)) {
     const x = pa.call.strain as Suit;
+    // Partner bid game over their preempt: that's the contract (the slam rules can still look further).
+    if (pa.call.level >= gameLevel(x)) {
+      return [rule(PASS, "Partner bid game: leaves it there.", () => true, { why: () => "partner chose the game" })];
+    }
     const sp = (h: HandFacts) => supportPoints(h, x);
     const raise = cheapBid(p, x);
     if (t && raise) {

@@ -487,6 +487,11 @@ function weakShow(ref: string, args: Args) {
 const DEFENCE_PREEMPTORS = { weakTwoSuit: "hcp3", preemptSuit: "hcp3" } as const;
 const WEAK_BASELINES_FILE = resolve(BENCH, "weak-baselines.json");
 const readWeakBaselines = () => readJson<Record<string, DefenceRunFile>>(WEAK_BASELINES_FILE, {});
+/** A defence baseline per set and preempting side's card: "weak-dev", or "weak-dev, weakTwoSuit=good,…". */
+const defenceKey = (set: string, preemptors: Record<string, unknown>) => {
+  const extra = Object.entries(preemptors).filter(([k, v]) => (DEFENCE_PREEMPTORS as Record<string, unknown>)[k] !== v);
+  return extra.length ? `${set}, ${Object.entries(preemptors).map(([k, v]) => `${k}=${v}`).join(",")}` : set;
+};
 
 async function weakDefence(set: string, args: Args) {
   const cache = await weakBuild(set, args);
@@ -510,21 +515,23 @@ async function weakDefence(set: string, args: Args) {
     boards,
   };
   writeJson(runPath(result.id), result, true);
-  console.log(defenceSummary(result, readWeakBaselines()[set] ?? null, args.num("top", 10)));
+  console.log(defenceSummary(result, readWeakBaselines()[defenceKey(set, preemptorCard)] ?? null, args.num("top", 10)));
 }
 
+/** The latest defence run on a set (or the one named) becomes the baseline for its preempting side's card. */
 function weakDefenceBaseline(set: string, ref?: string) {
   const id = ref ?? runIds(`defence-${set}`).at(-1);
   if (!id || !existsSync(runPath(id))) throw new Error(`No defence run for "${set}" yet.`);
   const r = readJson<DefenceRunFile>(runPath(id), null as never);
   const boards = r.boards.map(({ reasons: _, ...b }) => ({ ...b, reasons: [] }));
-  const all = { ...readWeakBaselines(), [set]: { ...r, boards } };
+  const key = defenceKey(r.set, r.preemptors);
+  const all = { ...readWeakBaselines(), [key]: { ...r, boards } };
   const sets = Object.entries(all).map(([name, { boards: bs, ...info }]) => {
     const head = JSON.stringify(info, null, 2).slice(0, -2).replace(/\n/g, "\n  ");
     return `  ${JSON.stringify(name)}: ${head},\n    "boards": [\n${bs.map((b) => `      ${JSON.stringify(b)}`).join(",\n")}\n    ]\n  }`;
   });
   writeFileSync(WEAK_BASELINES_FILE, `{\n${sets.join(",\n")}\n}\n`);
-  console.log(`Defence baseline for "${set}" is now ${r.id} (${r.commit}${r.dirty ? ", with uncommitted changes" : ""}). Commit bench/weak-baselines.json to share it.`);
+  console.log(`Defence baseline for "${key}" is now ${r.id} (${r.commit}${r.dirty ? ", with uncommitted changes" : ""}). Commit bench/weak-baselines.json to share it.`);
 }
 
 // ---- Entry point (last, so everything above is defined) ----------------------------------------
