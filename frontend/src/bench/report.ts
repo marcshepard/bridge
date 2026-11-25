@@ -80,6 +80,51 @@ function runLine(r: RunInfo): string {
 const contractText = (b: Pick<BoardResult, "contract" | "declarer">) => optionText({ contract: parseContract(b.contract), declarer: b.declarer });
 const idealText = (b: BoardResult) => optionText({ contract: parseContract(b.ideal), declarer: b.idealDeclarer });
 
+/** Combined HCP bands for the slam table, strongest first. */
+export const HCP_BANDS: { name: string; min: number; max: number }[] = [
+  { name: "33+", min: 33, max: 40 },
+  { name: "31–32", min: 31, max: 32 },
+  { name: "29–30", min: 29, max: 30 },
+  { name: "26–28", min: 26, max: 28 },
+  { name: "25 or less", min: 0, max: 25 },
+];
+
+const isSlam = (contract: string) => /^[67]/.test(contract);
+
+/**
+ * How often the bots bid slam, by North–South's combined HCP: the yardstick a player uses (with
+ * 33+ a partnership should nearly always reach slam; with 28 or fewer almost never). "Not ideal"
+ * counts slams bid where the ideal isn't one, the cost of looking. The HCP come from this run's
+ * boards (the deals are the same in the baseline); runs from before HCP were recorded have none.
+ */
+export function slamsByHcp(run: RunFile, base: RunFile | null): string[] {
+  const hcpOf = new Map(run.boards.filter((b) => b.nsHcp !== undefined).map((b) => [b.id, b.nsHcp!]));
+  if (hcpOf.size === 0) return [];
+  const rate = (bs: BoardResult[], f: (b: BoardResult) => boolean) => (bs.length ? pct(bs.filter(f).length / bs.length) : "");
+  const lines = [
+    `${pad("Slams by North–South's combined HCP", 37)}${lpad("boards", 7)}${lpad("slam ideal", 11)}${lpad("slam bid", 10)}${base ? lpad("baseline", 10) : ""}${lpad("not ideal", 11)}${lpad("loss", 7)}${base ? lpad("change", 9) : ""}`,
+  ];
+  const baseById = new Map(base?.boards.map((b) => [b.id, b]) ?? []);
+  for (const band of HCP_BANDS) {
+    const inBand = (b: BoardResult) => {
+      const h = hcpOf.get(b.id);
+      return h !== undefined && h >= band.min && h <= band.max;
+    };
+    const now = run.boards.filter(inBand);
+    if (now.length === 0) continue;
+    const was = now.map((b) => baseById.get(b.id)).filter((b): b is BoardResult => !!b);
+    const wrong = now.filter((b) => isSlam(b.contract) && !isSlam(b.ideal)).length;
+    const loss = mean(now.map((b) => b.loss));
+    lines.push(
+      `  ${pad(band.name, 35)}${lpad(String(now.length), 7)}${lpad(rate(now, (b) => isSlam(b.ideal)), 11)}${lpad(rate(now, (b) => isSlam(b.contract)), 10)}` +
+        `${base ? lpad(rate(was, (b) => isSlam(b.contract)), 10) : ""}${lpad(String(wrong), 11)}${lpad(fixed(loss), 7)}` +
+        `${base && was.length ? lpad(signed(loss - mean(was.map((b) => b.loss))), 9) : ""}`,
+    );
+  }
+  lines.push("");
+  return lines;
+}
+
 /** The run's summary, compared with the baseline when there is one. */
 export function summary(run: RunFile, base: RunFile | null, o: SummaryOptions): string {
   const lines: string[] = [];
@@ -129,6 +174,7 @@ export function summary(run: RunFile, base: RunFile | null, o: SummaryOptions): 
   };
   group("By the ideal contract's level", [...CLASS_NAMES], (b) => [b.idealClass], "loss");
   group("How the contract missed the ideal", ["Too low", "Too high", "Wrong strain", "Wrong declarer"], (b) => [b.miss], "imps");
+  lines.push(...slamsByHcp(run, base));
 
   const tagCounts = new Map<string, number>();
   for (const b of run.boards) for (const t of b.tags) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);

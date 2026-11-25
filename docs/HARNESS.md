@@ -471,6 +471,11 @@ How the bot's contract went wrong        boards   IMPs lost
   Wrong strain (notrump against a suit)      44     96
   Wrong declarer                             29     31
 
+Slams by North–South's combined HCP   boards slam ideal  slam bid  baseline  not ideal   loss   change
+  33+                                     21     100.0%     81.0%     71.4%          0   4.88    −1.81
+  31–32                                   48      85.4%     54.2%     45.8%          4   6.11    −1.04
+  ...
+
 By situation (worst first)               boards   loss   change
   After a 2NT opening                        38    2.60   −0.05
   Responder with game values after a 2/1     52    2.10   −0.41
@@ -489,6 +494,11 @@ The parts:
 - **Where the loss comes from:** by the ideal contract's level, by kind of error, and by situation
   tag (the opening, conventions used, who had the values). These breakdowns are the "can and
   can't" list.
+- **Slams by combined HCP:** for each band of North–South's HCP together, how often slam is the
+  ideal, how often the bots bid one (this run and the baseline), slams bid where the ideal isn't
+  one ("not ideal", the cost of looking), and the loss. Marc's yardstick: with 33+ a partnership
+  should nearly always reach slam, with 28 or fewer almost never, and in between sometimes. Runs
+  recorded before the HCP were added to run files don't have this table.
 - **Changed boards,** sorted by size, so the biggest wins and losses are checked first.
 - **Health:** calls with no rule, hard calls, run time.
 

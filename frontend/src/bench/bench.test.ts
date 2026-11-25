@@ -3,8 +3,8 @@ import { parseHand } from "../core/deal";
 import { SUITS } from "../core/types";
 import { type SetDefinition, dealSet, ewLayouts, handsOf, hasClearBid } from "./deals";
 import { type ContractOption, contractClass, contractOptions, encodeTricks, expectedLoss, missKind, optionFor, tricksOf } from "./ideal";
-import { bootstrapCi, compareLosses } from "./report";
-import { silentAuction, situationTags } from "./stage1";
+import { type RunFile, bootstrapCi, compareLosses, slamsByHcp } from "./report";
+import { type BoardResult, silentAuction, situationTags } from "./stage1";
 
 const def: SetDefinition = { stage: 1, deals: 8, seed: 3, layouts: 12, filter: 1 };
 
@@ -154,5 +154,26 @@ describe("statistics", () => {
     expect(compareLosses([1, 1, 1, 1], [2, 2, 2, 2]).verdict).toBe("better");
     expect(compareLosses([3, 3, 3, 3], [2, 2, 2, 2]).verdict).toBe("worse");
     expect(compareLosses([1, 3, 1, 3], [2, 2, 2, 2]).verdict).toBe("no clear difference");
+  });
+});
+
+describe("slams by combined HCP", () => {
+  const board = (id: number, nsHcp: number | undefined, contract: string, ideal: string, loss: number): BoardResult => ({
+    id, auction: "", contract, declarer: "N", loss, ideal, idealDeclarer: "N", idealClass: "", miss: "At or near the ideal", tags: [], fallbacks: 0, nsHcp,
+  });
+  const run = (boards: BoardResult[]): RunFile => ({ id: "r", set: "s", label: "", commit: "", dirty: false, createdAt: "", ms: 0, boards });
+
+  it("counts slams bid and ideal in each band, against the baseline", () => {
+    const now = run([board(1, 34, "6NT", "6NT", 0), board(2, 33, "3NT", "6NT", 11), board(3, 27, "6S", "4S", 13)]);
+    const before = run([board(1, undefined, "3NT", "6NT", 11), board(2, undefined, "3NT", "6NT", 11), board(3, undefined, "4S", "4S", 0)]);
+    const [, top, low] = slamsByHcp(now, before); // bands with no boards are left out
+    // 33+: both ideal slams, one bid (50%) where the baseline bid none; loss 5.50, 5.50 better.
+    expect(top).toMatch(/33\+\s+2\s+100\.0%\s+50\.0%\s+0\.0%\s+0\s+5\.50\s+−5\.50/);
+    // 26–28: a slam bid where the ideal is game: one "not ideal".
+    expect(low).toMatch(/26–28\s+1\s+0\.0%\s+100\.0%\s+0\.0%\s+1\s+13\.00\s+\+13\.00/);
+  });
+
+  it("is left out for runs recorded before HCP were", () => {
+    expect(slamsByHcp(run([board(1, undefined, "3NT", "6NT", 11)]), null)).toEqual([]);
   });
 });

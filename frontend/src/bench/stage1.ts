@@ -6,6 +6,7 @@ import { type Decision, decide, positionAt } from "../core/bidding/bidder";
 import { callName } from "../core/bidding/sayc/common";
 import { SAYC_DEFAULTS, type SystemSettings } from "../core/bidding/system";
 import { contractCode } from "../core/contract";
+import { hcp } from "../core/deal";
 import type { Hand, Seat } from "../core/types";
 import { type BenchDeal, handsOf } from "./deals";
 import { type Miss, CLASS_NAMES, contractClass, contractOptions, expectedLoss, missKind, optionFor } from "./ideal";
@@ -44,6 +45,8 @@ export interface BoardResult {
   tags: string[];
   /** Calls with no rule. */
   fallbacks: number;
+  /** North's and South's HCP together (missing in run files from before it was added). */
+  nsHcp?: number;
   /** Each call's reason, in order (only in full run files, for `show`). */
   reasons?: string[];
 }
@@ -73,6 +76,7 @@ export function runBoard(deal: BenchDeal, layouts: string[], withReasons: boolea
     miss: missKind(bot, ideal, loss),
     tags: situationTags(deal, decisions),
     fallbacks: decisions.filter((d) => d.fallback).length,
+    nsHcp: hcp(hands.N) + hcp(hands.S),
     ...(withReasons && { reasons: decisions.map((d) => d.reason) }),
   };
 }
