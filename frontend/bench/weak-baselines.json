@@ -1,12 +1,12 @@
 {
   "weak-dev": {
-    "id": "defence-weak-dev-2026-11-25-145328",
+    "id": "defence-weak-dev-2026-11-25-145819",
     "set": "weak-dev",
-    "label": "^step^ 1^ baseline:^ SAYC^ defence^ against^ 3+^ HCP^ preempts^",
-    "commit": "20b11de",
-    "dirty": true,
-    "createdAt": "2026-11-25T22:53:28.328Z",
-    "ms": 1163,
+    "label": "step 1 baseline: SAYC defence against 3+ HCP preempts",
+    "commit": "bb6deab",
+    "dirty": false,
+    "createdAt": "2026-11-25T22:58:19.987Z",
+    "ms": 1189,
     "preemptors": {
       "weakTwoSuit": "hcp3",
       "preemptSuit": "hcp3"
@@ -1516,13 +1516,13 @@
     ]
   },
   "weak-holdout": {
-    "id": "defence-weak-holdout-2026-11-25-145341",
+    "id": "defence-weak-holdout-2026-11-25-145821",
     "set": "weak-holdout",
     "label": "step 1 baseline: SAYC defence against 3+ HCP preempts",
-    "commit": "20b11de",
-    "dirty": true,
-    "createdAt": "2026-11-25T22:53:41.785Z",
-    "ms": 1152,
+    "commit": "bb6deab",
+    "dirty": false,
+    "createdAt": "2026-11-25T22:58:21.302Z",
+    "ms": 1163,
     "preemptors": {
       "weakTwoSuit": "hcp3",
       "preemptSuit": "hcp3"
