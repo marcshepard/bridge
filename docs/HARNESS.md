@@ -249,6 +249,44 @@ Baselines: after this round was committed, a run of each set on the committed co
 baseline, so the next round compares with this one. The "Before" column above (the original
 bidding) is kept here as the record of where stage 1 started.
 
+**Is stage 1 at advanced yet?** Not yet (24 November 2026). Against the definition above: fixes
+are still finding real gains; Blackwood and strong 2♣ auctions lose about twice the average on
+`holdout` (6.96 and 5.91 IMPs per board against 3.41); many of the costliest boards are still
+plain errors; and the "can't do yet" list still has phase 1 items. The six biggest areas, roughly
+by what they cost, to take one at a time:
+
+1. **Slam bidding.** Slam decisions use fixed point totals; few control bids; slam auctions after
+   a strong 2♣ are weak. The biggest single area.
+2. **Counting playing tricks** (`suitTricks` in `evaluate.ts`) is generous with broken suits:
+   ♠QT542 ♦AQJT7 and ♥KT876 ♦KQJ83 each count as nine tricks, enough for a strong 2♣.
+3. **Choosing the strain:** 3NT against a major or a minor game; wrong strain grew slightly as the
+   bots reached more games.
+4. **Conventions on the card but not used:** new minor forcing, fourth suit forcing from the two
+   level, splinters, inverted minors (and Texas, Smolen, Drury, not on the card yet).
+5. **Valuation:** honours in long suits, wasted values opposite shortness, misfits, a second fit.
+6. **What the auction model tracks:** no aces, key cards, controls or stoppers, so after a
+   Blackwood answer the count isn't used in later decisions or in the bots' sampled deals.
+
+Advanced may need advanced conventions switched on (Marc: "to be an advanced bidder you need
+advanced conventions"). The harness can run with any card (`--card`); a convention counts towards
+advanced when it measurably helps.
+
+**Strong 2♣, Marc's agreement** (24 November 2026): 22+ HCP, or 18+ HCP with about nine playing
+tricks, which plays like 22+; forcing to game except 2♣–2♦–2NT. Partner values it as 22+ in every
+strain (a strength of 22+ with length); the HCP stay 18+ so the deals the bots sample still include
+the trick hands. On the harness: neutral (quick −0.03, holdout +0.03). The trick hands that still
+go wrong are area 2 above.
+
+**Roman Key Card** (`--card blackwood=rkc1430`), first try: worse than plain Blackwood (holdout
++0.08), because asker and answerer could disagree about the trump suit, and the asker used 4NT for
+a suit the auction hadn't agreed. Fixed: the key-card suit is read from the auction alone (the last
+suit both partners bid, else our last natural suit) by asker, answerer and the queen ask; the
+bidder uses 4NT only for that suit (otherwise it bids the slam); and with one key card missing, the
+queen unknown and no room to ask, nine trumps are enough for the slam. After the fixes Roman Key
+Card is level with plain Blackwood (holdout 3.41 both; quick 2.82 against 2.79): most slam losses
+are about whether to bid slam, not about counting aces. Plain Blackwood stays the default; try
+Roman Key Card again once slam judgment (area 1) improves.
+
 ### Stage 2: competitive bidding
 
 - **Deals.** Random deals, no filter. Opponents bid.
@@ -301,7 +339,7 @@ enough for its cost in time. Roughly in order of likely value for effort:
 | **Playing for the opponents' mistakes.** Bots play as if every opponent is perfect, so they never give one a chance to go wrong. | Declarer play, defence | Needs a model of how people err, which double dummy doesn't have. | Prefer, among nearly equal lines, the one that leaves an opponent a guess. Measure against people, not just bots. |
 | **Deception.** Bots never false-card, and follow their signalling agreements only between equally good cards. | Declarer play, defence | Its value depends on who you play against: bots read signals mechanically, people don't. | Measure first how much honesty costs against the bot opponents; then decide. |
 | **Expert-level bidding coverage.** The long tail of situations and conventions experts handle, and when to bend the rules. | Both kinds of bidding | No end to it by hand-written rules. | Keep adding by situation tag; consider a learned model (as the open-source Ben bot uses) as a cross-check or a judge for hard calls. |
-| **An expert reference.** Without one, "expert" can't be measured. | All | Expert auctions and play records are scarce, and mostly copyright. | Another strong bot on the same deals; expert auction sets for private reference; Marc's judgment throughout. |
+| **An expert reference.** Without one, "expert" can't be measured. | All | Expert auctions and play records are scarce, mostly under copyright, and played in other systems. | Most promising: score experts' own contracts with the same measure. Vugraph archives of top events record real deals with experts' auctions; on the deals where the opponents stayed silent, the experts' loss against the two-hand ideal is a direct benchmark ("the bots lose 2.5 IMPs a board, experts about X"). Needs permission or a licence for the data, and covers contracts, not each call. Also: another strong bot on the same deals (the open-source Ben runs locally, in its own systems); expert auction sets for private reference; Marc's judgment throughout. |
 
 ## The harness's interface
 
@@ -327,6 +365,10 @@ Each run records the git commit it ran on, and "with uncommitted changes" when t
 had any (outside `frontend/bench/`). That's the usual state while trying a change. It means the
 run's code is the commit plus whatever was being tried, so give such runs a `--label` saying what
 the change was.
+
+`--card <setting>=<value>,…` runs with settings changed from the SAYC defaults (any key of
+`SAYC_DEFAULTS` in `core/bidding/system.ts`, for example `blackwood=rkc1430`); the run records them
+and the summary shows them.
 
 Not built yet, for when they're needed: an HTML report, `--tag` to look at one situation, and
 `--against <git-ref>` (stage 2 on: build that ref as the opponent or baseline engine).
@@ -448,8 +490,8 @@ towards advanced; the hard problems are in stage 6 above.
 | Passes aren't used as evidence (didn't open, so under 12; didn't bid a major, so no five-card major). | `simulate.ts`, `cardplay/sample.ts` (in the backlog) | Add what a pass rules out to what the auction has shown. |
 | Conventions on the card that the bots don't use yet: splinters, inverted minors, new minor forcing, fourth suit forcing from the two level, Roman Key Card void answers and 5NT for kings. Not on the card yet: Texas transfers, Smolen, Drury. | `sayc/*.ts`, `system.ts` | Add one at a time; each should show up as a gain in its situation tag. |
 | Right-siding isn't a goal of any rule; declarer falls out of the auction. | `sayc/notrump.ts`, `sayc/general.ts` | The harness measures "wrong declarer" directly; act only if it's costly. |
-| The new "game values, no clear suit game" 3NT and the limiting 2NT after a 2/1 don't check stoppers (from the bots-branch review). | `sayc/constructive.ts` | Compare with a stopper check or a fourth-suit ask. |
-| Support points replaced HCP for raises and cuebid raises, so code that reads only `shown.hcp` (notrump decisions, the "Competing" pass rule) now sees a weaker partner (from the bots-branch review). | `position.ts` (`partnerPoints`), `sayc/competition.ts` | Check the notrump and competitive situation tags for losses after a raise. |
+| The "game values, no clear suit game" 3NT and the limiting 2NT after a 2/1 don't check stoppers (from the bots-branch review). Partly fixed: with two cards in opener's five-card major and a suit unstopped, the bots now bid 4 of the major. | `sayc/constructive.ts` | A fourth-suit ask for the stopper (area 4 above). |
+| Support points replaced HCP for raises and cuebid raises, so code that reads only `shown.hcp` saw a weaker partner (from the bots-branch review). Fixed for constructive bidding (points shown with length count in any strain; responder counts opener's rebid); the competitive rules still read the HCP floor. | `sayc/competition.ts` | Stage 2. |
 | Calls with no rule fall back to a natural call or Pass. | `bidder.ts` | Track the count in every run; each one is a gap. |
 
 ### Competitive bidding (stage 2)

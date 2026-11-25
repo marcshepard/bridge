@@ -90,9 +90,10 @@ describe("hand valuation", () => {
     expect(hand.shortnessPoints).toBe(3);
   });
 
-  it("opens 2♣ with nine playing tricks, however few the HCP", () => {
-    expect(bot("AKQJT98765432...")).toBe("2C");
-    expect(bot("AKQJT987.A.A32.32")).toBe("2C"); // 8 + 1 + 1 tricks, 17 HCP
+  it("opens 2♣ on nine playing tricks only with 18+ HCP (it plays like 22+)", () => {
+    expect(bot("AKQJT987.A.AK3.3")).toBe("2C"); // 8 + 1 + 2 tricks, 21 HCP
+    expect(bot("AKQJT987.A.A32.32")).toBe("2C"); // 8 + 1 + 1 tricks, 18 HCP
+    expect(bot("AKQJT987.K.A32.32")).not.toBe("2C"); // nine tricks but 17 HCP
   });
 
   it("bids the grand slam its own tricks make", () => {
@@ -371,14 +372,31 @@ describe("stage 1 harness fixes (boards from the quick set, docs/HARNESS.md)", (
     else expect(call).toBe(expected);
   });
 
-  it("reads a strong 2♣ as 16+ HCP, and opener's 3NT after it as no minimum", () => {
-    const shown = readAuction({ dealer: "N", vul: "None" }, calls("2C PASS 3C PASS 3NT")).at(-1)!.position.shown.N;
-    expect(shown.hcp).toEqual([16, 37]);
+  it("reads a strong 2♣ as 22+ for valuing it (18+ HCP), and opener's 3NT after it as no minimum", () => {
+    const p = positionAt({ dealer: "N", vul: "None" }, calls("2C PASS 3C PASS 3NT PASS"));
+    expect(p.shown.N.hcp).toEqual([18, 37]);
+    expect(partnerPoints(p).min).toBe(22);
   });
 
   it("counts points shown with length in any strain", () => {
     const p = positionAt({ dealer: "N", vul: "None" }, calls("1D PASS 1S PASS 3D PASS"));
     expect(partnerPoints(p).min).toBeGreaterThanOrEqual(16);
+  });
+});
+
+describe("Roman Key Card (1430)", () => {
+  const rkc: SystemSettings = { ...SAYC_DEFAULTS, blackwood: "rkc1430" };
+  const call = (hand: string, auction: string) => callCode(chooseCall(parseHand(hand), { dealer: "N", vul: "None" }, calls(auction), rkc).call);
+
+  it("bids the slam with one key card missing and nine trumps, when there's no room to ask for the queen", () => {
+    // As on board 797 (holdout): 5♣ shows 1 or 4; with 3 here that's 4 of 5, nine trumps (four
+    // here, five shown), and the next step up is trumps, so there's no queen ask.
+    expect(call("AKJ.AKJ.KJ54.K96", "2C PASS 3D PASS 4NT PASS 5C PASS")).toBe("6D");
+  });
+
+  it("answers for the suit the auction agreed, the one the asker means", () => {
+    // 1♠–2♣–3♠–4NT: spades agreed. Holding ♠K and two aces is 3 key cards: 5♦ in 1430.
+    expect(call("K5.A87.A643.8532", "1S PASS 2C PASS 3S PASS 4NT PASS")).toBe("5D");
   });
 });
 

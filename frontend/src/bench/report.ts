@@ -20,6 +20,8 @@ export interface RunInfo {
   dirty: boolean;
   createdAt: string;
   ms: number;
+  /** Settings changed from the SAYC defaults for this run ("blackwood": "rkc1430"). */
+  card?: Record<string, string | number | boolean>;
 }
 
 export interface RunFile extends RunInfo {
@@ -71,7 +73,8 @@ export interface SummaryOptions {
 }
 
 function runLine(r: RunInfo): string {
-  return `${r.id}  ${r.commit}${r.dirty ? " (with uncommitted changes)" : ""}${r.label ? `  "${r.label}"` : ""}`;
+  const card = r.card && Object.keys(r.card).length ? `  card: ${Object.entries(r.card).map(([k, v]) => `${k}=${v}`).join(", ")}` : "";
+  return `${r.id}  ${r.commit}${r.dirty ? " (with uncommitted changes)" : ""}${r.label ? `  "${r.label}"` : ""}${card}`;
 }
 
 const contractText = (b: Pick<BoardResult, "contract" | "declarer">) => optionText({ contract: parseContract(b.contract), declarer: b.declarer });

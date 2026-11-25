@@ -4,7 +4,7 @@
 import { type Call, auctionResult, callCode, isAuctionOver } from "../core/auction";
 import { type Decision, decide, positionAt } from "../core/bidding/bidder";
 import { callName } from "../core/bidding/sayc/common";
-import { SAYC_DEFAULTS } from "../core/bidding/system";
+import { SAYC_DEFAULTS, type SystemSettings } from "../core/bidding/system";
 import { contractCode } from "../core/contract";
 import type { Hand, Seat } from "../core/types";
 import { type BenchDeal, handsOf } from "./deals";
@@ -13,11 +13,11 @@ import { type Miss, CLASS_NAMES, contractClass, contractOptions, expectedLoss, m
 const SILENT: Decision = { call: { kind: "pass" }, meaning: "Pass.", reason: "the opponents are silent in this test", name: null, hard: null, fallback: false };
 
 /** The bots' auction with East and West passing throughout. */
-export function silentAuction(hands: Record<Seat, Hand>, deal: Pick<BenchDeal, "dealer" | "vul">): Decision[] {
+export function silentAuction(hands: Record<Seat, Hand>, deal: Pick<BenchDeal, "dealer" | "vul">, settings: SystemSettings = SAYC_DEFAULTS): Decision[] {
   const out: Decision[] = [];
   const calls: Call[] = [];
   for (let i = 0; i < 60 && !isAuctionOver(calls); i++) {
-    const p = positionAt(deal, calls, SAYC_DEFAULTS);
+    const p = positionAt(deal, calls, settings);
     const d = p.seat === "E" || p.seat === "W" ? SILENT : decide(p, hands[p.seat]);
     out.push(d);
     calls.push(d.call);
@@ -49,9 +49,9 @@ export interface BoardResult {
 }
 
 /** Bid one board and score it. `layouts` are the cached tricks for the board. */
-export function runBoard(deal: BenchDeal, layouts: string[], withReasons: boolean): BoardResult {
+export function runBoard(deal: BenchDeal, layouts: string[], withReasons: boolean, settings: SystemSettings = SAYC_DEFAULTS): BoardResult {
   const hands = handsOf(deal);
-  const decisions = silentAuction(hands, deal);
+  const decisions = silentAuction(hands, deal, settings);
   const calls = decisions.map((d) => d.call);
   const end = auctionResult(deal.dealer, calls);
   const contract = end?.contract ? { ...end.contract, doubling: "" as const } : null;

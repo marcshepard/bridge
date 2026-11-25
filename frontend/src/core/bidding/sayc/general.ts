@@ -19,6 +19,7 @@ import {
   forced,
   gameLevel,
   isBid,
+  isNatural,
   isOurs,
   lastBid,
   myLast,
@@ -93,7 +94,7 @@ export function slamRules(p: Position): CallRule[] {
 
   // Partner asked with 4NT: answer by the card's Blackwood.
   if (pl?.rule?.name === "Blackwood") {
-    const trump = trumpSuit(p);
+    const trump = keyCardTrump(p);
     if (style === "plain" || !trump) {
       return [
         rule(bid(5, "C"), "Answers Blackwood: no aces, or all four.", (h) => h.aces === 0 || h.aces === 4, { name: "Blackwood answer", why: (h) => `${h.aces} aces` }),
@@ -140,14 +141,14 @@ export function slamRules(p: Position): CallRule[] {
 
   // I asked with Roman Key Card: count key cards, ask for the trump queen if it decides it, then place it.
   if (me?.rule?.name === "Blackwood" && pl?.rule?.name === "Roman Key Card answer" && isBid(pl.call)) {
-    const trump = trumpSuit(p);
+    const trump = keyCardTrump(p);
     if (!trump || pl.call.strain === "NT") return [];
     return rkcAsker(p, pl.call.strain, trump);
   }
 
   // Partner asked for the trump queen: six with it, five without.
   if (pl?.rule?.name === "Queen ask") {
-    const trump = trumpSuit(p);
+    const trump = keyCardTrump(p);
     if (!trump) return [];
     const sym = SYMBOL[trump];
     return [
@@ -327,7 +328,7 @@ function rkcAsker(p: Position, answer: Suit, trump: Suit): CallRule[] {
     );
   }
   out.push(
-    rule(bid(6, trump), "Small slam: at most one key card missing, and the trump queen isn't a second loser.", (h) => missing(h) === 0 || (missing(h) === 1 && (queen(h) === "yes" || (queen(h) === "unknown" && trumps(h) >= 10))), {
+    rule(bid(6, trump), "Small slam: at most one key card missing, and the trump queen isn't a second loser.", (h) => missing(h) === 0 || (missing(h) === 1 && (queen(h) === "yes" || (queen(h) === "unknown" && trumps(h) >= 9))), {
       why: (h) => `${kcWords(h)}${queen(h) === "yes" ? ` and the ${sym}Q` : missing(h) === 0 ? "" : `; ${trumps(h)} trumps, so the ${sym}Q matters less`}`,
     }),
   );
@@ -343,6 +344,20 @@ function trumpSuit(p: Position): Suit | null {
   const suits = ourSuits(p);
   const fits = suits.filter((s) => ps.len[s][0] + pp.len[s][0] >= 8);
   return fits.at(-1) ?? suits.at(-1) ?? null;
+}
+
+/**
+ * The suit Roman Key Card asks about, read from the auction alone so asker and answerer agree: the
+ * last suit both of us bid naturally before 4NT (a raise agrees it), else our last natural suit.
+ */
+function keyCardTrump(p: Position): Suit | null {
+  const ours = ourActions(p);
+  const ask = ours.map((r) => r.rule?.name).lastIndexOf("Blackwood");
+  const before = (ask >= 0 ? ours.slice(0, ask) : ours).filter((r) => isNatural(r) && isBid(r.call) && r.call.strain !== "NT");
+  const suitOf = (r: (typeof before)[number]) => (r.call as Bid).strain as Suit;
+  const bothBid = before.filter((r) => before.some((o) => o.seat !== r.seat && suitOf(o) === suitOf(r)));
+  const last = bothBid.at(-1) ?? before.at(-1);
+  return last ? suitOf(last) : trumpSuit(p);
 }
 
 /** Suits the Blackwood asker might name as trumps: our suits, the shown fit first. */
@@ -521,7 +536,9 @@ function plan(p: Position, h: HandFacts): Plan {
   // Slam: ask for aces first, if there's a trump suit and room.
   // Only where partner will read 4NT as Blackwood: a suit agreed and our contract not in notrump
   // (after 3NT, 4NT is quantitative). Otherwise bid the slam.
-  if (!byTricks && target >= 6 && strain !== "NT" && suitAgreed && cheapest(p, "NT") <= 4 && !ourActions(p).some((r) => r.rule?.name === "Blackwood")) {
+  // With Roman Key Card, 4NT asks about the suit the auction agreed: use it only for that suit.
+  const keyCardsFit = p.s.blackwood === "plain" || keyCardTrump(p) === strain;
+  if (!byTricks && target >= 6 && strain !== "NT" && suitAgreed && keyCardsFit && cheapest(p, "NT") <= 4 && !ourActions(p).some((r) => r.rule?.name === "Blackwood")) {
     return { call: bid(4, "NT"), why: `${why}, ${points}: slam is likely, so check the aces first` };
   }
   if (target === 0) {

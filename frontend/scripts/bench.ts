@@ -3,6 +3,7 @@
 //
 //   npm run bench -- build <set> [--deals 1000 --seed 1 --layouts 50]   deal a set and solve its layouts (once)
 //   npm run bench -- run <set> [--label "what changed"]                 bid every deal, compare with the baseline
+//   npm run bench -- run <set> --card blackwood=rkc1430                 the same with settings changed from the SAYC defaults
 //   npm run bench -- baseline <set> [<run>]                             make a run (default: the latest) the baseline
 //   npm run bench -- compare <run> [<other run>]                        compare two runs (default: with the baseline)
 //   npm run bench -- show <run> --board <n>                             one board in full
@@ -28,6 +29,7 @@ import { encodeTricks } from "../src/bench/ideal";
 import { type RunFile, boardText, summary } from "../src/bench/report";
 import { type BoardResult, runBoard } from "../src/bench/stage1";
 import { SyncSolver } from "../src/dds/syncSolver";
+import { SAYC_DEFAULTS, type SystemSettings } from "../src/core/bidding/system";
 
 interface Cache {
   definition: SetDefinition;
@@ -129,6 +131,7 @@ const USAGE = `The bots' evaluation harness (docs/HARNESS.md), stage 1: bidding 
 
   npm run bench -- build <set> [--deals 1000 --seed 1 --layouts 50]   deal a set and solve its layouts (once)
   npm run bench -- run <set> [--label "what changed"]                 bid every deal, compare with the baseline
+  npm run bench -- run <set> --card blackwood=rkc1430                 the same with settings changed from the SAYC defaults
   npm run bench -- baseline <set> [<run>]                             make a run (default: the latest) the baseline
   npm run bench -- compare <run> [<other run>]                        compare two runs (default: with the baseline)
   npm run bench -- show <run> --board <n>                             one board in full
@@ -238,7 +241,9 @@ async function run(set: string, args: Args) {
   if (!readSets()[set] || !existsSync(cachePath(set))) await build(set, args);
   const cache = loadCache(set);
   const started = Date.now();
-  const boards: BoardResult[] = cache.deals.map((d, i) => runBoard(d, cache.layouts[i]!, true));
+  const card = parseCard(args.str("card"));
+  const settings = { ...SAYC_DEFAULTS, ...card } as SystemSettings;
+  const boards: BoardResult[] = cache.deals.map((d, i) => runBoard(d, cache.layouts[i]!, true, settings));
   const now = new Date();
   const result: RunFile = {
     id: `${set}-${stamp(now)}`,
@@ -249,10 +254,25 @@ async function run(set: string, args: Args) {
     dirty: git("status", "--porcelain", "--", ":/", ":(exclude,top)frontend/bench").length > 0,
     createdAt: now.toISOString(),
     ms: Date.now() - started,
+    ...(Object.keys(card).length > 0 && { card }),
     boards,
   };
   writeJson(runPath(result.id), result, true);
   console.log(summary(result, readBaselines()[set] ?? null, options(args, cache.deals.length)));
+}
+
+/** "--card blackwood=rkc1430,jacoby2nt=false": settings changed from the SAYC defaults. */
+function parseCard(text: string | undefined): Record<string, string | number | boolean> {
+  const out: Record<string, string | number | boolean> = {};
+  for (const pair of (text ?? "").split(",").filter(Boolean)) {
+    const [key, raw] = pair.split("=");
+    if (!key || raw === undefined || !(key in SAYC_DEFAULTS)) {
+      throw new Error(`--card: "${pair}" isn't a setting. Settings: ${Object.keys(SAYC_DEFAULTS).join(", ")}`);
+    }
+    const def = SAYC_DEFAULTS[key as keyof SystemSettings];
+    out[key] = typeof def === "boolean" ? raw === "true" : typeof def === "number" ? Number(raw) : raw;
+  }
+  return out;
 }
 
 function resolveRun(ref: string, set?: string): RunFile {

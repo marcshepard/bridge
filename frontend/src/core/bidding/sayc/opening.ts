@@ -29,6 +29,9 @@ const longest = (h: HandFacts): Suit => (["S", "H", "D", "C"] as Suit[]).reduce(
  */
 export const nineTricks = (h: HandFacts) => h.tricks >= (isMajor(longest(h)) ? 9 : 10);
 
+/** A strong 2♣ on playing tricks needs this many HCP too, so it plays like 22+. */
+export const TRICKS_2C_HCP = 18;
+
 /** A gambling 3NT: a solid minor (AKQ, seven or more cards), no ace or king in the other suits. */
 /**
  * A gambling 3NT: a solid minor (AKQ, seven or more cards) and at least one other suit stopped, so
@@ -114,15 +117,16 @@ export function openingRules(p: Position): CallRule[] {
 
   if (s.strongTwoClubs) {
     rules.push(
-      rule(bid(2, "C"), `Strong and artificial: ${s.twoNtMax + 1}+ HCP, or a hand that can take about nine tricks by itself. Forcing to game, except when opener rebids 2NT after 2♦.`, (h) => h.hcp > s.twoNtMax || nineTricks(h), {
+      rule(bid(2, "C"), `Strong and artificial: ${s.twoNtMax + 1}+ HCP, or ${TRICKS_2C_HCP}+ HCP with about nine playing tricks, which plays like ${s.twoNtMax + 1}+. Forcing to game, except when opener rebids 2NT after 2♦.`, (h) => h.hcp > s.twoNtMax || (h.hcp >= TRICKS_2C_HCP && nineTricks(h)), {
         name: "Strong 2♣",
-        // Either kind: 22+ HCP, or nine tricks, which usually come with 16+ HCP (fewer is rare).
-        shows: { hcp: [16, 37] },
+        // Partner values it as 22+ in every strain (the strength); the HCP stay 18+ so the deals the
+        // bots sample still include the nine-trick hands with fewer.
+        shows: { hcp: [TRICKS_2C_HCP, 37], strength: { kind: "length", range: [s.twoNtMax + 1, 50] } },
         forcing: "game",
         why: (h) =>
           h.hcp > s.twoNtMax
             ? `${hcpText(h)}: too strong for any other opening`
-            : `${h.tricks} playing tricks by itself (${holding(h, longest(h))}): nearly game on your own, whatever the HCP`,
+            : `${hcpText(h)} and ${h.tricks} playing tricks by itself (${holding(h, longest(h))}): plays like ${s.twoNtMax + 1}+ HCP`,
       }),
     );
   }
