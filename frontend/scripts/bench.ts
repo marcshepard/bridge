@@ -494,10 +494,14 @@ function weakShow(ref: string, args: Args) {
 const DEFENCE_PREEMPTORS = { weakTwoSuit: "hcp3", preemptSuit: "hcp3" } as const;
 const WEAK_BASELINES_FILE = resolve(BENCH, "weak-baselines.json");
 const readWeakBaselines = () => readJson<Record<string, DefenceRunFile>>(WEAK_BASELINES_FILE, {});
-/** A defence baseline per set and preempting side's card: "weak-dev", or "weak-dev, weakTwoSuit=good,…". */
-const defenceKey = (set: string, preemptors: Record<string, unknown>) => {
+/**
+ * A defence baseline per set, preempting side's card and simulation mode: "weak-dev", "weak-dev,
+ * weakTwoSuit=good,…", "weak-dev | simulation imps with judgment, auction continued".
+ */
+const defenceKey = (set: string, preemptors: Record<string, unknown>, simulation?: unknown) => {
   const extra = Object.entries(preemptors).filter(([k, v]) => (DEFENCE_PREEMPTORS as Record<string, unknown>)[k] !== v);
-  return extra.length ? `${set}, ${Object.entries(preemptors).map(([k, v]) => `${k}=${v}`).join(",")}` : set;
+  const base = extra.length ? `${set}, ${Object.entries(preemptors).map(([k, v]) => `${k}=${v}`).join(",")}` : set;
+  return simulation ? `${base} | simulation ${simulation}` : base;
 };
 
 async function weakDefence(set: string, args: Args) {
@@ -526,7 +530,7 @@ async function weakDefence(set: string, args: Args) {
     boards,
   };
   writeJson(runPath(result.id), result, true);
-  console.log(defenceSummary(result, readWeakBaselines()[defenceKey(set, preemptorCard)] ?? null, args.num("top", 10)));
+  console.log(defenceSummary(result, readWeakBaselines()[defenceKey(set, preemptorCard, result.defenders.simulation)] ?? null, args.num("top", 10)));
 }
 
 /** Our side's hard calls by simulation: each board on a worker with its own solver. */
@@ -569,7 +573,7 @@ function weakDefenceBaseline(set: string, ref?: string) {
   if (!id || !existsSync(runPath(id))) throw new Error(`No defence run for "${set}" yet.`);
   const r = readJson<DefenceRunFile>(runPath(id), null as never);
   const boards = r.boards.map(({ reasons: _, ...b }) => ({ ...b, reasons: [] }));
-  const key = defenceKey(r.set, r.preemptors);
+  const key = defenceKey(r.set, r.preemptors, r.defenders.simulation);
   const all = { ...readWeakBaselines(), [key]: { ...r, boards } };
   const sets = Object.entries(all).map(([name, { boards: bs, ...info }]) => {
     const head = JSON.stringify(info, null, 2).slice(0, -2).replace(/\n/g, "\n  ");
