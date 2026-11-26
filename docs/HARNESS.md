@@ -632,7 +632,48 @@ with the app's four-worker solver pool: median 0.6 s, mean 0.66 s, slowest 1.6 s
 1.5–2 s on a phone. **Switched on** (Marc): the bots now simulate with `BOT_SIMULATION` (IMPs,
 judgment, the auction continued) at the table, in the hints and in the review.
 
-**Decision (for now):** keep SAYC's "good" suits as the default. The experiment says our defence to
+**Step 3: the suit standard against the improved defence** (25 November 2026). `weak-run --simulate`
+(the defending side simulating, as the bots play), each standard against 3+ HCP, `weak-dev`:
+
+| Weak twos and three-level preempts | IMPs per board against 3+ HCP |
+|---|---|
+| Any suit | +0.35 (+0.19 to +0.52), gains |
+| 2+ HCP | +0.18 (+0.07 to +0.28), gains |
+| Decent | +0.08 (−0.04 to +0.19), no clear difference |
+| 4+ HCP | −0.19 (−0.36 to −0.03), loses |
+| SAYC's "good" (two of the top three honours, or three of the top five) | −0.21 (−0.40 to −0.02), loses |
+
+Stricter clearly loses. Looser still gains here, but not for reasons that hold at the table: double
+dummy gives a lead-directing suit no value, and the bots punish junk preempts only sometimes (of the
+338 preempts only "any suit" allows, 49 were doubled, 30 of those down). **Decision (Marc): 3+ HCP**,
+shown as "a good (3+ HCP) suit"; no lower on principle (leads aren't measured), no higher (the
+harness shows it loses). The same principle applied to the other bids that used SAYC's "good" test:
+
+- Weak jump overcalls: our weak-two standard at the two level, the preempt standard at three (they
+  no longer show a "good" suit for simulation's sampling).
+- Preemptive overcalls of an artificial bid: the preempt standard.
+- Two-level (and higher) simple overcalls: 4+ HCP in a five-card suit (or six cards).
+- Positive responses to 2♣: 4+ HCP in the suit.
+- Light third-seat openings: 4+ HCP in the five-card suit.
+
+**Safety check: judgment mode on ordinary deals** (25 November 2026). Sets of ordinary random deals
+(`weak-build all-dev --filter 0 --deals 3000 --seed 303`, and `all-holdout` with seed 404), each
+bid at two tables as a teams match: today's simulation (`BOT_SIMULATION`) North–South against the
+old (matchpoints, only the calls the rules flag, each the last call) East–West, then swapped
+(`judgment-check <set>`; about ten minutes a set).
+
+| | `all-dev` | `all-holdout` |
+|---|---|---|
+| All boards (3,000) | +0.58 (+0.37 to +0.79), gains | +0.71 (+0.49 to +0.95), gains |
+| Contested (both sides bid) | +1.26 (+0.86 to +1.66) | +1.55 (+1.15 to +1.92) |
+
+No regression outside preempt auctions. The biggest swings are mostly doubled contracts; double
+dummy's perfect defence overstates what penalty doubles collect, so read it as "clearly better",
+not half an IMP a board at the table.
+
+The old test stays for bids about strength rather than obstruction (the jump shift, the doubler's
+own suit, the self-sufficient game, a new suit after partner's overcall, a good five-card suit over
+their 1NT). The experiment says our defence to
 preempts is the bigger weakness. Next: improve the bots' bidding over the opponents' preempts and
 weak twos (stage 2), using these sets with the opponents' standard loosened (`--base
 weakTwoSuit=any,preemptSuit=any`) to measure it; then rerun this experiment.

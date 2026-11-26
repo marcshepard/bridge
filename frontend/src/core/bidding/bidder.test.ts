@@ -493,6 +493,24 @@ describe("bidding over their weak openings (stage 2, step 2)", () => {
   });
 });
 
+describe("suit standards (Marc, 25 November 2026)", () => {
+  it.each([
+    // A positive response to 2♣ needs 4+ HCP in the suit.
+    ["2♣ positive with ♥KJ (4 HCP)", "A4.KJ853.Q93.982", "2C PASS", "N", "2H"],
+    ["no 2♣ positive with ♥QJ (3 HCP)", "A4.QJ8532.K93.98", "2C PASS", "N", "2D"],
+    // A two-level overcall needs 4+ HCP in a five-card suit.
+    ["two-level overcall with ♦KJ (4 HCP)", "K4.32.KJ865.AQ42", "1S", "N", "2D"],
+    ["no two-level overcall with ♦QJ (3 HCP)", "K4.32.QJ865.AQ42", "1S", "N", "PASS"],
+    // A light third-seat opening needs 4+ HCP in its five-card suit.
+    ["light third-seat opening with ♥KJ", "84.KJ852.A93.Q82", "PASS PASS", "N", "1H"],
+    ["no light third-seat opening with ♥K", "84.K9852.AQ3.J82", "PASS PASS", "N", "PASS"],
+    // A weak jump overcall follows our weak-two standard: 3+ HCP.
+    ["weak jump overcall with ♠K (3 HCP)", "K98742.84.Q3.982", "1D", "N", "2S"],
+  ])("%s", (_name, hand, auction, dealer, expected) => {
+    expect(bot(hand, auction, dealer as Seat)).toBe(expected);
+  });
+});
+
 describe("auction audit regressions", () => {
   const deal = { dealer: "N", vul: "None" } as const;
   it.each([
@@ -572,9 +590,10 @@ describe("what an overcall shows partner", () => {
     expect(steps.at(-1)!.position.shown.E.quality).toEqual({ H: "decent" });
   });
 
-  it("a weak jump overcall: a good suit", () => {
+  it("a weak jump overcall: six cards, with no claim beyond our weak-two standard (3+ HCP)", () => {
     const steps = readAuction({ dealer: "N", vul: "None" }, calls("1D 2S"));
-    expect(steps.at(-1)!.position.shown.E.quality).toEqual({ S: "good" });
+    expect(steps.at(-1)!.position.shown.E.len.S[0]).toBe(6);
+    expect(steps.at(-1)!.position.shown.E.quality?.S).toBeUndefined();
   });
 });
 
@@ -865,10 +884,11 @@ describe("interference over our 1NT", () => {
 });
 
 describe("weak twos", () => {
-  it("need a good suit: two of the top three honours, or three of the top five", () => {
-    expect(bot("84.KQ9842.J3.982")).toBe("2H"); // ♥KQ: two of the top three
-    expect(bot("84.QJT984.K3.982")).toBe("2H"); // ♥QJT: three of the top five
-    expect(bot("84.KJ9842.Q3.982")).not.toBe("2H"); // ♥KJ: neither
+  it("need a good (3+ HCP) suit", () => {
+    expect(bot("84.KQ9842.J3.982")).toBe("2H"); // ♥KQ: 5 HCP
+    expect(bot("84.KJ9842.Q3.982")).toBe("2H"); // ♥KJ: 4 HCP
+    expect(bot("84.K98742.QJ.982")).toBe("2H"); // ♥K: 3 HCP
+    expect(bot("84.Q98742.KJ.982")).not.toBe("2H"); // ♥Q: 2 HCP
   });
 });
 

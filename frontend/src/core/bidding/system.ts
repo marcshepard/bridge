@@ -75,9 +75,9 @@ export interface SystemSettings {
   newMinorForcing: boolean;
   /** The fourth suit bid by responder is artificial and forcing. */
   fourthSuitForcing: boolean;
-  /** How good a weak two's six-card suit must be. SAYC: good. */
+  /** How good a weak two's six-card suit must be. Ours: 3+ HCP in it. */
   weakTwoSuit: SuitStandard;
-  /** How good a three-level preempt's seven-card suit must be. SAYC: good. */
+  /** How good a three-level preempt's seven-card suit must be. Ours: 3+ HCP in it. */
   preemptSuit: SuitStandard;
 }
 
@@ -115,8 +115,10 @@ export const SAYC_DEFAULTS: SystemSettings = {
   gerber: true,
   newMinorForcing: true,
   fourthSuitForcing: true,
-  weakTwoSuit: "good",
-  preemptSuit: "good",
+  // 3+ HCP in the suit, from the harness's weak-opening experiment (docs/HARNESS.md, stage 2):
+  // stricter standards lost against the bots' defence; Marc won't go lower (leads aren't measured).
+  weakTwoSuit: "hcp3",
+  preemptSuit: "hcp3",
 };
 
 /** The card each side of the table bids by. */
@@ -290,10 +292,10 @@ export const SETTING_FIELDS: SettingField[] = [
     editable: false,
   },
   toggle("ruleOf20", "Suit openings", "Rule of 20", "In first or second seat, open a hand with fewer than 12 HCP when HCP plus the lengths of the two longest suits make 20."),
-  toggle("lightThirdSeat", "Suit openings", "Light third-seat openings", "After two passes, open with 10–11 HCP and a good suit, to suggest a lead and get in the way."),
+  toggle("lightThirdSeat", "Suit openings", "Light third-seat openings", "After two passes, open with 10–11 HCP and a five-card suit with 4+ HCP in it, to suggest a lead and get in the way."),
   toggle("ruleOf15", "Suit openings", "Rule of 15", "After three passes, open only when HCP plus the number of spades make 15; otherwise pass the board out."),
   toggle("strongTwoClubs", "Suit openings", "Strong 2♣", "2♣ is artificial: 22+ HCP, or 18+ HCP with about nine playing tricks. Forcing to game, unless opener rebids 2NT. Partner bids 2♦ to wait.", true, false),
-  toggle("weakTwos", "Suit openings", "Weak twos", "2♦, 2♥ and 2♠ show a good six-card suit: two of the top three honours, or three of the top five."),
+  toggle("weakTwos", "Suit openings", "Weak twos", "2♦, 2♥ and 2♠ show a good (3+ HCP) six-card suit."),
   {
     kind: "fixed",
     id: "weakTwoSuit",

@@ -97,22 +97,31 @@ export function decentSuit(h: HandFacts, suit: Suit): boolean {
   return meetsQuality(h.hand[suit], "decent");
 }
 
-/** A suit-quality standard a setting can ask for: any length will do, 3+ HCP in it, decent, or good. */
-export type SuitStandard = "any" | "hcp3" | "decent" | "good";
+/** A suit-quality standard a setting can ask for: any length will do, 2–4+ HCP in it, decent, or good. */
+export type SuitStandard = "any" | "hcp2" | "hcp3" | "hcp4" | "decent" | "good";
 
 export function meetsStandard(h: HandFacts, suit: Suit, standard: SuitStandard): boolean {
   if (standard === "any") return true;
-  if (standard === "hcp3") return suitHcp(h, suit) >= 3;
+  if (standard === "hcp2" || standard === "hcp3" || standard === "hcp4") return suitHcp(h, suit) >= Number(standard[3]);
   return meetsQuality(h.hand[suit], standard);
 }
 
 /** The standard in a learner's words, for rule meanings and the settings page. */
 export const STANDARD_WORDS: Record<SuitStandard, string> = {
   any: "any suit of that length",
-  hcp3: "3+ HCP in the suit (a king, queen-jack or better)",
+  hcp2: "a suit with 2+ HCP",
+  hcp3: "a good (3+ HCP) suit",
+  hcp4: "a suit with 4+ HCP",
   decent: "a decent suit (one of the top three honours and two of the top five)",
-  good: "a good suit (two of the top three honours, or three of the top five)",
+  good: "a strong suit (two of the top three honours, or three of the top five)",
 };
+
+/** "a good (3+ HCP) six-card heart suit": a suit of a given length to a standard. */
+export function standardSuit(standard: SuitStandard, length: number, suitWord: string): string {
+  const n = ["", "one", "two", "three", "four", "five", "six", "seven", "eight"][length] ?? String(length);
+  if (standard === "hcp3") return `a good (3+ HCP) ${n}-card ${suitWord} suit`;
+  return `a ${n}-card ${suitWord} suit: ${STANDARD_WORDS[standard]}`;
+}
 
 /** A stopper for notrump: A, Kx, Qxx or Jxxx. */
 export function stopper(h: HandFacts, suit: Suit): boolean {

@@ -74,7 +74,10 @@ export function preemptorOf(hands: Record<Seat, Hand>, dealer: Seat): Seat | nul
   return null;
 }
 
-/** The set's deals: random deals with a weak opening, dealer and vulnerability by board number. */
+/**
+ * The set's deals: random deals with a weak opening, dealer and vulnerability by board number. With
+ * filter 0, every random deal (for checks on ordinary auctions); `preemptor` is then the dealer.
+ */
 export function weakDealSet(def: WeakSetDefinition): WeakDeal[] {
   const rand = seeded(def.seed);
   const out: WeakDeal[] = [];
@@ -82,7 +85,7 @@ export function weakDealSet(def: WeakSetDefinition): WeakDeal[] {
     const dealer = boardDealer(id);
     for (;;) {
       const hands = randomDeal(rand);
-      const preemptor = preemptorOf(hands, dealer);
+      const preemptor = def.filter === 0 ? dealer : preemptorOf(hands, dealer);
       if (preemptor) {
         out.push({ id, dealer, vul: boardVulnerability(id), pbn: toPbn(hands), preemptor });
         break;
@@ -166,6 +169,12 @@ export function runWeakBoard(deal: WeakDeal, code: string, base: SystemSettings,
   const side = sideOf(deal.preemptor);
   const b = table(deal, code, sidedAuction(hands, deal, { NS: base, EW: base }));
   const v = table(deal, code, sidedAuction(hands, deal, side === "NS" ? { NS: variant, EW: base } : { NS: base, EW: variant }));
+  return weakBoardFrom(deal, b, v);
+}
+
+function weakBoardFrom(deal: WeakDeal, b: WeakTable, v: WeakTable): WeakBoard {
+  const hands = handsOf(deal);
+  const side = sideOf(deal.preemptor);
   const kind = weakKind(hands[deal.preemptor])!;
   const seat = (SEATS.indexOf(deal.preemptor) - SEATS.indexOf(deal.dealer) + 4) % 4;
   const change =
@@ -183,6 +192,20 @@ export function runWeakBoard(deal: WeakDeal, code: string, base: SystemSettings,
       change,
     ],
   };
+}
+
+/**
+ * The same paired comparison with the defending side simulating its hard and judgment calls, as the
+ * bots play; the preempting side bids by its rules (the variant or the base).
+ */
+export async function runWeakBoardSimulated(deal: WeakDeal, code: string, base: SystemSettings, variant: SystemSettings, solver: DoubleDummySolver, options: SimulationOptions): Promise<WeakBoard> {
+  const hands = handsOf(deal);
+  const side = sideOf(deal.preemptor);
+  const defenders = side === "NS" ? "EW" : "NS";
+  const b = table(deal, code, (await simulatedAuction(hands, deal, { NS: base, EW: base }, defenders, solver, options)).decisions);
+  const cards = side === "NS" ? { NS: variant, EW: base } : { NS: base, EW: variant };
+  const v = table(deal, code, (await simulatedAuction(hands, deal, cards, defenders, solver, options)).decisions);
+  return weakBoardFrom(deal, b, v);
 }
 
 export interface WeakRunFile {
@@ -444,4 +467,46 @@ export function defenceSummary(run: DefenceRunFile, base: DefenceRunFile | null,
     lines.push(`  Board ${String(b.id).padStart(4)}  ${`${b.contract} ${b.declarer ?? ""}`.padEnd(8)} score ${String(b.score).padStart(6)}  par ${String(b.par).padStart(6)}  ${signed(b.imps, 0).padStart(4)} IMPs  ${b.tags[0]}`);
   }
   return lines.join("\n");
+}
+
+// ---- The judgment check: today's simulation against the old, on ordinary deals -------------------
+
+/** How the bots simulated before judgment mode: matchpoints, only the calls the rules flag, each the last call. */
+export const OLD_SIMULATION: SimulationOptions = { scoring: "matchpoints" };
+
+export interface JudgmentBoard {
+  id: number;
+  /** IMPs for the side using the new options, over the two tables (as in a teams match). */
+  imps: number;
+  /** Table 1: new North–South; table 2: new East–West. */
+  tables: [WeakTable, WeakTable];
+  /** Both sides bid at some point in either auction. */
+  contested: boolean;
+}
+
+/** One deal at two tables: the new options North–South, then East–West; scored as a teams match. */
+export async function runJudgmentBoard(deal: WeakDeal, code: string, card: SystemSettings, solver: DoubleDummySolver, next: SimulationOptions, old: SimulationOptions = OLD_SIMULATION): Promise<JudgmentBoard> {
+  const hands = handsOf(deal);
+  const cards = { NS: card, EW: card };
+  const auction = async (nsOptions: SimulationOptions, ewOptions: SimulationOptions) => {
+    const decisions: Decision[] = [];
+    const calls: Call[] = [];
+    for (let i = 0; i < 80 && !isAuctionOver(calls); i++) {
+      const seat = SEATS[(SEATS.indexOf(deal.dealer) + calls.length) % 4]!;
+      const p = positionAt(deal, calls, cards);
+      const d = await decideWithSimulation(p, hands[seat], solver, sideOf(seat) === "NS" ? nsOptions : ewOptions, cards);
+      decisions.push(d);
+      calls.push(d.call);
+    }
+    return decisions;
+  };
+  // Scored for North–South (table() scores for the preemptor's side; the dealer stands in as North–South here).
+  const nsTable = async (ns: SimulationOptions, ew: SimulationOptions) => {
+    const t = table({ ...deal, preemptor: "N" }, code, await auction(ns, ew));
+    return t;
+  };
+  const one = await nsTable(next, old);
+  const two = await nsTable(old, next);
+  const bidders = (t: WeakTable) => new Set(t.auction.split(" ").map((c, i) => (c !== "PASS" && c !== "X" && c !== "XX" ? sideOf(SEATS[(SEATS.indexOf(deal.dealer) + i) % 4]!) : null)).filter(Boolean));
+  return { id: deal.id, imps: imps(one.score - two.score), tables: [one, two], contested: bidders(one).size === 2 || bidders(two).size === 2 };
 }

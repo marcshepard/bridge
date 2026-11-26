@@ -3,7 +3,7 @@
 // overcall or double our opening, and the contested part-score decisions (the hard calls).
 
 import { type Suit, SUITS } from "../../types";
-import { type HandFacts, decentSuit, goodSuit, holding, isMajor, stopper, supportPoints, topHonours } from "../evaluate";
+import { type HandFacts, decentSuit, goodSuit, holding, isMajor, meetsStandard, stopper, supportPoints, topHonours } from "../evaluate";
 import type { CallRule, ReadCall } from "../model";
 import {
   type Bid,
@@ -30,6 +30,7 @@ import {
   weVul,
 } from "../position";
 import { SUIT_WORDS, SYMBOL, callName, cards, hcpText, len, quality, rule, shapeText } from "./common";
+import { standardSuit } from "../evaluate";
 
 export function competitiveRules(p: Position): CallRule[] {
   const theirs = theirActions(p);
@@ -262,16 +263,19 @@ function overcalls(p: Position): CallRule[] {
     if (!b) continue;
     if (s.weakJumpOvercalls && !balance && b.level <= 3) {
       rules.push(
-        rule(bid(b.level + 1, x), `Weak jump overcall: a good 6-card ${SYMBOL[x]} suit, 5–10 HCP. Like a weak two.`, (h) => h.len[x] >= 6 && h.hcp >= 5 && h.hcp <= 10 && goodSuit(h, x) && b.level + 1 <= 3, {
+        // A preempt, so the same suit standard as our weak openings: the weak two's at the two level,
+        // the three-level preempt's at three.
+        rule(bid(b.level + 1, x), `Weak jump overcall: ${standardSuit(b.level + 1 === 2 ? s.weakTwoSuit : s.preemptSuit, 6, SUIT_WORDS[x].slice(0, -1))}, 5–10 HCP. Like a weak two.`, (h) => h.len[x] >= 6 && h.hcp >= 5 && h.hcp <= 10 && meetsStandard(h, x, b.level + 1 === 2 ? s.weakTwoSuit : s.preemptSuit) && b.level + 1 <= 3, {
           name: "Weak jump overcall",
-          shows: { hcp: [5, 10], len: len(x, 6), quality: quality(x, "good") },
+          shows: { hcp: [5, 10], len: len(x, 6) },
           why: (h) => `${hcpText(h)} and ${holding(h, x)}: get in their way`,
         }),
       );
     }
     const need = b.level === 1 ? { lo: 8 - adj, len: 5 } : b.level === 2 ? { lo: 11 - adj, len: 5 } : { lo: 13 - adj, len: 6 };
     rules.push(
-      rule(b, `Overcall: ${cards(need.len, x)}, ${need.lo}–17 HCP${b.level >= 2 ? ", a good suit" : ""}.`, (h) => h.len[x] >= need.len && h.hcp >= need.lo && h.hcp <= 17 && (b.level === 1 ? decentSuit(h, x) : goodSuit(h, x) || h.len[x] >= 6), {
+      // At the two level or higher the suit needs 4+ HCP (or six cards).
+      rule(b, `Overcall: ${cards(need.len, x)}, ${need.lo}–17 HCP${b.level >= 2 ? ", 4+ HCP in the suit" : ""}.`, (h) => h.len[x] >= need.len && h.hcp >= need.lo && h.hcp <= 17 && (b.level === 1 ? decentSuit(h, x) : meetsStandard(h, x, "hcp4") || h.len[x] >= 6), {
         shows: { hcp: [need.lo, 17], len: len(x, need.len), ...(b.level === 1 ? { quality: quality(x, "decent") } : {}) },
         why: (h) => `${hcpText(h)} and ${holding(h, x)}`,
       }),
@@ -295,7 +299,8 @@ function overcalls(p: Position): CallRule[] {
  */
 function overArtificial(p: Position): CallRule[] {
   const allowance = weVul(p) ? 2 : 3;
-  const qualifies = (h: HandFacts, x: Suit) => goodSuit(h, x) && (h.len[x] >= 6 || (h.len[x] >= 5 && h.hcp >= 8));
+  // Preemptive, so the same suit standard as our preempts.
+  const qualifies = (h: HandFacts, x: Suit) => meetsStandard(h, x, p.s.preemptSuit) && (h.len[x] >= 6 || (h.len[x] >= 5 && h.hcp >= 8));
   const suitFor = (h: HandFacts): Suit | null =>
     SUITS.filter((x) => qualifies(h, x)).sort((a, b) => h.len[b] - h.len[a] || SUITS.indexOf(a) - SUITS.indexOf(b))[0] ?? null;
   const levelFor = (h: HandFacts, x: Suit): number => {

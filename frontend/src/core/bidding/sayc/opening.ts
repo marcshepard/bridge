@@ -1,7 +1,7 @@
 // Opening bids: the first bid of the auction.
 
 import { type Suit } from "../../types";
-import { type HandFacts, STANDARD_WORDS, goodSuit, holding, isMajor, meetsStandard, ruleOf15, ruleOf20, stopper, suitHcp, topHonours } from "../evaluate";
+import { type HandFacts, holding, standardSuit, isMajor, meetsStandard, ruleOf15, ruleOf20, stopper, suitHcp, topHonours } from "../evaluate";
 import type { CallRule } from "../model";
 import { type Position, PASS, bid, openingSeat } from "../position";
 import { SUIT_WORDS, SYMBOL, cards, hcpText, len, rule, shapeText } from "./common";
@@ -65,7 +65,8 @@ export function canOpenOne(p: Position, h: HandFacts): boolean {
   if (h.hcp >= 12 && h.points >= 13) return true;
   if (h.hcp >= 12 && h.balanced) return true;
   if (seat <= 2 && p.s.ruleOf20 && h.hcp >= 10 && ruleOf20(h)) return true;
-  if (seat === 3 && p.s.lightThirdSeat && h.hcp >= 10 && goodSuit(h, openingSuit(h)) && h.len[openingSuit(h)] >= 5) return true;
+  // Light in third seat: a five-card suit with 4+ HCP in it (it suggests a lead).
+  if (seat === 3 && p.s.lightThirdSeat && h.hcp >= 10 && meetsStandard(h, openingSuit(h), "hcp4") && h.len[openingSuit(h)] >= 5) return true;
   return false;
 }
 
@@ -161,7 +162,7 @@ export function openingRules(p: Position): CallRule[] {
       rules.push(
         rule(
           bid(2, suit),
-          `Weak two: ${s.weakTwoMin}–${s.weakTwoMax} HCP and six ${SUIT_WORDS[suit]}: ${STANDARD_WORDS[s.weakTwoSuit]}.`,
+          `Weak two: ${s.weakTwoMin}–${s.weakTwoMax} HCP and ${standardSuit(s.weakTwoSuit, 6, SUIT_WORDS[suit].slice(0, -1))}.`,
           (h) =>
             h.len[suit] === 6 &&
             h.hcp >= s.weakTwoMin &&
@@ -181,7 +182,7 @@ export function openingRules(p: Position): CallRule[] {
   if (seat <= 3) {
     for (const suit of ["S", "H", "D", "C"] as Suit[]) {
       rules.push(
-        rule(bid(3, suit), `Preempt: seven ${SUIT_WORDS[suit]} (${STANDARD_WORDS[s.preemptSuit]}) and fewer than opening values.`, (h) => h.len[suit] === 7 && h.hcp >= 5 && h.hcp <= 10 && meetsStandard(h, suit, s.preemptSuit), {
+        rule(bid(3, suit), `Preempt: ${standardSuit(s.preemptSuit, 7, SUIT_WORDS[suit].slice(0, -1))}, and fewer than opening values.`, (h) => h.len[suit] === 7 && h.hcp >= 5 && h.hcp <= 10 && meetsStandard(h, suit, s.preemptSuit), {
           name: "Preempt",
           shows: { hcp: [5, 10], len: len(suit, 7, 7) },
           why: (h) => `${hcpText(h)} and seven ${SUIT_WORDS[suit]} (${holding(h, suit)}): take away the opponents' room`,

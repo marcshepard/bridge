@@ -10,5 +10,17 @@
     "deals": 1500,
     "seed": 202,
     "filter": 1
+  },
+  "all-dev": {
+    "stage": "weak",
+    "deals": 3000,
+    "seed": 303,
+    "filter": 0
+  },
+  "all-holdout": {
+    "stage": "weak",
+    "deals": 3000,
+    "seed": 404,
+    "filter": 0
   }
 }

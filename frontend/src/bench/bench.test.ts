@@ -240,5 +240,9 @@ describe("the weak-opening experiment", () => {
     expect(meetsStandard(evaluate(parseHand("K85432.J3.A64.93")), "S", "hcp3")).toBe(true);
     expect(meetsStandard(evaluate(parseHand("Q85432.J3.A64.93")), "S", "hcp3")).toBe(false);
     expect(meetsStandard(evaluate(parseHand("QJ5432.J3.A64.93")), "S", "hcp3")).toBe(true);
+    expect(meetsStandard(evaluate(parseHand("Q85432.J3.A64.93")), "S", "hcp2")).toBe(true);
+    expect(meetsStandard(evaluate(parseHand("J85432.J3.A64.93")), "S", "hcp2")).toBe(false);
+    expect(meetsStandard(evaluate(parseHand("KJ5432.J3.A64.93")), "S", "hcp4")).toBe(true);
+    expect(meetsStandard(evaluate(parseHand("QJ5432.J3.A64.93")), "S", "hcp4")).toBe(false);
   });
 });

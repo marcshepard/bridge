@@ -5,7 +5,7 @@
 // 2♣ overcall answered by a double for Stayman ("stolen bid").
 
 import { type Suit, SUITS } from "../../types";
-import { type HandFacts, fitPoints, goodSuit, holding, stopper, SUIT_WORDS } from "../evaluate";
+import { type HandFacts, fitPoints, holding, meetsStandard, stopper, SUIT_WORDS } from "../evaluate";
 import type { CallRule } from "../model";
 import {
   type Bid,
@@ -440,7 +440,8 @@ export const TWO_CLUBS_TWO_NT = "2♣ then 2NT";
 function twoClubRules(p: Position, codes: string[], iOpened: boolean): CallRule[] {
   const twoMax = p.s.twoNtMax;
   if (codes.length === 1 && !iOpened) {
-    const positive = (h: HandFacts, s: Suit) => h.hcp >= 8 && h.len[s] >= 5 && goodSuit(h, s);
+    // A positive needs 4+ HCP in the suit (an ace, king-jack or better).
+    const positive = (h: HandFacts, s: Suit) => h.hcp >= 8 && h.len[s] >= 5 && meetsStandard(h, s, "hcp4");
     return [
       ...(["H", "S"] as Suit[]).map((s) =>
         rule(bid(2, s), `Positive: 8+ HCP and a good 5+ card ${SUIT_WORDS[s].slice(0, -1)} suit. Game forcing.`, (h) => positive(h, s), { shows: { hcp: [8, 37], len: len(s, 5) }, forcing: "game", why: (h) => `${hcpText(h)} and ${holding(h, s)}` }),
