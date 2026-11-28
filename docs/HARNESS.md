@@ -632,6 +632,24 @@ with the app's four-worker solver pool: median 0.6 s, mean 0.66 s, slowest 1.6 s
 1.5–2 s on a phone. **Switched on** (Marc): the bots now simulate with `BOT_SIMULATION` (IMPs,
 judgment, the auction continued) at the table, in the hints and in the review.
 
+**Baselines after Marc's board-by-board feedback** (27 November 2026, commit `cd0758f`: notrump
+advances and responses with jumps and ranges, ranges on placement bids, length on competing bids,
+judgment over four-level bids and none for a lone preempter, preference to partner's first suit,
+one-level overcalls at 3+ HCP in the suit, new criteria over their 1NT, slam-invitation tweaks).
+No set showed a clear difference against the old baselines, so these became the new ones:
+
+| Set | Old baseline | New baseline |
+|---|---|---|
+| `quick` (loss, IMPs, lower is better) | 2.57 | 2.58 |
+| `holdout` | 3.17 | 3.16 |
+| `weak-dev` defence (IMPs against par, higher is better) | −1.16 | −1.12 |
+| `weak-holdout` defence | −1.70 | −1.69 |
+| `weak-dev` defence, simulation as the bots play | −0.92 | −0.86 |
+| `weak-holdout` defence, simulation as the bots play | −1.35 | −1.37 |
+
+Not re-baselined: the `weakTwoSuit=good` experiment's defence baselines. Not measured: the rule
+that a preempter doesn't bid again on judgment, since no set simulates for the preempting side.
+
 **Step 3: the suit standard against the improved defence** (25 November 2026). `weak-run --simulate`
 (the defending side simulating, as the bots play), each standard against 3+ HCP, `weak-dev`:
 
