@@ -186,8 +186,9 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
         </li>
       </Box>
       <Typography sx={{ mt: 1 }}>
-        Some bids carry a small mark: <strong>≠</strong> for a bid of yours the bot would have made differently,{" "}
-        <strong>?</strong> for a hard call, and <strong>!</strong> for a position no rule covers yet. A hard call is
+        Some of your bids carry a small mark: <strong>≠</strong> for one the bot would have made differently,{" "}
+        <strong>?</strong> for a close call where the bot would have chosen differently (so yours may well be
+        fine), and <strong>!</strong> for a position no rule covers yet. A close call, or hard call, is
         one the rules don't settle, typically whether to compete, double or pass late in a contested auction. The
         bot settles it by simulation: it deals many hands that fit what the bidding has shown, bids the rest of the
         auction out on each, works out how each choice would score with perfect play, and picks the one that does
@@ -506,6 +507,14 @@ export function HelpDialog({ open, onClose }: { open: boolean; onClose: () => vo
           Learn more about how it works
         </Link>
         .
+      </Typography>
+
+      <Heading>Telling the suits apart</Heading>
+      <Typography sx={{ mb: 1 }}>
+        If clubs ♣ and spades ♠ look too alike, tap your initial at the top right and turn on{" "}
+        <strong>Green clubs</strong>. Clubs then show in green everywhere: your cards, the auction, the bidding
+        box and the explanations. Hearts and diamonds stay red, and spades black. The setting is kept on this
+        device. <strong>Dark mode</strong> is in the same menu.
       </Typography>
 
       <Heading>Put it on your home screen</Heading>

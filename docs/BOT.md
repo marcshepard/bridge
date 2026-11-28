@@ -300,8 +300,9 @@ core/bidding/      pure, no I/O, used by the devices (to bid for bots, and for r
   credit for seeing dummy before choosing the next card (its defenders find the right switch at
   trick 2 anyway), and cashing a top card first is worth that. The play review doesn't mark such a
   lead. Otherwise, when leads score within a whisker (3%), partner's suit is preferred; partner's
-  overcall needs no more than that, since the deals already give an overcaller a decent or good
-  suit.
+  overcall needs no more than that, since the deals already give an overcaller its long suit. (A
+  one-level overcall no longer claims a "decent" suit, only 3+ HCP in it, which the deals don't
+  model; Marc, 27 November 2026.)
 - **Leads and signals** are on the card (the Bidding system page), with SAYC defaults; each side's
   bots defend by their side's card.
 - **Claims:** a bot answers a claim by checking it on its deals (the claimer's hand is shown): it

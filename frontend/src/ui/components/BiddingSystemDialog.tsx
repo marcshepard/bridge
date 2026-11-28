@@ -29,6 +29,9 @@ type Props =
        * card it is (null: nobody on that side brought one, so SAYC as it comes).
        */
       cards: { label: string; system: SystemSettings; holder?: string | null }[];
+      /** In place of the game's title and its words on whose card each side bids by (the dev replay). */
+      title?: string;
+      intro?: ReactNode;
     };
 
 export function BiddingSystemDialog(props: Props) {
@@ -41,7 +44,7 @@ export function BiddingSystemDialog(props: Props) {
   return (
     <SheetDialog
       open={props.open}
-      title={editing ? "Configure bidding system" : "This game's bidding system"}
+      title={editing ? "Configure bidding system" : ((props as { title?: string }).title ?? "This game's bidding system")}
       onClose={props.onClose}
       actions={
         editing ? (
@@ -64,8 +67,12 @@ export function BiddingSystemDialog(props: Props) {
       ) : (
         <>
           <Typography sx={{ mb: 1 }}>
-            Each side bids by one card, fixed when the game started: the owner's on the owner's side, otherwise the first
-            player's to join that side. Bots bid their person's card; bots with nobody on their side bid SAYC as it comes.
+            {props.intro ?? (
+              <>
+                Each side bids by one card, fixed when the game started: the owner's on the owner's side, otherwise the first
+                player's to join that side. Bots bid their person's card; bots with nobody on their side bid SAYC as it comes.
+              </>
+            )}
           </Typography>
           {props.cards.length > 1 && (
             <ChoiceGroup
@@ -74,7 +81,7 @@ export function BiddingSystemDialog(props: Props) {
               choices={props.cards.map((c, i) => ({
                 value: i,
                 label: c.label,
-                sub: c.holder ? `${c.holder}'s card` : "SAYC as it comes",
+                sub: c.holder ? `${c.holder}'s card` : isDefault(c.system) ? "SAYC as it comes" : "SAYC with changes",
               }))}
             />
           )}

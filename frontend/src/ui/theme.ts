@@ -24,6 +24,10 @@
 //     and red ink, as on real cards, so they read the same in both modes. Dark mode dims the face
 //     a little so the cards don't glare.
 //   - The bidding box (BID_COLOURS): Pass shaded success green, X and XX shaded error red.
+//   - Green clubs (palette.clubs on the page, palette.card.green on a card face), for the "Green
+//     clubs" switch in the avatar menu: ♣ in green so it can't be mistaken for ♠. A mid green on
+//     the light page and card faces, a lighter one on the dark page, both readable (AA) on their
+//     backgrounds.
 //   - Whose turn it is (palette.turn): a light green tint behind the seat box that plays next, not
 //     MUI's grey "selected" shade, which read as greyed out (disabled).
 //   Everything else (error red for hearts and diamonds, text colours) is MUI's default.
@@ -33,12 +37,13 @@
 
 import { createTheme } from "@mui/material/styles";
 
-/** A playing card's face: `face` background, `edge` border, `ink` for ♠♣ and `red` for ♥♦. */
+/** A playing card's face: `face` background, `edge` border, `ink` for ♠♣, `red` for ♥♦, `green` for ♣ with Green clubs. */
 interface CardColours {
   face: string;
   edge: string;
   ink: string;
   red: string;
+  green: string;
 }
 
 declare module "@mui/material/styles" {
@@ -46,10 +51,13 @@ declare module "@mui/material/styles" {
     card: CardColours;
     /** The background of the seat box whose turn it is: a light tint of the primary green. */
     turn: string;
+    /** ♣ on the page with Green clubs on. */
+    clubs: string;
   }
   interface PaletteOptions {
     card?: CardColours;
     turn?: string;
+    clubs?: string;
   }
 }
 
@@ -70,8 +78,9 @@ export const theme = createTheme({
         primary: { main: TABLE_GREEN },
         secondary: { main: "#c99a1e", contrastText: "#1f1a0b" },
         background: { default: "#eef3f0", paper: "#fafcfb" },
-        card: { face: "#ffffff", edge: "#9aa59f", ink: "#1a1a1a", red: "#c62828" },
+        card: { face: "#ffffff", edge: "#9aa59f", ink: "#1a1a1a", red: "#c62828", green: "#2e7d32" },
         turn: "#dcefe6",
+        clubs: "#2e7d32",
       },
     },
     dark: {
@@ -79,8 +88,9 @@ export const theme = createTheme({
         primary: { main: "#6fd1aa" },
         secondary: { main: "#e2bd57" },
         background: { default: "#0e1714", paper: "#16221d" },
-        card: { face: "#e6ebe8", edge: "#0e1714", ink: "#1a1a1a", red: "#b71c1c" },
+        card: { face: "#e6ebe8", edge: "#0e1714", ink: "#1a1a1a", red: "#b71c1c", green: "#1b5e20" },
         turn: "#1f3b30",
+        clubs: "#81c784",
       },
     },
   },

@@ -12,6 +12,7 @@ import {
   bid,
   cheapBid,
   cheapest,
+  gameLevel,
   isBid,
   ourActions,
   partnerPoints,
@@ -244,6 +245,10 @@ function openerRebid(p: Position, o: Suit, r: Bid, rName: string | undefined, ga
       rule(PASS, "Minimum: no game opposite a single raise.", (h) => fp(h) < 16, { why: (h) => `${fp(h)} points: game is unlikely` }),
     ];
   }
+  // Partner raised to game (the weak 4♥ over 1♥, say): nothing to rebid. The slam and placement
+  // rules decide, so opener passes unless slam is in reach. Without this the catch-all rebid below
+  // would bid five of the suit.
+  if (rs === o && r.level >= gameLevel(o)) return [];
   const slamZone = (h: HandFacts) => isMajor(o) && fp(h) + partnerPoints(p, o).likely >= 31;
   if (rs === o && r.level === 3) {
     return [

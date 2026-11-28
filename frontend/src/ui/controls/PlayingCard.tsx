@@ -5,6 +5,7 @@ import { Box } from "@mui/material";
 import type { ReactNode } from "react";
 import type { Card } from "../../core/play";
 import { SUIT_SYMBOLS } from "../../core/types";
+import { cardSuitColour, useGreenClubs } from "../suitColours";
 
 interface Props {
   card: Card;
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function PlayingCard({ card, won = false, current = false, label, badge, note }: Props) {
+  const greenClubs = useGreenClubs();
   return (
     <Box
       aria-label={label || undefined}
@@ -33,7 +35,7 @@ export function PlayingCard({ card, won = false, current = false, label, badge, 
         borderColor: won || current ? "primary.main" : "card.edge",
         boxShadow: won ? 4 : 1,
         borderRadius: 1,
-        color: card.suit === "H" || card.suit === "D" ? "card.red" : "card.ink",
+        color: cardSuitColour(card.suit, greenClubs),
         typography: "subtitle1",
         fontWeight: "fontWeightBold",
         lineHeight: 1.1,

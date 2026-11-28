@@ -19,6 +19,8 @@ interface Profile {
   botHints: boolean;
   /** Bids need confirming (on unless turned off). */
   confirmBids: boolean;
+  /** Clubs in green (off unless turned on). */
+  greenClubs: boolean;
   /** Your bidding system; checked on reading, so an old or damaged one falls back to SAYC. */
   biddingSystem: SystemSettings;
   /** Your online games, newest first; checked on reading. */
@@ -95,6 +97,7 @@ export class LocalProfileStore implements ProfileStore {
           installBannerClosed: p.installBannerClosed ?? false,
           botHints: p.botHints === true,
           confirmBids: p.confirmBids !== false,
+          greenClubs: p.greenClubs === true,
           biddingSystem: parseSystemSettings(p.biddingSystem),
           history: readHistory(p.history),
         };
@@ -102,7 +105,7 @@ export class LocalProfileStore implements ProfileStore {
     } catch {
       // Unreadable or unavailable: start fresh.
     }
-    return { name: "", playerIds: {}, currentGame: null, currentGameInfo: null, lastInGameAt: null, installBannerClosed: false, botHints: false, confirmBids: true, biddingSystem: parseSystemSettings(null), history: [] };
+    return { name: "", playerIds: {}, currentGame: null, currentGameInfo: null, lastInGameAt: null, installBannerClosed: false, botHints: false, confirmBids: true, greenClubs: false, biddingSystem: parseSystemSettings(null), history: [] };
   }
 
   private write(): void {
@@ -191,6 +194,15 @@ export class LocalProfileStore implements ProfileStore {
 
   setConfirmBids(on: boolean): void {
     this.profile.confirmBids = on;
+    this.write();
+  }
+
+  greenClubs(): boolean {
+    return this.profile.greenClubs;
+  }
+
+  setGreenClubs(on: boolean): void {
+    this.profile.greenClubs = on;
     this.write();
   }
 

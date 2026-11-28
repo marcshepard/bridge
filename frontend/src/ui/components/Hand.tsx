@@ -5,6 +5,7 @@ import { type Hand as HandT, type Seat, type Strain, type Suit, SEAT_NAMES, SUIT
 import { StrainSymbol, SUIT_NAMES } from "../controls/BridgeText";
 import { PlayerName } from "../controls/PlayerName";
 import { handSuitOrder } from "../labels";
+import { cardSuitColour, useGreenClubs } from "../suitColours";
 
 /** "AKT4" → "A K 10 4" */
 function ranks(suit: string): string {
@@ -73,6 +74,7 @@ interface TilesProps {
  * the cards beside it stay where they were.
  */
 export function HandTiles({ hand, trump, label = "Your cards", short = false, play, inPlay = false }: TilesProps) {
+  const greenClubs = useGreenClubs();
   const picked = play?.picked ? play.picked.suit + play.picked.rank : null;
   const cards = handSuitOrder(trump).flatMap((s) => [...hand[s]].map((r) => ({ suit: s, rank: r })));
   const strip = (k: number) => `calc(var(--strip) * ${k})`;
@@ -88,7 +90,7 @@ export function HandTiles({ hand, trump, label = "Your cards", short = false, pl
     borderColor: "card.edge",
     borderRadius: strip(0.18),
     boxShadow: 1,
-    color: suit === "H" || suit === "D" ? "card.red" : "card.ink",
+    color: cardSuitColour(suit, greenClubs),
     lineHeight: 1,
     textAlign: "left",
   }) as const;

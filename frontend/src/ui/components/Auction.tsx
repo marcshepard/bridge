@@ -2,9 +2,9 @@
 // headed by its direction, who that is to you ("North (partner)") and its player (direction in red when vulnerable), the first call under the dealer and the empty
 // places before it blank. While the auction is going, the next place to call is marked.
 //
-// In the bidding review the calls can be tapped (each opens its explanation), and some carry a
-// small mark: a call of yours the bot would have made differently, a hard call, or a call no rule
-// covers yet. One call can be shaded instead (the reported call, in the dev replay).
+// In the bidding review the calls can be tapped (each opens its explanation), and some of yours
+// carry a small mark: one the bot would have made differently (a clear difference, or a close call),
+// or one no rule covers yet. One call can be shaded instead (the reported call, in the dev replay).
 
 import { Box, Button, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
 import { type Call, isAuctionOver, seatOfCall } from "../../core/auction";
@@ -20,7 +20,7 @@ export type CallMark = "differs" | "hard" | "norule";
 
 export const CALL_MARKS: Record<CallMark, { symbol: string; color: string; words: string }> = {
   differs: { symbol: "≠", color: "warning.main", words: "the bot would have bid differently" },
-  hard: { symbol: "?", color: "info.main", words: "a hard call: the rules don't settle it" },
+  hard: { symbol: "?", color: "info.main", words: "a close call: the bot would have bid differently" },
   norule: { symbol: "!", color: "error.main", words: "no rule covers this yet" },
 };
 

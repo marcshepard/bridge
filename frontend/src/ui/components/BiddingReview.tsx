@@ -98,10 +98,11 @@ export function BiddingReview({ board, calls, seat, names, bots, systems, onSyst
 
   const markOf = (i: number): CallMark | null => {
     const r = review[i];
-    if (!r || meaningsOnly) return null;
-    if (mine(r) && !r.agrees) return "differs";
-    if (isBot(r.seat) ? r.bot.fallback : r.read.guessed) return "norule";
-    if ((isBot(r.seat) || (mine(r) && r.agrees)) && r.bot.hard) return "hard";
+    // Marks are for your own calls only: a bot's call is the bot's view by definition. A call the bot
+    // would have made differently is "?" when it's a hard call (a close one), else "≠".
+    if (!r || meaningsOnly || !mine(r)) return null;
+    if (!r.agrees) return r.bot.hard ? "hard" : "differs";
+    if (r.read.guessed) return "norule";
     return null;
   };
   const marks = review.map((_, i) => markOf(i)).filter((m): m is CallMark => !!m);
@@ -264,7 +265,7 @@ function CallDialog({
  * 5+ hearts"): in the call's dialog and in the panel under the auction. Nothing when nobody had
  * shown anything yet. `small`: body2 text, for the panel.
  */
-function ShownBefore({ r, me, small = false }: { r: ReviewedCall; me: Seat; small?: boolean }) {
+export function ShownBefore({ r, me, small = false }: { r: ReviewedCall; me: Seat; small?: boolean }) {
   const known = SEATS.filter((s) => describeShown(r.shownBefore[s]));
   if (known.length === 0) return null;
   return (

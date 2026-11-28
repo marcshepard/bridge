@@ -1,6 +1,6 @@
 // The bar at the top of every screen: app icon and name (in a game, one button that goes Home, your
 // game staying current), help, and your avatar. The avatar menu
-// holds the Dark mode switch, the Bot hints and Confirm bids switches (during a game on the devices), the bidding
+// holds the Dark mode and Green clubs switches, the Bot hints and Confirm bids switches (during a game on the devices), the bidding
 // system the bots use, your game history ("Your games"), "Leave game", and "Install to home screen"
 // until the app is installed.
 // While this device's live connection to the game is down, a small no-signal icon ("Reconnecting")
@@ -45,6 +45,8 @@ interface Props {
   botHints?: { on: boolean; onChange: (on: boolean) => void };
   /** The Confirm bids switch: shown with Bot hints. */
   confirmBids?: { on: boolean; onChange: (on: boolean) => void };
+  /** The Green clubs switch: always shown, beside Dark mode. */
+  greenClubs: { on: boolean; onChange: (on: boolean) => void };
 }
 
 const BRAND = { display: "flex", alignItems: "center", gap: 1, minWidth: 0, color: "inherit" } as const;
@@ -63,7 +65,7 @@ function Brand() {
   );
 }
 
-export function AppHeader({ name, onHelp, onHome, onLeaveGame, onInstall, onSystem, onHistory, botHints, confirmBids, reconnecting = false }: Props) {
+export function AppHeader({ name, onHelp, onHome, onLeaveGame, onInstall, onSystem, onHistory, botHints, confirmBids, greenClubs, reconnecting = false }: Props) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const { mode, setMode } = useColorScheme();
   const dark = mode === "dark";
@@ -151,6 +153,10 @@ export function AppHeader({ name, onHelp, onHome, onLeaveGame, onInstall, onSyst
         <MenuItem role="menuitemcheckbox" aria-checked={dark} onClick={() => setMode(dark ? "light" : "dark")} sx={{ minWidth: (t) => t.spacing(30) }}>
           <ListItemText>Dark mode</ListItemText>
           <Switch edge="end" checked={dark} tabIndex={-1} slotProps={{ input: { "aria-hidden": true } }} />
+        </MenuItem>
+        <MenuItem role="menuitemcheckbox" aria-checked={greenClubs.on} onClick={() => greenClubs.onChange(!greenClubs.on)}>
+          <ListItemText primary="Green clubs" secondary="So ♣ stands out from ♠" />
+          <Switch edge="end" checked={greenClubs.on} tabIndex={-1} slotProps={{ input: { "aria-hidden": true } }} />
         </MenuItem>
         {botHints && (
           <MenuItem role="menuitemcheckbox" aria-checked={botHints.on} onClick={() => botHints.onChange(!botHints.on)}>

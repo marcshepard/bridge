@@ -5,7 +5,7 @@ import type { Call } from "../../auction";
 import { type Contract, type Strain, type Suit, STRAINS, SUITS } from "../../types";
 import { contractTrickPoints } from "../../scoring";
 import { type HandFacts, fitPoints, holding, isMajor, supportPoints } from "../evaluate";
-import type { CallRule, Shown } from "../model";
+import type { CallRule, Shown, ShowsPatch } from "../model";
 import {
   type Bid,
   type Position,
@@ -68,6 +68,11 @@ function myLikely(p: Position, strain: Strain = "NT"): number {
   return shownPoints(p.shown[p.seat], strain === "NT" ? undefined : strain).likely;
 }
 
+/** The top of the range my bidding has shown (the same measure as myLikely). */
+function myRangeTop(p: Position, strain: Strain = "NT"): number {
+  return shownPoints(p.shown[p.seat], strain === "NT" ? undefined : strain).max;
+}
+
 export function slamRules(p: Position): CallRule[] {
   const pl = partnerLast(p);
   const me = myLast(p);
@@ -98,13 +103,18 @@ export function slamRules(p: Position): CallRule[] {
     const unit = strain === "NT" ? "HCP" : "points";
     const count = (h: HandFacts) => (strain === "NT" ? h.hcp : valuation(p, h).mine);
     const likely = myLikely(p, strain);
-    const top = likely + 1;
+    // More than partner expects: 1 over the likely point. But in a suit, when what I've shown is
+    // plain HCP (an opening, say) while my count adds shortness, 2 over, never past the top of my
+    // range: 11 HCP and a void opening 1♠ count 14 against the likely 13, a minimum all the same
+    // (Marc's board 7). A range already shown in support points compares like with like.
+    const shownWithShape = strain !== "NT" && !!p.shown[p.seat].strength?.some((e) => e.kind === "length" || e.suit === strain);
+    const top = strain === "NT" || shownWithShape ? likely + 1 : Math.min(likely + 2, myRangeTop(p, strain));
     return [
-      rule(bid(6, strain), "Accepts the slam invitation: more than I've shown so far.", (h) => count(h) >= top, {
-        why: (h) => `${count(h)} ${unit}, more than the ${likely} or so I've shown: slam`,
+      rule(bid(6, strain), "Accepts the slam invitation: clearly more than I've shown so far.", (h) => count(h) >= top, {
+        why: (h) => `${count(h)} ${unit}, clearly more than the ${likely} or so I've shown: slam`,
       }),
-      rule(PASS, "Declines the slam invitation: no more than I've shown.", () => true, {
-        why: (h) => `${count(h)} ${unit}, no more than the ${likely} or so I've shown: stop`,
+      rule(PASS, "Declines the slam invitation: not clearly more than I've shown.", () => true, {
+        why: (h) => `${count(h)} ${unit}, not clearly more than the ${likely} or so I've shown (slam needs ${top}): stop`,
       }),
     ];
   }
@@ -564,6 +574,12 @@ function plan(p: Position, h: HandFacts): Plan {
     return { call: bid(4, "NT"), why: `${why}, ${points}: slam is likely, so check the aces first` };
   }
   if (target === 0) {
+    // Partner bid two suits and we're in the second: with as many cards in the first, go back to it
+    // at the same level (Marc's board 9: ♠T2 ♥T4 opposite 1♠ then 2♥, so 2♠).
+    const pref = preferenceSuits(p);
+    if (pref && !mustBid && h.len[pref.first] >= 2 && h.len[pref.first] >= h.len[pref.second]) {
+      return { call: pref.bid, why: `${h.len[pref.first]} ${SUIT_WORDS[pref.first]} and ${h.len[pref.second]} ${SUIT_WORDS[pref.second]}: back to partner's first suit, the longer one` };
+    }
     if (ours && !mustBid) return { call: PASS, why: `${points}: no game, so stop here` };
     if (!mustBid && lastBid(p) && !isOurs(p, lastBid(p)!.seat)) return { call: PASS, why: `${points}: nothing more to say` };
     const b = cheapBid(p, strain);
@@ -631,8 +647,36 @@ function outbid(p: Position, h: HandFacts, strain: Strain, mine: number, points:
   return { call: PASS, hard, why: `${points}: ${noBid}, and not enough points to double` };
 }
 
+/**
+ * Partner has bid two natural suits, the second just now (the last bid of the auction), and neither
+ * has been supported: the first can be bid again at the same level, as a preference. Partner's
+ * first suit is shown at least as long as the second.
+ */
+function preferenceSuits(p: Position): { first: Suit; second: Suit; bid: Bid } | null {
+  const lb = lastBid(p);
+  if (!lb || lb.seat !== partner(p) || !isNatural(lb) || !isBid(lb.call) || lb.call.strain === "NT") return null;
+  const second = lb.call.strain as Suit;
+  const earlier = p.read.find((r) => r.seat === lb.seat && r !== lb && isNatural(r) && isBid(r.call) && r.call.strain !== "NT" && r.call.strain !== second);
+  if (!earlier || !isBid(earlier.call)) return null;
+  const first = earlier.call.strain as Suit;
+  // Not once I've bid either suit (a raise or a preference already), nor when the second is longer.
+  if (p.read.some((r) => r.seat === p.seat && isBid(r.call) && (r.call.strain === first || r.call.strain === second))) return null;
+  const ps = partnerShown(p);
+  if (ps.len[first][0] < ps.len[second][0]) return null;
+  const b = cheapBid(p, first);
+  return b && b.level === lb.call.level ? { first, second, bid: b } : null;
+}
+
 export function placementRules(p: Position): CallRule[] {
   const candidates: { call: Call; meaning: string; name?: string }[] = [{ call: PASS, meaning: "Happy with the contract as it is." }];
+  const pref = preferenceSuits(p);
+  if (pref) {
+    candidates.push({
+      call: pref.bid,
+      meaning: `Preference: back to partner's first suit, ${SYMBOL[pref.first]}, with at least as many cards there as in ${SYMBOL[pref.second]}. No extra strength.`,
+      name: "Preference",
+    });
+  }
   // After 3NT, 4NT asks for aces only when a major is agreed (as after Jacoby 2NT).
   const suitAgreed = (ourSuits(p).length > 0 && ourContract(p)?.strain !== "NT") || agreedMajor(p) !== null;
   const askWords = blackwoodWords(p);
@@ -677,22 +721,87 @@ export function placementRules(p: Position): CallRule[] {
         rule(c.call, c.meaning, (h) => {
           const pl = plan(p, h);
           return !!pl.hard && sameCall(pl.call, c.call);
-        }, { name: "Competing", hard: { candidates: c.call.kind === "bid" ? [PASS, DOUBLE, c.call] : [PASS, DOUBLE], rule: OUTBID_RULE }, why: (h) => plan(p, h).why }),
+        }, {
+          name: "Competing",
+          hard: { candidates: c.call.kind === "bid" ? [PASS, DOUBLE, c.call] : [PASS, DOUBLE], rule: OUTBID_RULE },
+          ...(isBid(c.call) && { shows: competingLength(p, c.call) }),
+          why: (h) => plan(p, h).why,
+        }),
       );
     }
   }
   for (const c of candidates) {
     if (seen.some((s) => sameCall(s, c.call))) continue;
     seen.push(c.call);
+    const shows = placementShows(p, c.call);
+    // Inviting slam with five of the major is borderline more often than not (Marc's board 7: 18
+    // points opposite an opening, which showed a void): simulation weighs it against bidding game
+    // (or passing it, when we're there already). The rule of thumb stays: invite.
+    const slamInvite = c.name === "Slam invitation" && isBid(c.call) && c.call.strain !== "NT";
+    const stopAt: Call = isBid(c.call) && cheapest(p, c.call.strain) <= 4 ? bid(4, c.call.strain) : PASS;
     rules.push(
       rule(c.call, c.meaning, (h) => sameCall(plan(p, h).call, c.call), {
         ...(c.name && { name: c.name }),
+        ...(shows && { shows }),
+        ...(slamInvite && { hard: { candidates: [stopAt, c.call], rule: "invite slam with five of the major when slam is possible" } }),
         ...((c.name === "Blackwood" || c.name === "Control bid") && { forcing: "one round" as const }),
         why: (h) => plan(p, h).why,
       }),
     );
   }
   return rules;
+}
+
+/**
+ * The length a competing bid in a suit shows. Not the Law of Total Tricks figure the rule decides
+ * by: these bids are often chosen by simulation on less, and a competitive auction forces bids
+ * without a fine suit. So only a modest minimum: a new suit 4+ at the two level, 5+ higher; my own
+ * suit again, with no support from partner, one card more than I'd shown. In a suit partner has
+ * shown three or more of, nothing new.
+ */
+function competingLength(p: Position, b: Extract<Call, { kind: "bid" }>): ShowsPatch | undefined {
+  if (b.strain === "NT") return undefined;
+  const suit = b.strain as Suit;
+  if (partnerShown(p).len[suit][0] >= 3) return undefined;
+  const mine = p.shown[p.seat].len[suit][0];
+  const min = mine >= 4 ? mine + 1 : b.level === 2 ? 4 : 5;
+  return { len: { [suit]: [Math.min(min, 13), 13] } };
+}
+
+/**
+ * What a contract-placing bid below game says about the bidder's strength: at most what would have
+ * moved `plan` up a step. A part score is below an invitation (or, when partner's maximum can't
+ * reach game, below game); an invitation is below game. Only a cap, on HCP: the plan counts points
+ * with length or shortness, which are never fewer than the HCP, so the cap holds for every hand
+ * that makes the bid. Partner's strength is read as the plan reads it: with the fit when the
+ * lengths both hands have shown already make 8 cards in this suit (then every hand that bids it has
+ * the fit); otherwise at the lower of the two readings, which only raises the cap.
+ */
+function placementShows(p: Position, call: Call): ShowsPatch | undefined {
+  if (!isBid(call)) return undefined;
+  const game = gameLevel(call.strain);
+  // Game in notrump shows the points to bid it: the plan bids it when my points (counting length,
+  // as it does in notrump) and partner's likely ones reach 25. Not when partner forced me to bid,
+  // since then a weaker hand can land there. Suit games count support or shortness differently
+  // hand by hand, so they show nothing here.
+  if (call.strain === "NT" && call.level === game) {
+    if (forced(p)) return undefined;
+    const from = GAME_POINTS.NT - partnerPoints(p).likely;
+    return from > 0 ? { strength: { kind: "length", range: [from, 50] } } : undefined;
+  }
+  if (call.level >= game) return undefined;
+  const kindOf = call.strain === "NT" ? "NT" : isMajor(call.strain as Suit) ? "major" : "minor";
+  const plain = partnerPoints(p);
+  const suit = call.strain === "NT" ? null : (call.strain as Suit);
+  const withFit = suit ? partnerPoints(p, suit) : plain;
+  const knownFit = !!suit && p.shown[p.seat].len[suit][0] + partnerShown(p).len[suit][0] >= 8;
+  const likely = knownFit ? withFit.likely : Math.min(plain.likely, withFit.likely);
+  const max = knownFit ? withFit.max : Math.min(plain.max, withFit.max);
+  const needed = GAME_POINTS[kindOf];
+  const below = call.level === game - 1 ? needed - likely : Math.max(INVITE_FROM[kindOf] - likely, needed - max);
+  // Never below what the bidder has already shown: that would contradict the auction.
+  const cap = Math.max(below - 1, p.shown[p.seat].hcp[0]);
+  return cap < 37 ? { hcp: [0, cap] } : undefined;
 }
 
 // ---- Fallback -----------------------------------------------------------------------------------

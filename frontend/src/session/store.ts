@@ -185,6 +185,9 @@ export interface ProfileStore {
   /** Bids need confirming (pick, then Submit). On unless turned off. */
   confirmBids(): boolean;
   setConfirmBids(on: boolean): void;
+  /** Clubs in green, so ♣ can't be mistaken for ♠. Off unless turned on. */
+  greenClubs(): boolean;
+  setGreenClubs(on: boolean): void;
   /** Your game history, newest first (at most `MAX_HISTORY` games). */
   gameHistory(): GameHistoryEntry[];
   /** Add or update a game in your history (by its code); the oldest drop off past the limit. */

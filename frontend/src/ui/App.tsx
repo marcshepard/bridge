@@ -21,6 +21,7 @@ import { InstallBanner } from "./components/InstallBanner";
 import { useInstall } from "./install";
 import { BotHintsContext } from "./botHints";
 import { ConfirmBidsContext } from "./confirmBids";
+import { GreenClubsContext } from "./suitColours";
 import { SeatRequestDialog } from "./components/SeatRequestDialog";
 import { formatJoinCode, sameName, seatRequestNews } from "./labels";
 import { Home } from "./screens/Home";
@@ -257,6 +258,7 @@ export function App() {
   const [mySystem, setMySystem] = useState(() => profile.biddingSystem());
   const [botHints, setBotHints] = useState(() => profile.botHints());
   const [confirmBids, setConfirmBids] = useState(() => profile.confirmBids());
+  const [greenClubs, setGreenClubs] = useState(() => profile.greenClubs());
   const [leaveError, setLeaveError] = useState<string | null>(null);
 
   /** To Home with your game still current: Home's note about it has Resume. */
@@ -440,6 +442,8 @@ export function App() {
   return (
     // The app fills the window: header (and install banner) on top, then the screen, whose middle
     // is all that scrolls (see Screen in controls/Layout.tsx).
+    // Green clubs around everything, dialogs included (they keep React context through their portals).
+    <GreenClubsContext.Provider value={greenClubs}>
     <Box sx={{ height: "100vh", "@supports (height: 100dvh)": { height: "100dvh" }, display: "flex", flexDirection: "column" }}>
       <AppHeader
         name={name}
@@ -471,6 +475,13 @@ export function App() {
               }
             : undefined
         }
+        greenClubs={{
+          on: greenClubs,
+          onChange: (on) => {
+            profile.setGreenClubs(on);
+            setGreenClubs(on);
+          },
+        }}
         reconnecting={reconnecting}
       />
       <InstallBanner open={dialog === "install"} onOpen={() => setDialog("install")} onClose={() => setDialog(null)} />
@@ -551,5 +562,6 @@ export function App() {
         )}
       </SheetDialog>
     </Box>
+    </GreenClubsContext.Provider>
   );
 }

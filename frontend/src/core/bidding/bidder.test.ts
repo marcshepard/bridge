@@ -131,7 +131,11 @@ describe("over their 1NT", () => {
     ["15 HCP with a six-card suit overcalls", "K8.Q7.K73.AQJ762", "1NT", "2C"],
     ["17 HCP with a six-card suit: too strong to overcall, so double", "K8.A7.K73.AQJ762", "1NT", "X"],
     ["balancing: a good five-card suit overcalls", "AKJ82.73.T64.952", "1NT PASS PASS", "2S"],
-    ["direct seat: a five-card suit doesn't", "AKJ82.73.T64.952", "1NT", "PASS"],
+    // Marc, 27 November 2026: a decent five-card suit overcalls in the direct seat too (not
+    // vulnerable; vulnerable it's a close call that passes by rule of thumb).
+    ["direct seat: a decent five-card suit, not vulnerable", "AKJ82.73.T64.952", "1NT", "2S"],
+    ["direct seat: a five-card suit that isn't decent doesn't", "K8762.73.AT4.Q52", "1NT", "PASS"],
+    ["balancing: any five-card suit with 3+ HCP in it", "K8762.73.T64.Q52", "1NT PASS PASS", "2S"],
   ])("%s", (_, hand, auction, expected) => {
     expect(bot(hand, auction)).toBe(expected);
   });
@@ -144,7 +148,8 @@ describe("direct seat over their 1NT: five-card suits", () => {
     ["two 5-card suits with 8 HCP", "J32.KT753.KJ932.", "EW", "2H"],
     ["a good 5-card suit, not vulnerable", "J32.AKT75.Q92.K3", "None", "2H"],
     ["a good 5-card suit, vulnerable: pass", "J32.AKT75.Q92.K3", "EW", "PASS"],
-    ["a good 5-card suit with under 10 HCP: pass", "J32.AKT75.932.43", "None", "PASS"],
+    ["a decent 5-card suit with 8 HCP", "J32.AKT75.932.43", "None", "2H"],
+    ["a decent 5-card suit with under 8 HCP: pass", "432.AKT75.932.43", "None", "PASS"],
   ])("%s", (_, hand, vul, expected) => {
     expect(bot(hand, "PASS PASS 1NT", S, vul as Vulnerability)).toBe(expected);
   });
@@ -493,6 +498,120 @@ describe("bidding over their weak openings (stage 2, step 2)", () => {
   });
 });
 
+describe("advancing partner's overcall in notrump", () => {
+  it.each([
+    ["1NT: 8–11 with their suit stopped", "42.K83.QJ74.K952", "1C 1S PASS", "N", "1NT"],
+    ["a jump to 2NT: 12–14", "42.KQ3.AJ74.K952", "1C 1S PASS", "N", "2NT"],
+    // Marc's board 1 (November 2026 feedback): 17 HCP bid an 8–11 1NT, then 3NT over a double.
+    ["a jump to 3NT: 15+, not an 8–11 1NT", "42.AKQJ52.A3.K92", "1C 1S PASS", "N", "3NT"],
+  ])("%s", (_name, hand, auction, dealer, expected) => {
+    expect(bot(hand, auction, dealer as Seat)).toBe(expected);
+  });
+});
+
+describe("responder's notrump over their overcall", () => {
+  // Marc's board 3 (November 2026 feedback): 15 HCP with their suit stopped passed 2♠ "for now".
+  it("jumps to 3NT with 13–17 and their suit stopped", () => {
+    expect(bot("K9862.KJ2.K8.AJ3", "1C 2S", "S")).toBe("3NT");
+  });
+
+  it("2NT is still 11–12", () => {
+    expect(bot("K986.KJ2.Q82.Q32", "1C 2S", "S")).toBe("2NT");
+  });
+
+  // The same board: West doubled North's 3NT, reading it as showing no strength at all.
+  it("game in notrump shows the points to bid it", () => {
+    const steps = readAuction({ dealer: "S", vul: "EW" }, calls("1C 2S PASS PASS 3C PASS 3NT"));
+    expect(steps.at(-1)!.position.shown.N.strength).toContainEqual({ kind: "length", range: [12, 50] });
+  });
+});
+
+describe("a one-level overcall's suit (Marc's board 9, November 2026 feedback)", () => {
+  // ♠K7654 isn't SAYC's "decent" (no second honour), but has 3 HCP: our standard for a long suit.
+  it("overcalls with 3+ HCP in the suit", () => {
+    expect(bot("K7654.Q952.8.AJ2", "PASS 1D", "N")).toBe("1S");
+  });
+
+  it("not with fewer", () => {
+    expect(bot("Q7654.K952.8.AJ2", "PASS 1D", "N")).toBe("PASS");
+  });
+});
+
+describe("preference to partner's first suit (Marc's board 9, November 2026 feedback)", () => {
+  // Partner overcalled 1♠ and then bid 2♥; ♠T2 ♥T4 passed 2♥.
+  const auction = "PASS 1D 1S X 1NT 2C 2H PASS";
+  it("with equal length, back to the first suit at the same level", () => {
+    expect(bot("T2.T4.KQT96.KT86", auction, "N")).toBe("2S");
+  });
+
+  it("with more of the second suit, pass", () => {
+    expect(bot("T2.T54.KQT9.KT86", auction, "N")).toBe("PASS");
+  });
+
+  it("never a level higher", () => {
+    expect(bot("T2.K954.T4.KQT86", "PASS 1C 1D X 1NT 2C 2S PASS", "N")).not.toBe("3D");
+  });
+});
+
+describe("a three-level overcall a little light", () => {
+  // Marc's board 4 (November 2026 feedback): ♦AQT875 and 12 HCP over their 2♠ wasn't considered.
+  it("is a hard call between pass and the overcall with a good six-card suit", () => {
+    const d = chooseCall(parseHand("Q74.A73.AQT875.4"), { dealer: "W", vul: "Both" }, calls("2S"));
+    expect(d.hard?.candidates.map(callCode)).toEqual(["PASS", "3D"]);
+    expect(callCode(d.call)).toBe("PASS");
+    expect(bot("Q74.A73.AQT875.4", "2S", "W", "None")).toBe("3D");
+  });
+
+  it("reads as starting at 11 HCP", () => {
+    const steps = readAuction({ dealer: "W", vul: "None" }, calls("2S 3D"));
+    expect(steps.at(-1)!.position.shown.N.hcp).toEqual([11, 17]);
+  });
+});
+
+describe("what a competing bid in a suit shows", () => {
+  // Marc's board 6 (November 2026 feedback): these read as showing no length, so simulation dealt
+  // West short hearts and South short diamonds, and doubled 3♥ and 4♦ when both were making.
+  const d = { dealer: "E", vul: "EW" } as const;
+  it("a new suit at the three level: 5+ cards", () => {
+    const steps = readAuction(d, calls("1C 1D 3C X PASS 3D 3H"));
+    expect(steps.at(-1)!.position.shown.W.len.H).toEqual([5, 13]);
+  });
+
+  it("my own suit again, unsupported: one card more each time", () => {
+    const after3 = readAuction(d, calls("1C 1D 3C X PASS 3D"));
+    expect(after3.at(-1)!.position.shown.S.len.D).toEqual([6, 13]);
+    const after4 = readAuction(d, calls("1C 1D 3C X PASS 3D 3H PASS PASS 4D"));
+    expect(after4.at(-1)!.position.shown.S.len.D).toEqual([7, 13]);
+  });
+});
+
+describe("slam invitations (Marc's board 7, November 2026 feedback)", () => {
+  // 1♠ 2NT (Jacoby) 3♦ (a void) 5♠: opener with 11 HCP accepted with 14 counting the void.
+  const auction = "1S PASS 2NT PASS 3D PASS 5S PASS";
+  it("a minimum opening declines: slam needs 2 more than the likely 13", () => {
+    expect(bot("AQT62.T9872..KQ6", auction, "S")).toBe("PASS");
+  });
+
+  it("clearly more accepts", () => {
+    expect(bot("AQT62.AT987..KQ6", auction, "S")).toBe("6S");
+  });
+
+  it("inviting with five of the major is a hard call against bidding game", () => {
+    const d = chooseCall(parseHand("KJ75.A64.AK962.T"), { dealer: "S", vul: "Both" }, calls("1S PASS 2NT PASS 3D PASS"));
+    expect(callCode(d.call)).toBe("5S");
+    expect(d.hard?.candidates.map(callCode)).toEqual(["4S", "5S"]);
+  });
+});
+
+describe("opener after partner's raise to game", () => {
+  it.each([
+    // Marc's board 2 (November 2026 feedback): opener bid 5♥ over the weak 4♥, "nothing better to bid".
+    ["a minimum passes the weak raise to game", "A3.AT973.Q64.K85", "1H PASS 4H PASS", "E", "PASS"],
+  ])("%s", (_name, hand, auction, dealer, expected) => {
+    expect(bot(hand, auction, dealer as Seat)).toBe(expected);
+  });
+});
+
 describe("suit standards (Marc, 25 November 2026)", () => {
   it.each([
     // A positive response to 2♣ needs 4+ HCP in the suit.
@@ -585,15 +704,28 @@ describe("opener after a limit raise (1♠–3♠): the same count as the delaye
 });
 
 describe("what an overcall shows partner", () => {
-  it("a simple overcall at the one level: a decent suit", () => {
+  it("a simple overcall at the one level: five cards, with no claim beyond 3+ HCP in the suit", () => {
     const steps = readAuction({ dealer: "N", vul: "None" }, calls("1C 1H"));
-    expect(steps.at(-1)!.position.shown.E.quality).toEqual({ H: "decent" });
+    expect(steps.at(-1)!.position.shown.E.len.H[0]).toBe(5);
+    expect(steps.at(-1)!.position.shown.E.quality?.H).toBeUndefined();
   });
 
   it("a weak jump overcall: six cards, with no claim beyond our weak-two standard (3+ HCP)", () => {
     const steps = readAuction({ dealer: "N", vul: "None" }, calls("1D 2S"));
     expect(steps.at(-1)!.position.shown.E.len.S[0]).toBe(6);
     expect(steps.at(-1)!.position.shown.E.quality?.S).toBeUndefined();
+  });
+
+  // Marc's board (November 2026 feedback): 1♣ Pass Pass 1♦ Pass 2♣ (a cuebid raise) Pass 2♦.
+  it("a balancing overcall shows 5–14 HCP: with more, double", () => {
+    const steps = readAuction({ dealer: "N", vul: "None" }, calls("1C PASS PASS 1D"));
+    expect(steps.at(-1)!.position.shown.W.hcp).toEqual([5, 14]);
+    expect(bot("A9.QJ7.AQ743.KT9", "1C PASS PASS", "N")).toBe("X");
+  });
+
+  it("signing off below game opposite a cuebid raise caps the overcaller's range", () => {
+    const steps = readAuction({ dealer: "N", vul: "None" }, calls("1C PASS PASS 1D PASS 2C PASS 2D"));
+    expect(steps.at(-1)!.position.shown.W.hcp).toEqual([5, 12]);
   });
 });
 

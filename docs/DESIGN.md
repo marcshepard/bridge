@@ -243,8 +243,10 @@ tablet or computer).
 
 **Header (every screen):** app icon and name, help, and an avatar showing the first letter of your
 display name ("?" until you set one). While a game is on screen, the icon and name are one button
-that goes Home, keeping the game current. The avatar menu has the light/dark/system theme switch and
-**Leave game** (enabled only while you're in a game).
+that goes Home, keeping the game current. The avatar menu has the light/dark/system theme switch,
+**Green clubs** (off by default, kept on the device: ♣ in green everywhere, so it can't be mistaken
+for ♠; the colours are `palette.clubs` and `palette.card.green` in `theme.ts`, and every suit
+colour goes through `ui/suitColours.ts`) and **Leave game** (enabled only while you're in a game).
 
 **Home:** On first use it asks for your **display name**; after that it shows your name (editable)
 and the actions **Start a game**, **Join a game** and **Practice with bots**. With a game current,
@@ -595,7 +597,16 @@ The same goes for dev test players. A person who takes over a bot's seat stops b
   ID, so four tabs side by side behave like four players' devices for testing live sync.
 - **Replay a reported bid** (Home, dev builds only): paste the replay line from a bidding feedback
   email (below) to see that board's whole auction with the reported call shaded, what the bot bids
-  there now and why, and the four hands. The line's settings are used for that view only.
+  there now and why, and the four hands. It opens with the board, dealer and vulnerability in words
+  ("Board 4, dealer West, all vulnerable"); **Bidding systems** shows each side's card (read-only). Tapping any other call in the auction shows the same for
+  it (its meaning, the bot's call there, what the bidding had shown before it). Here every call
+  carries the review's marks, whoever made it ("?" where the bot would have chosen differently on
+  a close call, "≠" where it differs more clearly). **How bots would bid
+  it** switches to the whole auction bid by the bots from the start (hard calls simulated, as at
+  the table), opening on the first call where they part from the actual auction. Each view shows
+  its contract and the result double dummy. The line's settings are used for that view only. (The
+  same bots' auction after a board, for players, was left for later: the bots aren't yet good
+  enough to show their auction as the one to aim for.)
 
 ### Bidding feedback
 

@@ -6,16 +6,18 @@ import type { Call } from "../../core/auction";
 import { formatTrickResult } from "../../core/contract";
 import { formatScore } from "../../core/scoring";
 import { type Contract, type Strain, type Suit, type TableResult, SUIT_SYMBOLS } from "../../core/types";
+import { suitColour, useGreenClubs } from "../suitColours";
 
 export const SUIT_NAMES: Record<Suit, string> = { S: "spades", H: "hearts", D: "diamonds", C: "clubs" };
 
 /**
  * ♠ ♥ ♦ ♣, or "NT". Hearts and diamonds in the theme's red; spades and clubs in full-strength text
  * colour (black, or white in dark mode), not the grey of the text around them, so red and black
- * never look alike. On a filled background (a picked toggle, a contained button) they take its text
+ * never look alike; clubs in green with Green clubs on (suitColours.ts). On a filled background (a picked toggle, a contained button) they take its text
  * colour instead, and on a disabled button its grey, so it looks as off as the rest.
  */
 export function StrainSymbol({ strain }: { strain: Strain }) {
+  const greenClubs = useGreenClubs();
   if (strain === "NT") return <>NT</>;
   const red = strain === "H" || strain === "D";
   return (
@@ -23,7 +25,7 @@ export function StrainSymbol({ strain }: { strain: Strain }) {
       component="span"
       aria-label={SUIT_NAMES[strain]}
       sx={{
-        color: red ? "error.main" : "text.primary",
+        color: suitColour(strain, greenClubs),
         ...(!red && { ".Mui-selected &, .MuiButton-contained &": { color: "inherit" } }),
         ".Mui-disabled &": { color: "inherit" },
       }}

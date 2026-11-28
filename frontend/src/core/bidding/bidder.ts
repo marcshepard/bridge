@@ -227,9 +227,15 @@ export function simulatesCall(p: Position, hand: Hand, decision: Decision, optio
  */
 export async function decideWithSimulation(p: Position, hand: Hand, solver: DoubleDummySolver | null, options: SimulationOptions = BOT_SIMULATION, settings: Systems = p.s): Promise<Decision> {
   let d = decide(p, hand);
-  if (!d.hard && options?.judgment) {
+  if (options?.judgment) {
     const candidates = judgmentCandidates(p, hand, d.call);
-    if (candidates) d = { ...d, hard: { candidates, rule: "competitive judgment: pass, double, or bid on" } };
+    if (candidates && !d.hard) d = { ...d, hard: { candidates, rule: "competitive judgment: pass, double, or bid on" } };
+    // A hard call the rules flag can list fewer choices (an outbid pass offers only pass or double):
+    // add judgment's, so bidding on in our fit is weighed too.
+    else if (candidates && d.hard) {
+      const all = [...d.hard.candidates, ...candidates.filter((c) => !d.hard!.candidates.some((x) => sameCall(x, c)))];
+      d = { ...d, hard: { ...d.hard, candidates: all } };
+    }
   }
   if (!d.hard || !solver) return d;
   const continueFrom = options?.continueAuction ? (call: Call, hands: Record<Seat, Hand>) =>
@@ -261,16 +267,21 @@ export async function decideWithSimulation(p: Position, hand: Hand, solver: Doub
 /**
  * Competitive judgment the rules don't flag: pass, double, or bid on in our side's suits (or a long
  * suit of my own). Only where the call is close to the end of the auction, so treating it as the last
- * call is fair: in the balancing seat (my pass ends it), or over their bid at the three level or
- * higher once both sides have bid. Not when partner's last call forces me, and not over our own bid.
+ * call is fair: in the balancing seat (my pass ends it), over their bid at the three level or
+ * higher once both sides have bid, or over their bid at the four level or higher while our side has
+ * said nothing (1♥–4♥, or a four-level preempt: no rules cover bidding there, and passing then but
+ * bidding over their five-level bid in the balancing seat would be inconsistent). Not when
+ * partner's last call forces me, not over our own bid, and not after I preempted with partner
+ * silent since: I've described my hand, and partner, who knows more, chose not to act.
  */
 export function judgmentCandidates(p: Position, hand: Hand, ruleCall: Call): Call[] | null {
   const lb = lastBid(p);
-  if (!lb || isOurs(p, lb.seat) || forced(p)) return null;
+  if (!lb || isOurs(p, lb.seat) || forced(p) || preemptedAlone(p)) return null;
   const n = p.read.length;
   const balancing = n >= 3 && p.read[n - 1]!.call.kind === "pass" && p.read[n - 2]!.call.kind === "pass";
   const bothBid = ourActions(p).some((r) => r.call.kind === "bid") && theirActions(p).some((r) => r.call.kind === "bid");
-  if (!balancing && !(lb.call.level >= 3 && bothBid)) return null;
+  const weSilent = ourActions(p).length === 0;
+  if (!balancing && !(lb.call.level >= 3 && bothBid) && !(lb.call.level >= 4 && weSilent)) return null;
   const h = evaluate(hand);
   const suits = new Set<Suit>(ourSuits(p));
   for (const s of SUITS) if (h.len[s] >= 6 || (h.len[s] >= 5 && h.hcp >= 8)) suits.add(s);
@@ -281,6 +292,19 @@ export function judgmentCandidates(p: Position, hand: Hand, ruleCall: Call): Cal
   }
   const legal = candidates.filter((c, i) => canMake(p, c) && candidates.findIndex((x) => sameCall(x, c)) === i);
   return legal.length >= 2 ? legal : null;
+}
+
+/** Calls that describe a weak hand with a long suit in one go: after one, the preempter leaves the rest to partner. */
+const PREEMPTS = new Set(["Weak two", "Preempt", "Weak jump overcall"]);
+
+/** I preempted, and partner has only passed since. */
+function preemptedAlone(p: Position): boolean {
+  let mine = -1;
+  p.read.forEach((r, i) => {
+    if (r.seat === p.seat && r.call.kind !== "pass") mine = i;
+  });
+  if (mine < 0 || !PREEMPTS.has(p.read[mine]!.rule?.name ?? "")) return false;
+  return p.read.slice(mine + 1).every((r) => !isOurs(p, r.seat) || r.call.kind === "pass");
 }
 
 /** Follow a candidate with the ordinary bidder, using only each new caller's own hand. */

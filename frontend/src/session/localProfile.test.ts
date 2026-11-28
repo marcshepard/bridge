@@ -77,6 +77,15 @@ describe("game history", () => {
   });
 });
 
+describe("green clubs", () => {
+  it("is off until turned on", () => {
+    const p = new LocalProfileStore();
+    expect(p.greenClubs()).toBe(false);
+    p.setGreenClubs(true);
+    expect(p.greenClubs()).toBe(true);
+  });
+});
+
 describe("confirm bids", () => {
   it("is on until turned off", () => {
     const p = new LocalProfileStore();

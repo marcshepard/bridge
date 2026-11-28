@@ -114,4 +114,34 @@ describe("simulation scored in IMPs, and competitive judgment", () => {
     // Partner's opening, nothing from them: no judgment.
     expect(judgmentCandidates(positionAt(deal, calls("1S PASS")), parseHand("Q96.K32.A954.Q32"), calls("2S")[0]!)).toBeNull();
   });
+
+  // Marc's board 2 (November 2026 feedback): 1♥ Pass 4♥ to North, who passed with 6–5 in
+  // diamonds and spades but bid 5♠ over 5♥ later (in the balancing seat, where judgment applied).
+  // Marc's board 4 (November 2026 feedback): West opened 2♠, partner passed, and simulation had
+  // West sacrifice in 4♠ over 4♥ (doubled, five down).
+  // Marc's board 6: East's rules flagged pass-or-double over 4♦; bidding 4♥ in the fit was never weighed.
+  it("adds judgment's choices to a hard call the rules flag", async () => {
+    const d = { dealer: "E", vul: "EW" } as const;
+    const pos = positionAt(d, calls("1C 1D 3C X PASS 3D 3H PASS PASS 4D PASS PASS"));
+    const hand = parseHand("AK85.AQ43.5.KT97");
+    const rules = decide(pos, hand);
+    expect(rules.hard?.candidates.map((x) => (x.kind === "bid" ? `${x.level}${x.strain}` : x.kind))).toEqual(["pass", "double"]);
+    const sim = await decideWithSimulation(pos, hand, solver);
+    expect(sim.simulation?.results.map((r) => (r.call.kind === "bid" ? `${r.call.level}${r.call.strain}` : r.call.kind))).toEqual(expect.arrayContaining(["4H", "5C"]));
+  });
+
+  it("offers no judgment to a preempter whose partner has only passed", () => {
+    const d = { dealer: "W", vul: "Both" } as const;
+    expect(judgmentCandidates(positionAt(d, calls("2S PASS PASS 4H")), parseHand("KT9652.2.63.KT85"), calls("PASS")[0]!)).toBeNull();
+    // Once partner has raised, the decision is back on the table.
+    expect(judgmentCandidates(positionAt(d, calls("2S PASS 3S 4H")), parseHand("KT9652.2.63.KT85"), calls("PASS")[0]!)).not.toBeNull();
+  });
+
+  it("offers judgment over their four-level bid while our side has said nothing", () => {
+    const over4 = positionAt({ dealer: "E", vul: "NS" }, calls("1H PASS 4H"));
+    const c = judgmentCandidates(over4, parseHand("KQ865.4.AKT953.Q"), calls("PASS")[0]!)!.map((x) => (x.kind === "bid" ? `${x.level}${x.strain}` : x.kind));
+    expect(c).toEqual(["pass", "double", "4S", "5D"]);
+    // Over their three-level bid the overcall rules still decide.
+    expect(judgmentCandidates(positionAt({ dealer: "E", vul: "NS" }, calls("1H PASS 3H")), parseHand("KQ865.4.AKT953.Q"), calls("PASS")[0]!)).toBeNull();
+  });
 });
